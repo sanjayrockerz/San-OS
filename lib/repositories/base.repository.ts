@@ -35,31 +35,40 @@ export abstract class BaseRepository<T extends TableName> {
     protected readonly table: T,
   ) {}
 
+  /**
+   * Query builder for this repository's table.
+   *
+   * Supabase's generated types are invariant across the union of all tables,
+   * so a generic `from(this.table)` collapses to `never` for column args like
+   * `.eq("id", ...)`. We therefore build queries against an untyped client and
+   * re-apply the precise `Row<T>` / `Insert<T>` / `Update<T>` types at the
+   * boundary, keeping every public method fully typed for callers.
+   */
+  protected get query() {
+    return (this.client as SupabaseClient).from(this.table);
+  }
+
   /** Returns a single row by primary key, or `null` if not found. */
   async findById(id: string): Promise<Row<T> | null> {
-    const { data, error } = await this.client
-      .from(this.table)
+    const { data, error } = await this.query
       .select("*")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data as Row<T> | null;
+    return (data as Row<T> | null) ?? null;
   }
 
   /** Returns all rows the current RLS context is allowed to read. */
   async findAll(): Promise<Row<T>[]> {
-    const { data, error } = await this.client.from(this.table).select("*");
+    const { data, error } = await this.query.select("*");
     if (error) throw error;
     return (data ?? []) as Row<T>[];
   }
 
   /** Inserts a row and returns it. */
   async create(values: Insert<T>): Promise<Row<T>> {
-    const { data, error } = await this.client
-      .from(this.table)
-      // Supabase's generated insert types are invariant across table unions;
-      // the cast keeps the public API ergonomic without weakening callers.
-      .insert(values as never)
+    const { data, error } = await this.query
+      .insert(values)
       .select("*")
       .single();
     if (error) throw error;
@@ -68,9 +77,8 @@ export abstract class BaseRepository<T extends TableName> {
 
   /** Updates a row by primary key and returns the updated row. */
   async update(id: string, values: Update<T>): Promise<Row<T>> {
-    const { data, error } = await this.client
-      .from(this.table)
-      .update(values as never)
+    const { data, error } = await this.query
+      .update(values)
       .eq("id", id)
       .select("*")
       .single();
@@ -80,10 +88,7 @@ export abstract class BaseRepository<T extends TableName> {
 
   /** Deletes a row by primary key. */
   async delete(id: string): Promise<void> {
-    const { error } = await this.client
-      .from(this.table)
-      .delete()
-      .eq("id", id);
+    const { error } = await this.query.delete().eq("id", id);
     if (error) throw error;
   }
 }

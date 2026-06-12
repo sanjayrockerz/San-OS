@@ -1,0 +1,5 @@
+# database/views
+
+Reserved for SQL view definitions (e.g. analytics rollups, revision-due views).
+No views are defined in this phase. Add them as migrations under
+`database/migrations/` and keep a readable copy here.
