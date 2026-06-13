@@ -6,16 +6,15 @@ import type { Database } from "@/types/database";
 import { hasSupabaseEnv } from "./env";
 
 /**
- * Refreshes the Supabase auth session on every matched request.
+ * Refreshes the Supabase auth session on every matched request AND enforces
+ * authentication: anonymous visitors to any non-public route are redirected to
+ * `/login` (preserving where they were headed via `?next=`).
  *
  * This MUST run in `proxy.ts` so the session cookie stays fresh for Server
  * Components, which cannot write cookies themselves. Adapted from the official
  * `@supabase/ssr` Next.js App Router guide.
  *
- * Route ENFORCEMENT (redirecting anonymous users) is intentionally NOT done
- * here yet — the login UI does not exist in this phase, and a global redirect
- * would break the existing frontend shell. Per-page protection is available
- * via `requireUser()` in `lib/auth/session.ts` and can be opted into later.
+ * Public routes (no auth required): `/login` and the `/auth/*` OAuth handlers.
  *
  * When Supabase env vars are absent (e.g. the frontend shell running without a
  * backend), this is a no-op so the app keeps working unchanged.
@@ -53,7 +52,25 @@ export async function updateSession(
   // IMPORTANT: do not run code between createServerClient and getUser(), and do
   // not remove this call — it refreshes the token. getUser() revalidates the
   // session against the Supabase Auth server (unlike getSession()).
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Enforce auth: bounce anonymous visitors to /login (except on public routes).
+  const path = request.nextUrl.pathname;
+  const isPublic = path === "/login" || path.startsWith("/auth");
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("next", path);
+    const redirect = NextResponse.redirect(url);
+    // Carry over any refreshed auth cookies so the session stays in sync.
+    supabaseResponse.cookies.getAll().forEach((c) => {
+      redirect.cookies.set(c.name, c.value);
+    });
+    return redirect;
+  }
 
   // IMPORTANT: return `supabaseResponse` as-is to keep cookies in sync. If you
   // ever build a new response, copy `supabaseResponse.cookies` over first.

@@ -1,12 +1,13 @@
 "use client";
 
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Plus } from "lucide-react";
 
 import { useUIStore } from "@/store/ui-store";
 import { ThemeToggle } from "./theme-toggle";
 
 export function TopHeader() {
   const setOpen = useUIStore((s) => s.setCommandOpen);
+  const setAddEntryOpen = useUIStore((s) => s.setAddEntryOpen);
 
   const today = new Date(2025, 4, 25).toLocaleDateString("en-US", {
     day: "numeric",
@@ -29,15 +30,28 @@ export function TopHeader() {
       </button>
 
       <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={() => setAddEntryOpen(true)}
+          className="flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
+        >
+          <Plus className="size-4" />
+          <span className="hidden sm:inline">Add Learning Entry</span>
+        </button>
         <span className="hidden text-xs font-medium text-muted-foreground xl:block">{today}</span>
         <ThemeToggle />
         <button className="relative flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
           <Bell className="size-[18px]" />
           <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
         </button>
-        <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#a855f7] text-xs font-semibold text-white">
-          S
-        </div>
+        <form action="/auth/signout" method="post">
+          <button
+            type="submit"
+            title="Sign out"
+            className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#a855f7] text-xs font-semibold text-white transition-opacity hover:opacity-80"
+          >
+            S
+          </button>
+        </form>
       </div>
     </header>
   );

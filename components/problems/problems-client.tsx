@@ -1,0 +1,363 @@
+"use client";
+
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Search,
+  Plus,
+  X,
+  Check,
+  ExternalLink,
+  CircleDot,
+  Loader2,
+  ArrowRight,
+} from "lucide-react";
+
+import { PageTransition, Section } from "@/components/layout/page-transition";
+import { PageHeader } from "@/components/layout/page-header";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { Tables } from "@/types/database";
+import { createProblem, markSolved, type ActionResult } from "@/app/(app)/problems/actions";
+
+type Problem = Tables<"problems">;
+type NamedRef = { id: string; name: string };
+
+const DIFFICULTY_FILTERS = ["All", "easy", "medium", "hard"] as const;
+
+const difficultyVariant: Record<string, "success" | "warning" | "danger"> = {
+  easy: "success",
+  medium: "warning",
+  hard: "danger",
+};
+
+export function ProblemsClient({
+  problems,
+  topics,
+  patterns,
+}: {
+  problems: Problem[];
+  topics: NamedRef[];
+  patterns: NamedRef[];
+}) {
+  const [query, setQuery] = useState("");
+  const [active, setActive] =
+    useState<(typeof DIFFICULTY_FILTERS)[number]>("All");
+  const [adding, setAdding] = useState(false);
+
+  const topicName = useMemo(
+    () => new Map(topics.map((t) => [t.id, t.name])),
+    [topics],
+  );
+  const patternName = useMemo(
+    () => new Map(patterns.map((p) => [p.id, p.name])),
+    [patterns],
+  );
+
+  const filtered = problems.filter((p) => {
+    const matchesQuery = p.title.toLowerCase().includes(query.toLowerCase());
+    const matchesDifficulty = active === "All" || p.difficulty === active;
+    return matchesQuery && matchesDifficulty;
+  });
+
+  return (
+    <PageTransition>
+      <PageHeader
+        title="Problems"
+        description="Your solved set — algorithms, notes and revision history in one place."
+        actions={
+          <Button onClick={() => setAdding((a) => !a)}>
+            {adding ? <X className="size-4" /> : <Plus className="size-4" />}
+            {adding ? "Cancel" : "Add Problem"}
+          </Button>
+        }
+      />
+
+      <AnimatePresence initial={false}>
+        {adding && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <AddProblemForm
+              topics={topics}
+              patterns={patterns}
+              onDone={() => setAdding(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Search + difficulty filter */}
+      <Section className="mb-4 mt-2 flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search problems…"
+            className="h-11 pl-9"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      </Section>
+
+      <Section className="mb-6 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {DIFFICULTY_FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setActive(f)}
+            className={cn(
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium capitalize transition-colors",
+              active === f
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            {f}
+          </button>
+        ))}
+      </Section>
+
+      {filtered.length === 0 ? (
+        <Section>
+          <div className="surface-card flex flex-col items-center justify-center rounded-2xl px-6 py-16 text-center">
+            <CircleDot className="size-8 text-muted-foreground/50" />
+            <p className="mt-3 text-sm font-medium">No problems yet</p>
+            <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+              {problems.length === 0
+                ? "Add your first problem to start building your solved set."
+                : "No problems match your search or filter."}
+            </p>
+          </div>
+        </Section>
+      ) : (
+        <Section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {filtered.map((p) => (
+            <ProblemRow
+              key={p.id}
+              problem={p}
+              topicName={p.topic_id ? topicName.get(p.topic_id) : undefined}
+              patternName={
+                p.pattern_id ? patternName.get(p.pattern_id) : undefined
+              }
+            />
+          ))}
+        </Section>
+      )}
+    </PageTransition>
+  );
+}
+
+function ProblemRow({
+  problem,
+  topicName,
+  patternName,
+}: {
+  problem: Problem;
+  topicName?: string;
+  patternName?: string;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [solved, setSolved] = useState(false);
+
+  function handleSolve() {
+    startTransition(async () => {
+      const res = await markSolved(problem.id);
+      if (res.ok) setSolved(true);
+    });
+  }
+
+  return (
+    <div className="surface-card lift flex items-center gap-3 rounded-2xl p-4">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/problems/${problem.id}`}
+            className="group flex min-w-0 items-center gap-1.5"
+          >
+            <h3 className="truncate text-sm font-semibold transition-colors group-hover:text-primary">
+              {problem.title}
+            </h3>
+            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+          </Link>
+          {problem.url && (
+            <a
+              href={problem.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ExternalLink className="size-3.5" />
+            </a>
+          )}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {problem.difficulty && (
+            <Badge variant={difficultyVariant[problem.difficulty]}>
+              {problem.difficulty}
+            </Badge>
+          )}
+          <Badge variant="secondary" className="capitalize">
+            {problem.platform}
+          </Badge>
+          {patternName && <Badge variant="outline">{patternName}</Badge>}
+          {topicName && (
+            <span className="text-[11px] text-muted-foreground">{topicName}</span>
+          )}
+        </div>
+      </div>
+
+      <Button
+        size="sm"
+        variant={solved ? "success" : "secondary"}
+        onClick={handleSolve}
+        disabled={pending || solved}
+        className="shrink-0"
+      >
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Check className="size-4" />
+        )}
+        {solved ? "Solved" : "Mark solved"}
+      </Button>
+    </div>
+  );
+}
+
+function AddProblemForm({
+  topics,
+  patterns,
+  onDone,
+}: {
+  topics: NamedRef[];
+  patterns: NamedRef[];
+  onDone: () => void;
+}) {
+  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
+    createProblem,
+    null,
+  );
+
+  useEffect(() => {
+    if (state?.ok) onDone();
+  }, [state, onDone]);
+
+  return (
+    <form
+      action={formAction}
+      className="surface-card mb-2 grid grid-cols-1 gap-3 rounded-2xl p-5 sm:grid-cols-2"
+    >
+      <div className="sm:col-span-2">
+        <FieldLabel>Title</FieldLabel>
+        <Input name="title" required placeholder="e.g. Two Sum" className="h-10" />
+      </div>
+
+      <div className="sm:col-span-2">
+        <FieldLabel>URL</FieldLabel>
+        <Input
+          name="url"
+          type="url"
+          placeholder="https://leetcode.com/problems/two-sum"
+          className="h-10"
+        />
+      </div>
+
+      <div>
+        <FieldLabel>Platform</FieldLabel>
+        <Select name="platform" defaultValue="leetcode">
+          {[
+            "leetcode",
+            "codeforces",
+            "hackerrank",
+            "codechef",
+            "geeksforgeeks",
+            "atcoder",
+            "interviewbit",
+            "other",
+          ].map((p) => (
+            <option key={p} value={p} className="capitalize">
+              {p}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div>
+        <FieldLabel>Difficulty</FieldLabel>
+        <Select name="difficulty" defaultValue="">
+          <option value="">—</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </Select>
+      </div>
+
+      <div>
+        <FieldLabel>Topic</FieldLabel>
+        <Select name="topic_id" defaultValue="">
+          <option value="">—</option>
+          {topics.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div>
+        <FieldLabel>Pattern</FieldLabel>
+        <Select name="pattern_id" defaultValue="">
+          <option value="">—</option>
+          {patterns.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-3 sm:col-span-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+          Save problem
+        </Button>
+        {state && !state.ok && (
+          <span className="text-xs text-danger">{state.error}</span>
+        )}
+      </div>
+    </form>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+      {children}
+    </label>
+  );
+}
+
+function Select({
+  className,
+  children,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      className={cn(
+        "h-10 w-full rounded-lg border border-input bg-card px-3 text-sm capitalize outline-none transition-colors focus-visible:ring-focus",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </select>
+  );
+}

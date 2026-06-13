@@ -7,6 +7,7 @@ import { BottomNav } from "./bottom-nav";
 import { TopBar } from "./top-bar";
 import { TopHeader } from "./top-header";
 import { CommandPalette } from "./command-palette";
+import { AddEntryModal } from "./add-entry-modal";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-background">
       <Sidebar />
       <CommandPalette />
+      <AddEntryModal />
 
       <div className={cn("transition-[padding] duration-200 ease-out", collapsed ? "lg:pl-[72px]" : "lg:pl-[248px]")}>
         <TopBar />

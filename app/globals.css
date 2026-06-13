@@ -54,6 +54,9 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 4px 16px -4px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.12), 0 8px 16px -8px rgba(0, 0, 0, 0.08);
+
+  /* Lit-from-above highlight along the top edge of a surface (Apple material) */
+  --surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .dark {
@@ -96,6 +99,9 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
+
+  /* On dark surfaces the highlight is a faint cool sheen, not pure white */
+  --surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @theme inline {
@@ -196,7 +202,27 @@
   .surface-card {
     background-color: var(--card);
     border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--surface-highlight), var(--shadow-sm);
+  }
+
+  /* Premium hover: surface rises slightly toward the light with a softer
+     ambient shadow. Pair with .surface-card on interactive cards. */
+  .lift {
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.22s ease;
+    will-change: transform;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--surface-highlight), var(--shadow-md);
+    border-color: var(--border-strong);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lift:hover {
+      transform: none;
+    }
   }
 
   .text-balance { text-wrap: balance; }

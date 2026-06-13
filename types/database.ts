@@ -424,6 +424,717 @@ export type Database = {
           },
         ];
       };
+      concept_notes: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          category: string | null;
+          status: Database["public"]["Enums"]["concept_status"];
+          confidence: number | null;
+          personal_explanation: string | null;
+          recognition_clues: string[];
+          when_to_use: string | null;
+          common_mistakes: string[];
+          topic_id: string | null;
+          pattern_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          category?: string | null;
+          status?: Database["public"]["Enums"]["concept_status"];
+          confidence?: number | null;
+          personal_explanation?: string | null;
+          recognition_clues?: string[];
+          when_to_use?: string | null;
+          common_mistakes?: string[];
+          topic_id?: string | null;
+          pattern_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          category?: string | null;
+          status?: Database["public"]["Enums"]["concept_status"];
+          confidence?: number | null;
+          personal_explanation?: string | null;
+          recognition_clues?: string[];
+          when_to_use?: string | null;
+          common_mistakes?: string[];
+          topic_id?: string | null;
+          pattern_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "concept_notes_topic_id_fkey";
+            columns: ["topic_id"];
+            referencedRelation: "topics";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "concept_notes_pattern_id_fkey";
+            columns: ["pattern_id"];
+            referencedRelation: "patterns";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      concept_resources: {
+        Row: {
+          id: string;
+          user_id: string;
+          concept_id: string;
+          type: Database["public"]["Enums"]["resource_type"];
+          title: string | null;
+          url: string | null;
+          storage_path: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          concept_id: string;
+          type: Database["public"]["Enums"]["resource_type"];
+          title?: string | null;
+          url?: string | null;
+          storage_path?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          concept_id?: string;
+          type?: Database["public"]["Enums"]["resource_type"];
+          title?: string | null;
+          url?: string | null;
+          storage_path?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "concept_resources_concept_id_fkey";
+            columns: ["concept_id"];
+            referencedRelation: "concept_notes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      concept_problems: {
+        Row: {
+          id: string;
+          user_id: string;
+          concept_id: string;
+          problem_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          concept_id: string;
+          problem_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          concept_id?: string;
+          problem_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "concept_problems_concept_id_fkey";
+            columns: ["concept_id"];
+            referencedRelation: "concept_notes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "concept_problems_problem_id_fkey";
+            columns: ["problem_id"];
+            referencedRelation: "problems";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      roadmaps: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          kind: Database["public"]["Enums"]["roadmap_kind"];
+          title: string;
+          slug: string | null;
+          description: string | null;
+          source_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          kind?: Database["public"]["Enums"]["roadmap_kind"];
+          title: string;
+          slug?: string | null;
+          description?: string | null;
+          source_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          kind?: Database["public"]["Enums"]["roadmap_kind"];
+          title?: string;
+          slug?: string | null;
+          description?: string | null;
+          source_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      roadmap_items: {
+        Row: {
+          id: string;
+          roadmap_id: string;
+          parent_item_id: string | null;
+          title: string;
+          problem_id: string | null;
+          topic_id: string | null;
+          is_section: boolean;
+          order_index: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          roadmap_id: string;
+          parent_item_id?: string | null;
+          title: string;
+          problem_id?: string | null;
+          topic_id?: string | null;
+          is_section?: boolean;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          roadmap_id?: string;
+          parent_item_id?: string | null;
+          title?: string;
+          problem_id?: string | null;
+          topic_id?: string | null;
+          is_section?: boolean;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_items_roadmap_id_fkey";
+            columns: ["roadmap_id"];
+            referencedRelation: "roadmaps";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "roadmap_items_parent_item_id_fkey";
+            columns: ["parent_item_id"];
+            referencedRelation: "roadmap_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "roadmap_items_problem_id_fkey";
+            columns: ["problem_id"];
+            referencedRelation: "problems";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      roadmap_progress: {
+        Row: {
+          id: string;
+          user_id: string;
+          roadmap_id: string;
+          item_id: string;
+          status: Database["public"]["Enums"]["roadmap_item_status"];
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          roadmap_id: string;
+          item_id: string;
+          status?: Database["public"]["Enums"]["roadmap_item_status"];
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          roadmap_id?: string;
+          item_id?: string;
+          status?: Database["public"]["Enums"]["roadmap_item_status"];
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_progress_roadmap_id_fkey";
+            columns: ["roadmap_id"];
+            referencedRelation: "roadmaps";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "roadmap_progress_item_id_fkey";
+            columns: ["item_id"];
+            referencedRelation: "roadmap_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      activity_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: Database["public"]["Enums"]["activity_type"];
+          title: string | null;
+          description: string | null;
+          entity_type: string | null;
+          entity_id: string | null;
+          metadata: Json;
+          occurred_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: Database["public"]["Enums"]["activity_type"];
+          title?: string | null;
+          description?: string | null;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          metadata?: Json;
+          occurred_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: Database["public"]["Enums"]["activity_type"];
+          title?: string | null;
+          description?: string | null;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          metadata?: Json;
+          occurred_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      study_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          started_at: string;
+          ended_at: string | null;
+          duration_seconds: number | null;
+          focus: string | null;
+          topic_id: string | null;
+          problems_solved: number;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          started_at?: string;
+          ended_at?: string | null;
+          duration_seconds?: number | null;
+          focus?: string | null;
+          topic_id?: string | null;
+          problems_solved?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          started_at?: string;
+          ended_at?: string | null;
+          duration_seconds?: number | null;
+          focus?: string | null;
+          topic_id?: string | null;
+          problems_solved?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "study_sessions_topic_id_fkey";
+            columns: ["topic_id"];
+            referencedRelation: "topics";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      daily_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          log_date: string;
+          problems_solved: number;
+          minutes_studied: number;
+          revisions_done: number;
+          mood: number | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          log_date: string;
+          problems_solved?: number;
+          minutes_studied?: number;
+          revisions_done?: number;
+          mood?: number | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          log_date?: string;
+          problems_solved?: number;
+          minutes_studied?: number;
+          revisions_done?: number;
+          mood?: number | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      iit_courses: {
+        Row: {
+          id: string;
+          user_id: string;
+          code: string | null;
+          name: string;
+          credits: number | null;
+          semester: string | null;
+          status: Database["public"]["Enums"]["course_status"];
+          instructor: string | null;
+          grade: string | null;
+          marks: number | null;
+          max_marks: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          code?: string | null;
+          name: string;
+          credits?: number | null;
+          semester?: string | null;
+          status?: Database["public"]["Enums"]["course_status"];
+          instructor?: string | null;
+          grade?: string | null;
+          marks?: number | null;
+          max_marks?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          code?: string | null;
+          name?: string;
+          credits?: number | null;
+          semester?: string | null;
+          status?: Database["public"]["Enums"]["course_status"];
+          instructor?: string | null;
+          grade?: string | null;
+          marks?: number | null;
+          max_marks?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      iit_assignments: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string | null;
+          title: string;
+          description: string | null;
+          due_date: string | null;
+          status: Database["public"]["Enums"]["assignment_status"];
+          score: number | null;
+          max_score: number | null;
+          submitted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id?: string | null;
+          title: string;
+          description?: string | null;
+          due_date?: string | null;
+          status?: Database["public"]["Enums"]["assignment_status"];
+          score?: number | null;
+          max_score?: number | null;
+          submitted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string | null;
+          title?: string;
+          description?: string | null;
+          due_date?: string | null;
+          status?: Database["public"]["Enums"]["assignment_status"];
+          score?: number | null;
+          max_score?: number | null;
+          submitted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "iit_assignments_course_id_fkey";
+            columns: ["course_id"];
+            referencedRelation: "iit_courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      iit_lectures: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string | null;
+          title: string;
+          lecture_number: number | null;
+          status: Database["public"]["Enums"]["lecture_status"];
+          duration_minutes: number | null;
+          video_url: string | null;
+          notes: string | null;
+          watched_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id?: string | null;
+          title: string;
+          lecture_number?: number | null;
+          status?: Database["public"]["Enums"]["lecture_status"];
+          duration_minutes?: number | null;
+          video_url?: string | null;
+          notes?: string | null;
+          watched_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string | null;
+          title?: string;
+          lecture_number?: number | null;
+          status?: Database["public"]["Enums"]["lecture_status"];
+          duration_minutes?: number | null;
+          video_url?: string | null;
+          notes?: string | null;
+          watched_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "iit_lectures_course_id_fkey";
+            columns: ["course_id"];
+            referencedRelation: "iit_courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      academic_documents: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: Database["public"]["Enums"]["document_type"];
+          title: string;
+          description: string | null;
+          storage_bucket: string | null;
+          storage_path: string | null;
+          file_url: string | null;
+          file_size_bytes: number | null;
+          mime_type: string | null;
+          course_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type?: Database["public"]["Enums"]["document_type"];
+          title: string;
+          description?: string | null;
+          storage_bucket?: string | null;
+          storage_path?: string | null;
+          file_url?: string | null;
+          file_size_bytes?: number | null;
+          mime_type?: string | null;
+          course_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: Database["public"]["Enums"]["document_type"];
+          title?: string;
+          description?: string | null;
+          storage_bucket?: string | null;
+          storage_path?: string | null;
+          file_url?: string | null;
+          file_size_bytes?: number | null;
+          mime_type?: string | null;
+          course_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "academic_documents_course_id_fkey";
+            columns: ["course_id"];
+            referencedRelation: "iit_courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ai_daily_briefs: {
+        Row: {
+          id: string;
+          user_id: string;
+          brief_date: string;
+          summary: string | null;
+          battle_plan: Json;
+          focus_areas: string[];
+          recommended_problem_ids: string[];
+          model: string | null;
+          generated_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          brief_date: string;
+          summary?: string | null;
+          battle_plan?: Json;
+          focus_areas?: string[];
+          recommended_problem_ids?: string[];
+          model?: string | null;
+          generated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          brief_date?: string;
+          summary?: string | null;
+          battle_plan?: Json;
+          focus_areas?: string[];
+          recommended_problem_ids?: string[];
+          model?: string | null;
+          generated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_insights: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: Database["public"]["Enums"]["ai_insight_type"];
+          title: string;
+          detail: string | null;
+          severity: number | null;
+          entity_type: string | null;
+          entity_id: string | null;
+          is_dismissed: boolean;
+          generated_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: Database["public"]["Enums"]["ai_insight_type"];
+          title: string;
+          detail?: string | null;
+          severity?: number | null;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          is_dismissed?: boolean;
+          generated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: Database["public"]["Enums"]["ai_insight_type"];
+          title?: string;
+          detail?: string | null;
+          severity?: number | null;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          is_dismissed?: boolean;
+          generated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -454,6 +1165,66 @@ export type Database = {
         | "reviewing"
         | "mastered"
         | "struggling";
+      concept_status:
+        | "learning"
+        | "understood"
+        | "weak"
+        | "forgotten"
+        | "mastered";
+      resource_type:
+        | "screenshot"
+        | "image"
+        | "pdf"
+        | "youtube"
+        | "article"
+        | "link";
+      roadmap_kind:
+        | "striver_a2z"
+        | "blind_75"
+        | "neetcode_150"
+        | "iit"
+        | "custom";
+      roadmap_item_status:
+        | "not_started"
+        | "in_progress"
+        | "completed"
+        | "skipped";
+      activity_type:
+        | "problem_solved"
+        | "problem_attempted"
+        | "concept_added"
+        | "concept_revised"
+        | "pattern_revised"
+        | "revision_completed"
+        | "lecture_watched"
+        | "assignment_completed"
+        | "document_uploaded"
+        | "study_session"
+        | "note_added";
+      course_status: "planned" | "in_progress" | "completed" | "dropped";
+      assignment_status:
+        | "pending"
+        | "in_progress"
+        | "submitted"
+        | "graded"
+        | "late"
+        | "missed";
+      lecture_status: "not_started" | "in_progress" | "completed";
+      document_type:
+        | "id_card"
+        | "hall_ticket"
+        | "certificate"
+        | "event_registration"
+        | "lecture_notes"
+        | "transcript"
+        | "other";
+      ai_insight_type:
+        | "weakness"
+        | "forgotten_topic"
+        | "strength"
+        | "recommendation"
+        | "milestone"
+        | "warning";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -497,6 +1268,74 @@ export const Constants = {
         "gave_up",
       ],
       revision_state: ["new", "learning", "reviewing", "mastered", "struggling"],
+      concept_status: [
+        "learning",
+        "understood",
+        "weak",
+        "forgotten",
+        "mastered",
+      ],
+      resource_type: [
+        "screenshot",
+        "image",
+        "pdf",
+        "youtube",
+        "article",
+        "link",
+      ],
+      roadmap_kind: [
+        "striver_a2z",
+        "blind_75",
+        "neetcode_150",
+        "iit",
+        "custom",
+      ],
+      roadmap_item_status: [
+        "not_started",
+        "in_progress",
+        "completed",
+        "skipped",
+      ],
+      activity_type: [
+        "problem_solved",
+        "problem_attempted",
+        "concept_added",
+        "concept_revised",
+        "pattern_revised",
+        "revision_completed",
+        "lecture_watched",
+        "assignment_completed",
+        "document_uploaded",
+        "study_session",
+        "note_added",
+      ],
+      course_status: ["planned", "in_progress", "completed", "dropped"],
+      assignment_status: [
+        "pending",
+        "in_progress",
+        "submitted",
+        "graded",
+        "late",
+        "missed",
+      ],
+      lecture_status: ["not_started", "in_progress", "completed"],
+      document_type: [
+        "id_card",
+        "hall_ticket",
+        "certificate",
+        "event_registration",
+        "lecture_notes",
+        "transcript",
+        "other",
+      ],
+      ai_insight_type: [
+        "weakness",
+        "forgotten_topic",
+        "strength",
+        "recommendation",
+        "milestone",
+        "warning",
+      ],
     },
   },
 } as const;

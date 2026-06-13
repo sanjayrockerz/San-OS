@@ -10,7 +10,7 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, delta, trend, color = "var(--primary)" }: MetricCardProps) {
   return (
-    <div className="surface-card flex flex-col justify-between rounded-2xl p-5 transition-shadow hover:shadow-[var(--shadow-md)]">
+    <div className="surface-card lift flex flex-col justify-between rounded-2xl p-5">
       <div className="flex items-start justify-between">
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
         {delta && (

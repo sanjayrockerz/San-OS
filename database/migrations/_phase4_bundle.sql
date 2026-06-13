@@ -1,0 +1,908 @@
+-- =============================================================================
+-- SanOS Phase-4 migration bundle (0004–0010)
+-- Paste-and-run in Supabase Dashboard → SQL Editor. Idempotent & ordered.
+-- Prereq: 0001–0003 already applied (they are, on project kcdenqufiajidivysuez).
+-- =============================================================================
+
+-- >>> 0004_knowledge_schema.sql >>>
+-- =============================================================================
+-- Migration 0004 — Knowledge & Concept Vault schema
+-- =============================================================================
+-- Tables:
+--   concept_notes, concept_resources, concept_problems
+--
+-- Concept cards are user-owned. Each concept may carry many resources
+-- (screenshots, PDFs, YouTube links) and may be linked to global patterns,
+-- topics, and the user's problems. Conventions follow 0001/0002:
+--   * uuid primary keys (gen_random_uuid())
+--   * user_id FK to auth.users on every owned table
+--   * created_at / updated_at on every table (updated_at via trigger)
+-- RLS is defined in 0009.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enum types
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'concept_status') then
+    create type public.concept_status as enum (
+      'learning',
+      'understood',
+      'weak',
+      'forgotten',
+      'mastered'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'resource_type') then
+    create type public.resource_type as enum (
+      'screenshot',
+      'image',
+      'pdf',
+      'youtube',
+      'article',
+      'link'
+    );
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- concept_notes
+-- -----------------------------------------------------------------------------
+create table if not exists public.concept_notes (
+  id                   uuid primary key default gen_random_uuid(),
+  user_id              uuid not null references auth.users (id) on delete cascade,
+  title                text not null,
+  category             text,
+  status               public.concept_status not null default 'learning',
+  confidence           smallint check (confidence between 1 and 5),
+  personal_explanation text,
+  recognition_clues    text[] not null default '{}',
+  when_to_use          text,
+  common_mistakes      text[] not null default '{}',
+  topic_id             uuid references public.topics (id) on delete set null,
+  pattern_id           uuid references public.patterns (id) on delete set null,
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+create index if not exists concept_notes_user_id_idx
+  on public.concept_notes (user_id);
+create index if not exists concept_notes_topic_id_idx
+  on public.concept_notes (topic_id);
+create index if not exists concept_notes_pattern_id_idx
+  on public.concept_notes (pattern_id);
+
+-- -----------------------------------------------------------------------------
+-- concept_resources (images, PDFs, YouTube links attached to a concept)
+-- -----------------------------------------------------------------------------
+create table if not exists public.concept_resources (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  concept_id    uuid not null references public.concept_notes (id) on delete cascade,
+  type          public.resource_type not null,
+  title         text,
+  url           text,
+  storage_path  text,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists concept_resources_user_id_idx
+  on public.concept_resources (user_id);
+create index if not exists concept_resources_concept_id_idx
+  on public.concept_resources (concept_id);
+
+-- -----------------------------------------------------------------------------
+-- concept_problems (many-to-many: concepts <-> problems, per user)
+-- -----------------------------------------------------------------------------
+create table if not exists public.concept_problems (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  concept_id  uuid not null references public.concept_notes (id) on delete cascade,
+  problem_id  uuid not null references public.problems (id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (concept_id, problem_id)
+);
+
+create index if not exists concept_problems_user_id_idx
+  on public.concept_problems (user_id);
+create index if not exists concept_problems_concept_id_idx
+  on public.concept_problems (concept_id);
+create index if not exists concept_problems_problem_id_idx
+  on public.concept_problems (problem_id);
+
+-- -----------------------------------------------------------------------------
+-- updated_at triggers
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array[
+    'concept_notes', 'concept_resources', 'concept_problems'
+  ];
+begin
+  foreach tbl in array tables loop
+    execute format('drop trigger if exists set_updated_at on public.%I;', tbl);
+    execute format(
+      'create trigger set_updated_at before update on public.%I
+         for each row execute function public.set_updated_at();',
+      tbl
+    );
+  end loop;
+end
+$$;
+
+-- >>> 0005_roadmap_schema.sql >>>
+-- =============================================================================
+-- Migration 0005 — Roadmap Engine schema
+-- =============================================================================
+-- Tables:
+--   roadmaps, roadmap_items, roadmap_progress
+--
+-- A roadmap is either a global template (user_id NULL — e.g. Striver A2Z,
+-- Blind 75, NeetCode 150, IIT) readable by all authenticated users, or a
+-- user-authored custom roadmap. roadmap_items form a tree (parent_item_id)
+-- and may reference a problem so that solving a problem once can update every
+-- linked roadmap. roadmap_progress records per-user completion of an item.
+-- RLS is defined in 0009.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enum types
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'roadmap_kind') then
+    create type public.roadmap_kind as enum (
+      'striver_a2z',
+      'blind_75',
+      'neetcode_150',
+      'iit',
+      'custom'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'roadmap_item_status') then
+    create type public.roadmap_item_status as enum (
+      'not_started',
+      'in_progress',
+      'completed',
+      'skipped'
+    );
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- roadmaps (global template when user_id is NULL, else user-authored)
+-- -----------------------------------------------------------------------------
+create table if not exists public.roadmaps (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid references auth.users (id) on delete cascade,
+  kind         public.roadmap_kind not null default 'custom',
+  title        text not null,
+  slug         text,
+  description  text,
+  source_url   text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create index if not exists roadmaps_user_id_idx on public.roadmaps (user_id);
+
+-- One global-template row per slug. User-authored rows are exempt.
+create unique index if not exists roadmaps_template_slug_uniq
+  on public.roadmaps (slug)
+  where user_id is null and slug is not null;
+
+-- -----------------------------------------------------------------------------
+-- roadmap_items (tree of sections/problems within a roadmap)
+-- -----------------------------------------------------------------------------
+create table if not exists public.roadmap_items (
+  id              uuid primary key default gen_random_uuid(),
+  roadmap_id      uuid not null references public.roadmaps (id) on delete cascade,
+  parent_item_id  uuid references public.roadmap_items (id) on delete cascade,
+  title           text not null,
+  problem_id      uuid references public.problems (id) on delete set null,
+  topic_id        uuid references public.topics (id) on delete set null,
+  is_section      boolean not null default false,
+  order_index     integer not null default 0,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+create index if not exists roadmap_items_roadmap_id_idx
+  on public.roadmap_items (roadmap_id);
+create index if not exists roadmap_items_parent_item_id_idx
+  on public.roadmap_items (parent_item_id);
+create index if not exists roadmap_items_problem_id_idx
+  on public.roadmap_items (problem_id);
+
+-- -----------------------------------------------------------------------------
+-- roadmap_progress (per-user completion of a roadmap item)
+-- -----------------------------------------------------------------------------
+create table if not exists public.roadmap_progress (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  roadmap_id    uuid not null references public.roadmaps (id) on delete cascade,
+  item_id       uuid not null references public.roadmap_items (id) on delete cascade,
+  status        public.roadmap_item_status not null default 'not_started',
+  completed_at  timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (user_id, item_id)
+);
+
+create index if not exists roadmap_progress_user_id_idx
+  on public.roadmap_progress (user_id);
+create index if not exists roadmap_progress_roadmap_id_idx
+  on public.roadmap_progress (roadmap_id);
+
+-- -----------------------------------------------------------------------------
+-- updated_at triggers
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array[
+    'roadmaps', 'roadmap_items', 'roadmap_progress'
+  ];
+begin
+  foreach tbl in array tables loop
+    execute format('drop trigger if exists set_updated_at on public.%I;', tbl);
+    execute format(
+      'create trigger set_updated_at before update on public.%I
+         for each row execute function public.set_updated_at();',
+      tbl
+    );
+  end loop;
+end
+$$;
+
+-- >>> 0006_activity_schema.sql >>>
+-- =============================================================================
+-- Migration 0006 — Activity, Study Sessions & Daily Logs schema
+-- =============================================================================
+-- Tables:
+--   activity_logs, study_sessions, daily_logs
+--
+-- activity_logs is the append-only event stream powering the timeline and the
+-- GitHub-style contribution heatmap. study_sessions track focused work blocks.
+-- daily_logs roll up per-day counts (one row per user per day). All user-owned.
+-- RLS is defined in 0009.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enum types
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'activity_type') then
+    create type public.activity_type as enum (
+      'problem_solved',
+      'problem_attempted',
+      'concept_added',
+      'concept_revised',
+      'pattern_revised',
+      'revision_completed',
+      'lecture_watched',
+      'assignment_completed',
+      'document_uploaded',
+      'study_session',
+      'note_added'
+    );
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- activity_logs (append-only event stream)
+-- -----------------------------------------------------------------------------
+create table if not exists public.activity_logs (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  type         public.activity_type not null,
+  title        text,
+  description  text,
+  entity_type  text,
+  entity_id    uuid,
+  metadata     jsonb not null default '{}'::jsonb,
+  occurred_at  timestamptz not null default now(),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create index if not exists activity_logs_user_id_idx
+  on public.activity_logs (user_id);
+create index if not exists activity_logs_occurred_at_idx
+  on public.activity_logs (occurred_at);
+create index if not exists activity_logs_type_idx
+  on public.activity_logs (type);
+
+-- -----------------------------------------------------------------------------
+-- study_sessions (focused work blocks)
+-- -----------------------------------------------------------------------------
+create table if not exists public.study_sessions (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users (id) on delete cascade,
+  started_at        timestamptz not null default now(),
+  ended_at          timestamptz,
+  duration_seconds  integer,
+  focus             text,
+  topic_id          uuid references public.topics (id) on delete set null,
+  problems_solved   integer not null default 0,
+  notes             text,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create index if not exists study_sessions_user_id_idx
+  on public.study_sessions (user_id);
+create index if not exists study_sessions_started_at_idx
+  on public.study_sessions (started_at);
+
+-- -----------------------------------------------------------------------------
+-- daily_logs (one roll-up row per user per day)
+-- -----------------------------------------------------------------------------
+create table if not exists public.daily_logs (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users (id) on delete cascade,
+  log_date         date not null,
+  problems_solved  integer not null default 0,
+  minutes_studied  integer not null default 0,
+  revisions_done   integer not null default 0,
+  mood             smallint check (mood between 1 and 5),
+  notes            text,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  unique (user_id, log_date)
+);
+
+create index if not exists daily_logs_user_id_idx
+  on public.daily_logs (user_id);
+create index if not exists daily_logs_log_date_idx
+  on public.daily_logs (log_date);
+
+-- -----------------------------------------------------------------------------
+-- updated_at triggers
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array[
+    'activity_logs', 'study_sessions', 'daily_logs'
+  ];
+begin
+  foreach tbl in array tables loop
+    execute format('drop trigger if exists set_updated_at on public.%I;', tbl);
+    execute format(
+      'create trigger set_updated_at before update on public.%I
+         for each row execute function public.set_updated_at();',
+      tbl
+    );
+  end loop;
+end
+$$;
+
+-- >>> 0007_iit_schema.sql >>>
+-- =============================================================================
+-- Migration 0007 — IIT Academic Intelligence schema
+-- =============================================================================
+-- Tables:
+--   iit_courses, iit_assignments, iit_lectures, academic_documents
+--
+-- Course tracker with credits/marks, assignment tracker, lecture progress, and
+-- an academic document vault (ID card, hall tickets, certificates, notes).
+-- All user-owned. RLS is defined in 0009. Document files live in the
+-- `iit-documents` storage bucket (created in 0010).
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enum types
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'course_status') then
+    create type public.course_status as enum (
+      'planned',
+      'in_progress',
+      'completed',
+      'dropped'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'assignment_status') then
+    create type public.assignment_status as enum (
+      'pending',
+      'in_progress',
+      'submitted',
+      'graded',
+      'late',
+      'missed'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'lecture_status') then
+    create type public.lecture_status as enum (
+      'not_started',
+      'in_progress',
+      'completed'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'document_type') then
+    create type public.document_type as enum (
+      'id_card',
+      'hall_ticket',
+      'certificate',
+      'event_registration',
+      'lecture_notes',
+      'transcript',
+      'other'
+    );
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- iit_courses
+-- -----------------------------------------------------------------------------
+create table if not exists public.iit_courses (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  code        text,
+  name        text not null,
+  credits     numeric(4, 1),
+  semester    text,
+  status      public.course_status not null default 'in_progress',
+  instructor  text,
+  grade       text,
+  marks       numeric(6, 2),
+  max_marks   numeric(6, 2),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists iit_courses_user_id_idx
+  on public.iit_courses (user_id);
+
+-- -----------------------------------------------------------------------------
+-- iit_assignments
+-- -----------------------------------------------------------------------------
+create table if not exists public.iit_assignments (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  course_id     uuid references public.iit_courses (id) on delete cascade,
+  title         text not null,
+  description   text,
+  due_date      timestamptz,
+  status        public.assignment_status not null default 'pending',
+  score         numeric(6, 2),
+  max_score     numeric(6, 2),
+  submitted_at  timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists iit_assignments_user_id_idx
+  on public.iit_assignments (user_id);
+create index if not exists iit_assignments_course_id_idx
+  on public.iit_assignments (course_id);
+create index if not exists iit_assignments_due_date_idx
+  on public.iit_assignments (due_date);
+
+-- -----------------------------------------------------------------------------
+-- iit_lectures
+-- -----------------------------------------------------------------------------
+create table if not exists public.iit_lectures (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users (id) on delete cascade,
+  course_id         uuid references public.iit_courses (id) on delete cascade,
+  title             text not null,
+  lecture_number    integer,
+  status            public.lecture_status not null default 'not_started',
+  duration_minutes  integer,
+  video_url         text,
+  notes             text,
+  watched_at        timestamptz,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create index if not exists iit_lectures_user_id_idx
+  on public.iit_lectures (user_id);
+create index if not exists iit_lectures_course_id_idx
+  on public.iit_lectures (course_id);
+
+-- -----------------------------------------------------------------------------
+-- academic_documents (vault: ID card, hall tickets, certificates, notes)
+-- -----------------------------------------------------------------------------
+create table if not exists public.academic_documents (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users (id) on delete cascade,
+  type             public.document_type not null default 'other',
+  title            text not null,
+  description      text,
+  storage_bucket   text,
+  storage_path     text,
+  file_url         text,
+  file_size_bytes  bigint,
+  mime_type        text,
+  course_id        uuid references public.iit_courses (id) on delete set null,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+create index if not exists academic_documents_user_id_idx
+  on public.academic_documents (user_id);
+create index if not exists academic_documents_type_idx
+  on public.academic_documents (type);
+create index if not exists academic_documents_course_id_idx
+  on public.academic_documents (course_id);
+
+-- -----------------------------------------------------------------------------
+-- updated_at triggers
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array[
+    'iit_courses', 'iit_assignments', 'iit_lectures', 'academic_documents'
+  ];
+begin
+  foreach tbl in array tables loop
+    execute format('drop trigger if exists set_updated_at on public.%I;', tbl);
+    execute format(
+      'create trigger set_updated_at before update on public.%I
+         for each row execute function public.set_updated_at();',
+      tbl
+    );
+  end loop;
+end
+$$;
+
+-- >>> 0008_ai_schema.sql >>>
+-- =============================================================================
+-- Migration 0008 — AI Mentor Engine schema
+-- =============================================================================
+-- Tables:
+--   ai_daily_briefs, ai_insights
+--
+-- The AI engine is analytical, not a chatbot: it reads the user's learning
+-- history and writes a Daily Battle Plan (ai_daily_briefs, one per day) and
+-- structured findings about weaknesses / forgotten topics / recommendations
+-- (ai_insights). Generation happens server-side; these tables only persist the
+-- results so the UI can read real data. All user-owned. RLS is defined in 0009.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enum types
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'ai_insight_type') then
+    create type public.ai_insight_type as enum (
+      'weakness',
+      'forgotten_topic',
+      'strength',
+      'recommendation',
+      'milestone',
+      'warning'
+    );
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- ai_daily_briefs (one Daily Battle Plan per user per day)
+-- -----------------------------------------------------------------------------
+create table if not exists public.ai_daily_briefs (
+  id                       uuid primary key default gen_random_uuid(),
+  user_id                  uuid not null references auth.users (id) on delete cascade,
+  brief_date               date not null,
+  summary                  text,
+  battle_plan              jsonb not null default '[]'::jsonb,
+  focus_areas              text[] not null default '{}',
+  recommended_problem_ids  uuid[] not null default '{}',
+  model                    text,
+  generated_at             timestamptz not null default now(),
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now(),
+  unique (user_id, brief_date)
+);
+
+create index if not exists ai_daily_briefs_user_id_idx
+  on public.ai_daily_briefs (user_id);
+create index if not exists ai_daily_briefs_brief_date_idx
+  on public.ai_daily_briefs (brief_date);
+
+-- -----------------------------------------------------------------------------
+-- ai_insights (structured findings the mentor surfaces)
+-- -----------------------------------------------------------------------------
+create table if not exists public.ai_insights (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  type          public.ai_insight_type not null,
+  title         text not null,
+  detail        text,
+  severity      smallint check (severity between 1 and 5),
+  entity_type   text,
+  entity_id     uuid,
+  is_dismissed  boolean not null default false,
+  generated_at  timestamptz not null default now(),
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists ai_insights_user_id_idx
+  on public.ai_insights (user_id);
+create index if not exists ai_insights_type_idx
+  on public.ai_insights (type);
+create index if not exists ai_insights_is_dismissed_idx
+  on public.ai_insights (is_dismissed);
+
+-- -----------------------------------------------------------------------------
+-- updated_at triggers
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array[
+    'ai_daily_briefs', 'ai_insights'
+  ];
+begin
+  foreach tbl in array tables loop
+    execute format('drop trigger if exists set_updated_at on public.%I;', tbl);
+    execute format(
+      'create trigger set_updated_at before update on public.%I
+         for each row execute function public.set_updated_at();',
+      tbl
+    );
+  end loop;
+end
+$$;
+
+-- >>> 0009_rls_phase2.sql >>>
+-- =============================================================================
+-- Migration 0009 — Row Level Security for Phase 2 tables
+-- =============================================================================
+-- RLS is enabled on EVERY new table (0004–0008).
+--
+-- Policy model:
+--   * User-owned tables: full CRUD where auth.uid() = user_id.
+--   * roadmaps: global templates (user_id IS NULL, read-only to users) plus
+--     user-authored rows the owner can fully manage — mirrors `problems`.
+--   * roadmap_items: readable when their parent roadmap is readable; writable
+--     only by the owner of that roadmap.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enable RLS everywhere
+-- -----------------------------------------------------------------------------
+alter table public.concept_notes       enable row level security;
+alter table public.concept_resources   enable row level security;
+alter table public.concept_problems    enable row level security;
+alter table public.roadmaps            enable row level security;
+alter table public.roadmap_items       enable row level security;
+alter table public.roadmap_progress    enable row level security;
+alter table public.activity_logs       enable row level security;
+alter table public.study_sessions      enable row level security;
+alter table public.daily_logs          enable row level security;
+alter table public.iit_courses         enable row level security;
+alter table public.iit_assignments     enable row level security;
+alter table public.iit_lectures        enable row level security;
+alter table public.academic_documents  enable row level security;
+alter table public.ai_daily_briefs     enable row level security;
+alter table public.ai_insights         enable row level security;
+
+-- -----------------------------------------------------------------------------
+-- roadmaps (shared template + user-authored) — mirrors public.problems
+-- -----------------------------------------------------------------------------
+drop policy if exists "roadmaps_select_template_or_own" on public.roadmaps;
+create policy "roadmaps_select_template_or_own" on public.roadmaps
+  for select to authenticated
+  using (user_id is null or auth.uid() = user_id);
+
+drop policy if exists "roadmaps_insert_own" on public.roadmaps;
+create policy "roadmaps_insert_own" on public.roadmaps
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "roadmaps_update_own" on public.roadmaps;
+create policy "roadmaps_update_own" on public.roadmaps
+  for update to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "roadmaps_delete_own" on public.roadmaps;
+create policy "roadmaps_delete_own" on public.roadmaps
+  for delete to authenticated using (auth.uid() = user_id);
+
+-- -----------------------------------------------------------------------------
+-- roadmap_items — visibility/writability inherited from the parent roadmap
+-- -----------------------------------------------------------------------------
+drop policy if exists "roadmap_items_select_visible" on public.roadmap_items;
+create policy "roadmap_items_select_visible" on public.roadmap_items
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.roadmaps r
+      where r.id = roadmap_id
+        and (r.user_id is null or r.user_id = auth.uid())
+    )
+  );
+
+drop policy if exists "roadmap_items_insert_own" on public.roadmap_items;
+create policy "roadmap_items_insert_own" on public.roadmap_items
+  for insert to authenticated
+  with check (
+    exists (
+      select 1 from public.roadmaps r
+      where r.id = roadmap_id and r.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "roadmap_items_update_own" on public.roadmap_items;
+create policy "roadmap_items_update_own" on public.roadmap_items
+  for update to authenticated
+  using (
+    exists (
+      select 1 from public.roadmaps r
+      where r.id = roadmap_id and r.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.roadmaps r
+      where r.id = roadmap_id and r.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "roadmap_items_delete_own" on public.roadmap_items;
+create policy "roadmap_items_delete_own" on public.roadmap_items
+  for delete to authenticated
+  using (
+    exists (
+      select 1 from public.roadmaps r
+      where r.id = roadmap_id and r.user_id = auth.uid()
+    )
+  );
+
+-- -----------------------------------------------------------------------------
+-- Per-user owned tables — identical auth.uid() = user_id CRUD policies
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array[
+    'concept_notes',
+    'concept_resources',
+    'concept_problems',
+    'roadmap_progress',
+    'activity_logs',
+    'study_sessions',
+    'daily_logs',
+    'iit_courses',
+    'iit_assignments',
+    'iit_lectures',
+    'academic_documents',
+    'ai_daily_briefs',
+    'ai_insights'
+  ];
+begin
+  foreach tbl in array tables loop
+    execute format('drop policy if exists "%1$s_select_own" on public.%1$I;', tbl);
+    execute format(
+      'create policy "%1$s_select_own" on public.%1$I
+         for select to authenticated using (auth.uid() = user_id);', tbl);
+
+    execute format('drop policy if exists "%1$s_insert_own" on public.%1$I;', tbl);
+    execute format(
+      'create policy "%1$s_insert_own" on public.%1$I
+         for insert to authenticated with check (auth.uid() = user_id);', tbl);
+
+    execute format('drop policy if exists "%1$s_update_own" on public.%1$I;', tbl);
+    execute format(
+      'create policy "%1$s_update_own" on public.%1$I
+         for update to authenticated
+         using (auth.uid() = user_id) with check (auth.uid() = user_id);', tbl);
+
+    execute format('drop policy if exists "%1$s_delete_own" on public.%1$I;', tbl);
+    execute format(
+      'create policy "%1$s_delete_own" on public.%1$I
+         for delete to authenticated using (auth.uid() = user_id);', tbl);
+  end loop;
+end
+$$;
+
+-- >>> 0010_storage_buckets.sql >>>
+-- =============================================================================
+-- Migration 0010 — Storage buckets & object RLS
+-- =============================================================================
+-- Creates the five buckets declared in lib/storage/buckets.ts and applies
+-- per-user-folder Row Level Security on storage.objects.
+--
+-- Convention: every object is stored under a top-level folder equal to the
+-- owner's auth.uid(), e.g. `avatars/<uid>/photo.png`. RLS keys off the first
+-- path segment so a user can only write/read their own folder. Public buckets
+-- additionally allow anonymous read (served over the CDN).
+--
+-- Buckets (matches BUCKET_DEFINITIONS):
+--   avatars              public   2MB   images
+--   concept-images       public   5MB   images
+--   problem-screenshots  private  5MB   images
+--   iit-documents        private  25MB  documents
+--   attachments          private  25MB  any
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Buckets (idempotent upsert so re-runs stay safe)
+-- -----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values
+  ('avatars', 'avatars', true, 2097152,
+   array['image/png','image/jpeg','image/webp','image/gif']),
+  ('concept-images', 'concept-images', true, 5242880,
+   array['image/png','image/jpeg','image/webp','image/gif']),
+  ('problem-screenshots', 'problem-screenshots', false, 5242880,
+   array['image/png','image/jpeg','image/webp','image/gif']),
+  ('iit-documents', 'iit-documents', false, 26214400,
+   array['application/pdf','application/msword',
+         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+         'text/plain','text/markdown']),
+  ('attachments', 'attachments', false, 26214400, null)
+on conflict (id) do update
+  set public = excluded.public,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+-- -----------------------------------------------------------------------------
+-- Public-read for the public buckets (avatars, concept-images)
+-- -----------------------------------------------------------------------------
+drop policy if exists "public_buckets_read" on storage.objects;
+create policy "public_buckets_read" on storage.objects
+  for select to public
+  using (bucket_id in ('avatars', 'concept-images'));
+
+-- -----------------------------------------------------------------------------
+-- Owner-folder CRUD across every SanOS bucket.
+-- The first path segment must equal the caller's uid.
+-- -----------------------------------------------------------------------------
+drop policy if exists "owner_folder_select" on storage.objects;
+create policy "owner_folder_select" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id in ('avatars','concept-images','problem-screenshots','iit-documents','attachments')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "owner_folder_insert" on storage.objects;
+create policy "owner_folder_insert" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id in ('avatars','concept-images','problem-screenshots','iit-documents','attachments')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "owner_folder_update" on storage.objects;
+create policy "owner_folder_update" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id in ('avatars','concept-images','problem-screenshots','iit-documents','attachments')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id in ('avatars','concept-images','problem-screenshots','iit-documents','attachments')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "owner_folder_delete" on storage.objects;
+create policy "owner_folder_delete" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id in ('avatars','concept-images','problem-screenshots','iit-documents','attachments')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+

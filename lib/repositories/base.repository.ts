@@ -92,3 +92,27 @@ export abstract class BaseRepository<T extends TableName> {
     if (error) throw error;
   }
 }
+
+/**
+ * Base class for tables that carry a `user_id` column (the common case under
+ * RLS). Adds owner-scoped reads on top of {@link BaseRepository}. The query is
+ * built against the untyped client (see `BaseRepository.query`) and re-typed at
+ * the boundary, so callers still get precise `Row<T>` results.
+ */
+export abstract class UserScopedRepository<
+  T extends TableName,
+> extends BaseRepository<T> {
+  /**
+   * Returns every row owned by `userId`, newest first. RLS already restricts
+   * rows to the caller; the explicit filter keeps queries correct when run with
+   * the service-role key (which bypasses RLS).
+   */
+  async findByUser(userId: string): Promise<Row<T>[]> {
+    const { data, error } = await this.query
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as Row<T>[];
+  }
+}

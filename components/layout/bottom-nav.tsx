@@ -11,7 +11,7 @@ import { MOBILE_NAV, type NavItem } from "./nav-config";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const openCommand = useUIStore((s) => s.setCommandOpen);
+  const openAddEntry = useUIStore((s) => s.setAddEntryOpen);
 
   const left = MOBILE_NAV.slice(0, 2);
   const right = MOBILE_NAV.slice(2);
@@ -20,8 +20,8 @@ export function BottomNav() {
     <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 lg:hidden">
       <motion.button
         type="button"
-        aria-label="Quick add"
-        onClick={() => openCommand(true)}
+        aria-label="Add learning entry"
+        onClick={() => openAddEntry(true)}
         whileTap={{ scale: 0.9 }}
         transition={{ type: "spring", stiffness: 500, damping: 25 }}
         className="absolute -top-5 left-1/2 z-10 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40"
