@@ -2,6 +2,7 @@ import type { Repositories } from "@/lib/repositories";
 import type { Tables } from "@/types/database";
 
 import { BaseService } from "./base.service";
+import { EVENT_TYPES, EventService } from "./event.service";
 
 type RevisionState = Tables<"revision_queue">["current_state"];
 
@@ -38,8 +39,11 @@ function nextState(successCount: number, failureCount: number): RevisionState {
  * repository.
  */
 export class RevisionService extends BaseService {
+  private readonly events: EventService;
+
   constructor(repos: Repositories) {
     super(repos);
+    this.events = new EventService(repos);
   }
 
   /**
@@ -92,7 +96,7 @@ export class RevisionService extends BaseService {
       : entry.failure_count + 1;
     const interval = intervalFor(successCount);
 
-    return this.repos.revision.update(entry.id, {
+    const updated = await this.repos.revision.update(entry.id, {
       current_state: nextState(successCount, failureCount),
       last_revision: now.toISOString(),
       next_revision: addDays(now, interval).toISOString(),
@@ -100,6 +104,20 @@ export class RevisionService extends BaseService {
       failure_count: failureCount,
       editorial_dependency: editorialUsed || entry.editorial_dependency,
     });
+
+    await this.events.emit(userId, {
+      eventType: success
+        ? EVENT_TYPES.RevisionSucceeded
+        : EVENT_TYPES.RevisionFailed,
+      entityType: "problem",
+      entityId: problemId,
+      payload: {
+        nextRevision: updated.next_revision,
+        state: updated.current_state,
+      },
+    });
+
+    return updated;
   }
 
   /** Items due on or before now — the daily revision queue. */

@@ -61,6 +61,7 @@ export type Database = {
       topics: {
         Row: {
           id: string;
+          user_id: string | null;
           name: string;
           slug: string;
           description: string | null;
@@ -68,11 +69,16 @@ export type Database = {
           color: string | null;
           parent_topic_id: string | null;
           order_index: number;
+          source: Database["public"]["Enums"]["taxonomy_source"];
+          status: Database["public"]["Enums"]["taxonomy_status"];
+          ai_confidence: number | null;
+          ai_rationale: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           name: string;
           slug: string;
           description?: string | null;
@@ -80,11 +86,16 @@ export type Database = {
           color?: string | null;
           parent_topic_id?: string | null;
           order_index?: number;
+          source?: Database["public"]["Enums"]["taxonomy_source"];
+          status?: Database["public"]["Enums"]["taxonomy_status"];
+          ai_confidence?: number | null;
+          ai_rationale?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           name?: string;
           slug?: string;
           description?: string | null;
@@ -92,6 +103,10 @@ export type Database = {
           color?: string | null;
           parent_topic_id?: string | null;
           order_index?: number;
+          source?: Database["public"]["Enums"]["taxonomy_source"];
+          status?: Database["public"]["Enums"]["taxonomy_status"];
+          ai_confidence?: number | null;
+          ai_rationale?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -107,6 +122,7 @@ export type Database = {
       patterns: {
         Row: {
           id: string;
+          user_id: string | null;
           name: string;
           slug: string;
           recognition_clues: string[];
@@ -114,11 +130,16 @@ export type Database = {
           common_mistakes: string[];
           variants: string[];
           description: string | null;
+          source: Database["public"]["Enums"]["taxonomy_source"];
+          status: Database["public"]["Enums"]["taxonomy_status"];
+          ai_confidence: number | null;
+          ai_rationale: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           name: string;
           slug: string;
           recognition_clues?: string[];
@@ -126,11 +147,16 @@ export type Database = {
           common_mistakes?: string[];
           variants?: string[];
           description?: string | null;
+          source?: Database["public"]["Enums"]["taxonomy_source"];
+          status?: Database["public"]["Enums"]["taxonomy_status"];
+          ai_confidence?: number | null;
+          ai_rationale?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           name?: string;
           slug?: string;
           recognition_clues?: string[];
@@ -138,6 +164,10 @@ export type Database = {
           common_mistakes?: string[];
           variants?: string[];
           description?: string | null;
+          source?: Database["public"]["Enums"]["taxonomy_source"];
+          status?: Database["public"]["Enums"]["taxonomy_status"];
+          ai_confidence?: number | null;
+          ai_rationale?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1135,6 +1165,72 @@ export type Database = {
         };
         Relationships: [];
       };
+      events: {
+        Row: {
+          id: string;
+          user_id: string;
+          event_type: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          payload: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_type: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          payload?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          event_type?: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          payload?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      taxonomy_usage: {
+        Row: {
+          id: string;
+          user_id: string;
+          entity_type: string;
+          entity_id: string;
+          usage_count: number;
+          last_used_at: string | null;
+          relevance_score: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          entity_type: string;
+          entity_id: string;
+          usage_count?: number;
+          last_used_at?: string | null;
+          relevance_score?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          entity_type?: string;
+          entity_id?: string;
+          usage_count?: number;
+          last_used_at?: string | null;
+          relevance_score?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1143,6 +1239,8 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
+      taxonomy_source: "seed" | "user" | "ai_proposed" | "ai_auto";
+      taxonomy_status: "active" | "proposed" | "dismissed";
       difficulty_level: "easy" | "medium" | "hard";
       problem_platform:
         | "leetcode"

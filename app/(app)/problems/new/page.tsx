@@ -7,11 +7,11 @@ import { NewProblemForm } from "@/components/problems/new-problem-form";
  * which posts to the `createLearningEntry` server action (the Problem Engine).
  */
 export default async function NewProblemPage() {
-  const { services } = await requireContext("/problems/new");
+  const { user, services } = await requireContext("/problems/new");
 
   const [topics, patterns] = await Promise.all([
-    services.repos.topics.listOrdered(),
-    services.repos.patterns.findAll(),
+    services.taxonomy.listTopics(user.id),
+    services.taxonomy.listPatterns(user.id),
   ]);
 
   return (

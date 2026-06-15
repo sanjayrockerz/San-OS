@@ -18,10 +18,15 @@ export * from "./roadmaps.repository";
 export * from "./activity.repository";
 export * from "./iit.repository";
 export * from "./ai.repository";
+export * from "./events.repository";
 
 import type { DbClient } from "./base.repository";
 import { UsersProfileRepository } from "./profile.repository";
-import { TopicsRepository, PatternsRepository } from "./taxonomy.repository";
+import {
+  TopicsRepository,
+  PatternsRepository,
+  TaxonomyUsageRepository,
+} from "./taxonomy.repository";
 import {
   ProblemsRepository,
   ProblemAttemptsRepository,
@@ -51,6 +56,7 @@ import {
   AcademicDocumentsRepository,
 } from "./iit.repository";
 import { AiDailyBriefsRepository, AiInsightsRepository } from "./ai.repository";
+import { EventsRepository } from "./events.repository";
 
 /**
  * Constructs every repository bound to a single Supabase client. Services
@@ -61,6 +67,7 @@ export function createRepositories(client: DbClient) {
     profile: new UsersProfileRepository(client),
     topics: new TopicsRepository(client),
     patterns: new PatternsRepository(client),
+    taxonomyUsage: new TaxonomyUsageRepository(client),
     problems: new ProblemsRepository(client),
     attempts: new ProblemAttemptsRepository(client),
     reflections: new ProblemReflectionsRepository(client),
@@ -81,6 +88,7 @@ export function createRepositories(client: DbClient) {
     academicDocuments: new AcademicDocumentsRepository(client),
     aiBriefs: new AiDailyBriefsRepository(client),
     aiInsights: new AiInsightsRepository(client),
+    events: new EventsRepository(client),
   };
 }
 

@@ -3,6 +3,7 @@ import type { Tables, TablesInsert } from "@/types/database";
 
 import { ActivityService } from "./activity.service";
 import { BaseService } from "./base.service";
+import { EVENT_TYPES, EventService } from "./event.service";
 
 type Concept = Tables<"concept_notes">;
 
@@ -19,10 +20,12 @@ export interface ConceptDetail {
  */
 export class ConceptService extends BaseService {
   private readonly activity: ActivityService;
+  private readonly events: EventService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.activity = new ActivityService(repos);
+    this.events = new EventService(repos);
   }
 
   list(userId: string): Promise<Concept[]> {
@@ -56,6 +59,12 @@ export class ConceptService extends BaseService {
       entityId: concept.id,
       metadata: { title: concept.title },
     });
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.ConceptCreated,
+      entityType: "concept",
+      entityId: concept.id,
+      payload: { title: concept.title },
+    });
     return concept;
   }
 
@@ -78,6 +87,12 @@ export class ConceptService extends BaseService {
       metadata: { status },
     });
     await this.activity.bumpDailyCounters(userId, { revisions_done: 1 });
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.ConceptRevised,
+      entityType: "concept",
+      entityId: conceptId,
+      payload: { title: concept.title, status },
+    });
     return concept;
   }
 

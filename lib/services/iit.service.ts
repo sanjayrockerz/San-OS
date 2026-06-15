@@ -3,6 +3,7 @@ import type { Tables, TablesInsert } from "@/types/database";
 
 import { ActivityService } from "./activity.service";
 import { BaseService } from "./base.service";
+import { EVENT_TYPES, EventService } from "./event.service";
 
 export interface CreditSummary {
   totalCredits: number;
@@ -17,10 +18,12 @@ export interface CreditSummary {
  */
 export class IitService extends BaseService {
   private readonly activity: ActivityService;
+  private readonly events: EventService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.activity = new ActivityService(repos);
+    this.events = new EventService(repos);
   }
 
   courses(userId: string): Promise<Tables<"iit_courses">[]> {
@@ -32,6 +35,34 @@ export class IitService extends BaseService {
     values: Omit<TablesInsert<"iit_courses">, "user_id">,
   ): Promise<Tables<"iit_courses">> {
     return this.repos.iitCourses.create({ ...values, user_id: userId });
+  }
+
+  /**
+   * Stores a new assignment, logs the activity, and emits `assignment.created`
+   * so it lands on the timeline and feeds dashboard aggregation.
+   */
+  async createAssignment(
+    userId: string,
+    values: Omit<TablesInsert<"iit_assignments">, "user_id">,
+  ): Promise<Tables<"iit_assignments">> {
+    const row = await this.repos.iitAssignments.create({
+      ...values,
+      user_id: userId,
+    });
+    await this.activity.log(userId, {
+      type: "assignment_completed",
+      title: "Added an assignment",
+      entityType: "iit_assignment",
+      entityId: row.id,
+      metadata: { title: row.title, dueDate: row.due_date },
+    });
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.AssignmentCreated,
+      entityType: "iit_assignment",
+      entityId: row.id,
+      payload: { title: row.title, dueDate: row.due_date },
+    });
+    return row;
   }
 
   /** Aggregate credit totals by course status. */
@@ -71,6 +102,12 @@ export class IitService extends BaseService {
       entityId: assignmentId,
       metadata: { score },
     });
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.AssignmentCompleted,
+      entityType: "iit_assignment",
+      entityId: assignmentId,
+      payload: { title: row.title, score },
+    });
     return row;
   }
 
@@ -88,6 +125,12 @@ export class IitService extends BaseService {
       title: "Watched a lecture",
       entityType: "iit_lecture",
       entityId: lectureId,
+    });
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.LectureWatched,
+      entityType: "iit_lecture",
+      entityId: lectureId,
+      payload: { title: row.title },
     });
     return row;
   }
@@ -107,6 +150,12 @@ export class IitService extends BaseService {
       entityType: "academic_document",
       entityId: doc.id,
       metadata: { type: doc.type },
+    });
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.DocumentUploaded,
+      entityType: "academic_document",
+      entityId: doc.id,
+      payload: { title: doc.title, type: doc.type },
     });
     return doc;
   }

@@ -4,9 +4,6 @@ import {
   type LiveActivityItem,
 } from "@/components/dashboard/overview-client";
 
-const SOLVED = new Set(["solved", "solved_with_help", "partial"]);
-const WEEKLY_TARGET = 21;
-
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {
     return await p;
@@ -21,11 +18,6 @@ function spark(value: number): number[] {
   return Array.from({ length: n }, (_, i) =>
     Math.max(0, Math.round((value * (i + 1)) / n)),
   );
-}
-
-/** Epoch ms for 7 days ago — wrapped so the impure clock read is out of render. */
-function weekAgoMs(): number {
-  return Date.now() - 7 * 24 * 60 * 60 * 1000;
 }
 
 function relativeTime(iso: string): string {
@@ -53,12 +45,12 @@ function relativeTime(iso: string): string {
 export default async function OverviewPage() {
   const { user, services } = await requireContext("/overview");
 
-  const [profile, problems, attempts, due, activityRows] = await Promise.all([
+  // The page consumes ONLY the aggregation service — no direct domain queries,
+  // no analytics logic here. The service assembles every section (and is itself
+  // fail-soft per section), so the page just maps the snapshot onto the client.
+  const [profile, snapshot] = await Promise.all([
     safe(services.repos.profile.findByUserId(user.id), null),
-    safe(services.problems.list(user.id), []),
-    safe(services.repos.attempts.findByUser(user.id), []),
-    safe(services.repos.revision.findDue(user.id, new Date().toISOString()), []),
-    safe(services.repos.activity.recent(user.id, 6), []),
+    services.dashboardAggregation.snapshot(user.id),
   ]);
 
   const name =
@@ -66,48 +58,31 @@ export default async function OverviewPage() {
     user.email?.split("@")[0] ??
     "there";
 
-  const solvedAttempts = attempts.filter(
-    (a) => a.solve_status && SOLVED.has(a.solve_status),
-  );
-  const solved = new Set(solvedAttempts.map((a) => a.problem_id)).size;
+  const { hero } = snapshot;
 
-  const weekAgo = weekAgoMs();
-  const solvedThisWeek = solvedAttempts.filter(
-    (a) => new Date(a.attempted_at).getTime() >= weekAgo,
-  ).length;
-
-  // Activity: prefer the real stream; fall back to deriving from attempts.
-  const titleByProblem = new Map(problems.map((p) => [p.id, p.title]));
-  let activity: LiveActivityItem[];
-  if (activityRows.length > 0) {
-    activity = activityRows.map((a) => ({
-      id: a.id,
-      text: a.title ?? a.type.replace(/_/g, " "),
-      time: relativeTime(a.occurred_at),
+  const activity: LiveActivityItem[] = snapshot.activityTimeline
+    .slice(0, 6)
+    .map((item) => ({
+      id: item.id,
+      text: item.text,
+      time: relativeTime(item.at),
     }));
-  } else {
-    activity = attempts.slice(0, 6).map((a) => ({
-      id: a.id,
-      text: `Logged ${titleByProblem.get(a.problem_id) ?? "a problem"}`,
-      time: relativeTime(a.attempted_at),
-    }));
-  }
 
   return (
     <OverviewClient
       name={name}
-      latestTitle={problems[0]?.title ?? null}
+      latestTitle={snapshot.continueLearning[0]?.title ?? null}
       activity={activity}
       metrics={{
-        totalProblems: problems.length,
-        solved,
-        revisionDue: due.length,
-        solvedThisWeek,
-        weeklyTarget: WEEKLY_TARGET,
+        totalProblems: hero.totalProblems,
+        solved: hero.uniqueSolved,
+        revisionDue: hero.revisionDue,
+        solvedThisWeek: hero.solvedThisWeek,
+        weeklyTarget: hero.weeklyTarget,
         trends: {
-          total: spark(problems.length),
-          solved: spark(solved),
-          revision: spark(due.length),
+          total: spark(hero.totalProblems),
+          solved: spark(hero.uniqueSolved),
+          revision: spark(hero.revisionDue),
         },
       }}
     />

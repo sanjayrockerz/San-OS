@@ -16,8 +16,8 @@ export default async function ProblemsPage() {
 
   const [problems, topics, patterns] = await Promise.all([
     services.problems.list(user.id),
-    services.repos.topics.listOrdered(),
-    services.repos.patterns.findAll(),
+    services.taxonomy.listTopics(user.id),
+    services.taxonomy.listPatterns(user.id),
   ]);
 
   return (

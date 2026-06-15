@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServices, EVENT_TYPES } from "@/lib/services";
 
 /**
  * OAuth callback. Google redirects here with a `?code=...`; we exchange it for
@@ -43,6 +44,11 @@ export async function GET(request: Request) {
         avatar_url: meta.avatar_url ?? meta.picture ?? null,
       });
     }
+
+    await createServices(supabase).events.emit(user.id, {
+      eventType: EVENT_TYPES.AuthLogin,
+      payload: { method: "oauth" },
+    });
   }
 
   // Avoid open-redirects: only honour same-origin relative paths.

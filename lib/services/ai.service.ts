@@ -34,20 +34,19 @@ export class AiService extends BaseService {
    * Generates (and upserts) today's brief and refreshes derived insights.
    * Returns the persisted brief.
    */
-  async generateDailyBrief(
-    userId: string,
-    date = isoDate(),
-  ): Promise<Tables<"ai_daily_briefs">> {
-    const due = await this.revision.dueQueue(userId);
-    const weak = await this.revision.weakQueue(userId);
-    const forgottenConcepts = await this.repos.concepts.findByStatus(
-      userId,
-      "forgotten",
-    );
-    const metrics = await this.analytics.growthMetrics(userId);
+  /**
+   * Read-only Daily Battle Plan — the prioritised next actions derived from the
+   * revision queue and forgotten concepts. Pure (no writes), so the dashboard
+   * aggregator and any UI can call it freely without persisting a brief.
+   */
+  async battlePlan(userId: string): Promise<BattlePlanStep[]> {
+    const [due, weak, forgottenConcepts] = await Promise.all([
+      this.revision.dueQueue(userId),
+      this.revision.weakQueue(userId),
+      this.repos.concepts.findByStatus(userId, "forgotten"),
+    ]);
 
     const steps: BattlePlanStep[] = [];
-
     for (const item of due.slice(0, 5)) {
       steps.push({
         kind: "revise",
@@ -72,6 +71,22 @@ export class AiService extends BaseService {
         entityId: c.id,
       });
     }
+    return steps;
+  }
+
+  async generateDailyBrief(
+    userId: string,
+    date = isoDate(),
+  ): Promise<Tables<"ai_daily_briefs">> {
+    const due = await this.revision.dueQueue(userId);
+    const weak = await this.revision.weakQueue(userId);
+    const forgottenConcepts = await this.repos.concepts.findByStatus(
+      userId,
+      "forgotten",
+    );
+    const metrics = await this.analytics.growthMetrics(userId);
+
+    const steps = await this.battlePlan(userId);
 
     const focusAreas: string[] = [];
     if (metrics.independentSolveRate < 0.5)

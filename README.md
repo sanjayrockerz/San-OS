@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SanOS — Personal Engineering OS
 
-## Getting Started
+A personal DSA / engineering operating system: a problem engine, spaced-revision
+("forgetting") engine, evolving knowledge taxonomy, roadmaps, an academic (IIT)
+workspace, and an analytical AI mentor — built on Next.js 16 (App Router,
+Turbopack), React 19, Tailwind v4 and Supabase (Postgres + RLS).
 
-First, run the development server:
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Environment lives in `.env.local` (gitignored): `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PROJECT_ID`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+Server Action / Route Handler → Services → Repositories → Supabase (Postgres + RLS)
+```
 
-## Learn More
+- **Repositories** (`lib/repositories`) are the only direct database access.
+- **Services** (`lib/services`) hold business logic and orchestrate cross-domain
+  workflows. Every state-changing action emits an immutable domain **event**.
+- **React components** hold no analytics logic and run no direct queries. The
+  overview consumes a single read model: `DashboardAggregationService.snapshot`.
 
-To learn more about Next.js, take a look at the following resources:
+See **[docs/architecture/phase5-lifecycle.md](docs/architecture/phase5-lifecycle.md)**
+for the full lifecycle (problem creation, revision, taxonomy evolution, event
+propagation, dashboard aggregation, knowledge graph) with flow diagrams.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Migrations live in `database/migrations` (`0001`–`0012`). The live project is at
+full schema parity — confirmed by `node scripts/verify-db.mjs` (25/25 ok).
 
-## Deploy on Vercel
+- Canonical paste-and-run bundle: `database/migrations/_production_bundle_phase5.sql`
+  (idempotent, covers `0004`–`0012`). Safe to re-run on the live DB — it only
+  adds what's missing. Paste it into the Supabase SQL Editor when standing up a
+  fresh project.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run type-check               # tsc --noEmit
+npm run lint                     # eslint
+npm run build                    # next build
+
+node scripts/verify-db.mjs       # schema parity: every table + column present (anon key)
+node scripts/verify-engine.mjs   # full lifecycle runs on the live DB (service role, throwaway user, auto-cleanup)
+```
+
+Both verify scripts exit non-zero on failure and print a per-check ✅/❌ report.

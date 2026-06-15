@@ -3,6 +3,7 @@ import type { Tables } from "@/types/database";
 
 import { ActivityService } from "./activity.service";
 import { BaseService } from "./base.service";
+import { EVENT_TYPES, EventService } from "./event.service";
 
 type Item = Tables<"roadmap_items">;
 type ItemStatus = Tables<"roadmap_progress">["status"];
@@ -27,10 +28,12 @@ export interface RoadmapTree {
  */
 export class RoadmapService extends BaseService {
   private readonly activity: ActivityService;
+  private readonly events: EventService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.activity = new ActivityService(repos);
+    this.events = new EventService(repos);
   }
 
   list(userId: string): Promise<Tables<"roadmaps">[]> {
@@ -112,6 +115,12 @@ export class RoadmapService extends BaseService {
         entityType: "roadmap_item",
         entityId: itemId,
         metadata: { roadmapId },
+      });
+      await this.events.emit(userId, {
+        eventType: EVENT_TYPES.RoadmapProgressed,
+        entityType: "roadmap_item",
+        entityId: itemId,
+        payload: { roadmapId },
       });
     }
     return row;

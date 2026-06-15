@@ -117,6 +117,15 @@ export default async function ProblemDetailPage({
     [],
   );
 
+  // Knowledge-graph neighbourhood: problems/concepts sharing a topic, pattern or
+  // concept link. Resilient — empty until there are enough entities to relate.
+  const related = await safe(
+    services.knowledgeGraph.getRelatedKnowledge(user.id, id),
+    { problems: [], concepts: [], patterns: [], topics: [] },
+  );
+  const hasRelated =
+    related.problems.length > 0 || related.concepts.length > 0;
+
   const latest = attempts[0] ?? null;
   const reflection = reflections[0] ?? null;
 
@@ -344,6 +353,45 @@ export default async function ProblemDetailPage({
                   </li>
                 ))}
               </ul>
+            </SideCard>
+          )}
+
+          {/* Related (knowledge graph) */}
+          {hasRelated && (
+            <SideCard icon={Layers} title="Related">
+              {related.problems.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    Problems
+                  </p>
+                  <ul className="space-y-1">
+                    {related.problems.map((p) => (
+                      <li key={p.id}>
+                        <Link
+                          href={`/problems/${p.id}`}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {p.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {related.concepts.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    Concepts
+                  </p>
+                  <ul className="space-y-1">
+                    {related.concepts.map((c) => (
+                      <li key={c.id} className="text-xs text-muted-foreground">
+                        {c.title}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </SideCard>
           )}
         </aside>

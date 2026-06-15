@@ -240,6 +240,17 @@ export async function createLearningEntry(
     };
   }
 
+  // Keep the per-user taxonomy alive: re-rank topics/patterns from this fresh
+  // attempt and mine any emergent ones. evolve() is idempotent and self-healing
+  // (it recomputes from the source of truth), so running it on every solve is
+  // safe. Fail-soft: taxonomy growth must never block saving the entry, and it
+  // no-ops gracefully until migration 0012 (dynamic taxonomy) is applied.
+  try {
+    await services.taxonomy.evolve(user.id);
+  } catch {
+    // best-effort; the next solve (or a nightly job) will catch up
+  }
+
   revalidatePath("/problems");
   revalidatePath("/overview");
   redirect(`/problems/${problemId}`);

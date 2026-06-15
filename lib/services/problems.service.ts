@@ -3,6 +3,7 @@ import type { Tables, TablesInsert } from "@/types/database";
 
 import { ActivityService } from "./activity.service";
 import { BaseService } from "./base.service";
+import { EVENT_TYPES, EventService } from "./event.service";
 import { RevisionService } from "./revision.service";
 
 type Attempt = Tables<"problem_attempts">;
@@ -55,11 +56,13 @@ export interface RecordSolveResult {
 export class ProblemsService extends BaseService {
   private readonly activity: ActivityService;
   private readonly revision: RevisionService;
+  private readonly events: EventService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.activity = new ActivityService(repos);
     this.revision = new RevisionService(repos);
+    this.events = new EventService(repos);
   }
 
   /** Lists catalog + own problems for a user. */
@@ -67,12 +70,22 @@ export class ProblemsService extends BaseService {
     return this.repos.problems.listVisible(userId);
   }
 
-  /** Creates a user-authored problem. */
-  create(
+  /** Creates a user-authored problem and emits `problem.created`. */
+  async create(
     userId: string,
     values: Omit<TablesInsert<"problems">, "user_id">,
   ): Promise<Tables<"problems">> {
-    return this.repos.problems.create({ ...values, user_id: userId });
+    const problem = await this.repos.problems.create({
+      ...values,
+      user_id: userId,
+    });
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.ProblemCreated,
+      entityType: "problem",
+      entityId: problem.id,
+      payload: { title: problem.title },
+    });
+    return problem;
   }
 
   /**
@@ -146,6 +159,44 @@ export class ProblemsService extends BaseService {
       metadata: { attemptId: attempt.id, solveStatus: attempt.solve_status },
     });
     await this.activity.bumpDailyCounters(userId, { problems_solved: 1 });
+
+    // Emit the domain events that downstream engines (timeline, analytics, AI)
+    // consume. Title is looked up so the timeline reads naturally.
+    const solved = await this.repos.problems.findById(input.problemId);
+    const title = solved?.title;
+    const base = { entityType: "problem", entityId: input.problemId };
+
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.ProblemSolved,
+      ...base,
+      payload: { title, solveStatus: attempt.solve_status },
+    });
+    if (reflection) {
+      await this.events.emit(userId, {
+        eventType: EVENT_TYPES.ReflectionCreated,
+        ...base,
+        payload: { title, reflectionId: reflection.id },
+      });
+    }
+    if (codeVersion) {
+      await this.events.emit(userId, {
+        eventType: EVENT_TYPES.CodeVersionCreated,
+        ...base,
+        payload: { title, language: codeVersion.language },
+      });
+    }
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.RevisionScheduled,
+      ...base,
+      payload: { title, nextRevision: revision.next_revision },
+    });
+    if (roadmapItemsUpdated > 0) {
+      await this.events.emit(userId, {
+        eventType: EVENT_TYPES.RoadmapProgressed,
+        ...base,
+        payload: { title, itemsUpdated: roadmapItemsUpdated },
+      });
+    }
 
     return { attempt, reflection, codeVersion, revision, roadmapItemsUpdated };
   }

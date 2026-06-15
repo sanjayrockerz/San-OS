@@ -26,7 +26,7 @@ values
   ('Graphs', 'graphs',
    'Vertices and edges; traversal, shortest paths, and connectivity.',
    'Share2', '#ef4444', 5)
-on conflict (slug) do nothing;
+on conflict (slug) where user_id is null do nothing;
 
 -- -----------------------------------------------------------------------------
 -- Patterns
@@ -103,4 +103,4 @@ values
    array['Not detecting cycles', 'Wrong in-degree bookkeeping', 'Assuming a unique ordering'],
    array['Kahn''s (BFS)', 'DFS post-order'],
    'Order the vertices of a DAG so every edge points forward.')
-on conflict (slug) do nothing;
+on conflict (slug) where user_id is null do nothing;

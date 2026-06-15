@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServices } from "@/lib/services";
+import { EVENT_TYPES } from "@/lib/services/event.service";
 import { signInSchema, signUpSchema } from "@/lib/validators/auth";
 
 export interface AuthState {
@@ -29,8 +31,15 @@ export async function signInAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: error.message };
+
+  if (data.user) {
+    await createServices(supabase).events.emit(data.user.id, {
+      eventType: EVENT_TYPES.AuthLogin,
+      payload: { method: "password" },
+    });
+  }
 
   redirect(safeNext(formData.get("next")));
 }
@@ -62,6 +71,13 @@ export async function signUpAction(
       message:
         "Account created. Check your email to confirm, then sign in below.",
     };
+  }
+
+  if (data.user) {
+    await createServices(supabase).events.emit(data.user.id, {
+      eventType: EVENT_TYPES.AuthLogin,
+      payload: { method: "signup" },
+    });
   }
 
   redirect(safeNext(formData.get("next")));
