@@ -85,6 +85,9 @@ export class TimelineService extends BaseService {
       case EVENT_TYPES.RevisionFailed:
         text = `Struggled revising ${named}`;
         break;
+      case EVENT_TYPES.RevisionSnoozed:
+        text = `Snoozed ${named} for revision`;
+        break;
       case EVENT_TYPES.RoadmapProgressed:
         text = `Progressed a roadmap`;
         break;
@@ -112,6 +115,21 @@ export class TimelineService extends BaseService {
       case EVENT_TYPES.TaxonomyAutoAdded:
         text = "A new topic/pattern was tracked automatically";
         break;
+      case EVENT_TYPES.TaxonomyApproved:
+        text = title ? `Approved “${title}”` : "Approved a taxonomy proposal";
+        break;
+      case EVENT_TYPES.KnowledgeCreated:
+        text = title ? `Saved “${title}” to the vault` : "Saved a vault item";
+        break;
+      case EVENT_TYPES.KnowledgeUpdated:
+        text = title ? `Updated “${title}”` : "Updated a vault item";
+        break;
+      case EVENT_TYPES.KnowledgeDeleted:
+        text = title ? `Removed “${title}” from the vault` : "Removed a vault item";
+        break;
+      case EVENT_TYPES.BattlePlanTaskCompleted:
+        text = title ? `Completed: ${title}` : "Completed a battle-plan task";
+        break;
       case EVENT_TYPES.AuthLogin:
         text = "Signed in";
         break;
@@ -125,7 +143,11 @@ export class TimelineService extends BaseService {
     if (e.entity_type === "problem" && e.entity_id) {
       href = `/problems/${e.entity_id}`;
     } else if (e.entity_type === "concept" && e.entity_id) {
-      href = `/vault/${e.entity_id}`;
+      href = `/concepts/${e.entity_id}`;
+    } else if (e.entity_type === "knowledge") {
+      href = "/vault";
+    } else if (e.event_type === EVENT_TYPES.TaxonomyApproved) {
+      href = "/taxonomy";
     }
 
     return {

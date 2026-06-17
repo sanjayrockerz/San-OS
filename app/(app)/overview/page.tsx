@@ -1,23 +1,18 @@
 import { requireContext } from "@/lib/server/context";
 import {
   OverviewClient,
-  type LiveActivityItem,
+  type OverviewData,
 } from "@/components/dashboard/overview-client";
+import type { BattlePlanStep, EveningReview, MissedWorkItem } from "@/lib/services";
+import { HabitEngineService } from "@/lib/services";
+import type { SessionTask } from "@/lib/services/context-engine.service";
+import type { Tables } from "@/types/database";
 
-async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
-  try {
-    return await p;
-  } catch {
-    return fallback;
-  }
-}
-
-/** A short ascending sparkline that ends at `value` (we lack true history yet). */
-function spark(value: number): number[] {
-  const n = 8;
-  return Array.from({ length: n }, (_, i) =>
-    Math.max(0, Math.round((value * (i + 1)) / n)),
-  );
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 function relativeTime(iso: string): string {
@@ -35,56 +30,196 @@ function relativeTime(iso: string): string {
   });
 }
 
+/** Whether an assignment due-date falls within the next three days. */
+function isDueSoon(dueDate: string | null): boolean {
+  if (!dueDate) return false;
+  return new Date(dueDate).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
+}
+
+/** Deep link + rough duration for a derived battle-plan step. */
+function battlePlanLink(step: BattlePlanStep): { href: string; minutes: number } {
+  switch (step.kind) {
+    case "revise":
+      return { href: "/revision", minutes: 8 };
+    case "strengthen":
+      return {
+        href: step.entityId ? `/problems/${step.entityId}` : "/problems",
+        minutes: 15,
+      };
+    case "learn":
+      return {
+        href: step.entityId ? `/concepts/${step.entityId}` : "/concepts",
+        minutes: 10,
+      };
+    case "academic":
+      return { href: "/iit-workspace", minutes: 20 };
+    default:
+      return { href: "/overview", minutes: 10 };
+  }
+}
+
 /**
- * Overview dashboard — live simple metrics. Counts come from the core tables
- * (problems, attempts, revision_queue) that are already applied; reads from the
- * Phase-4 activity stream are resilient (fall back to attempts) so the page
- * renders before/after the Phase-4 migrations land. Advanced analytics
- * (radar/performance/pattern confidence) remain visual previews for Phase 5.
+ * Overview dashboard — the morning landing surface. Reads ONLY the
+ * DashboardAggregationService snapshot (no direct domain queries, no analytics
+ * logic in the page); each section is fail-soft inside the service.
  */
 export default async function OverviewPage() {
   const { user, services } = await requireContext("/overview");
 
-  // The page consumes ONLY the aggregation service — no direct domain queries,
-  // no analytics logic here. The service assembles every section (and is itself
-  // fail-soft per section), so the page just maps the snapshot onto the client.
-  const [profile, snapshot] = await Promise.all([
-    safe(services.repos.profile.findByUserId(user.id), null),
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Habit Engine evaluation must run before the notification/missed-work
+  // reads below so due items are materialised into `notifications` first.
+  await services.habitEngine.evaluateForUser(user.id).catch(() => ({
+    generated: 0,
+    expired: 0,
+    missed: 0,
+    unreadCount: 0,
+  }));
+
+  const [
+    profile,
+    snapshot,
+    aiInsights,
+    todayLog,
+    resumeItems,
+    recommendations,
+    dailyDigest,
+    dailyPlan,
+    preferences,
+    notifications,
+    missedWork,
+  ] = await Promise.all([
+    services.repos.profile.findByUserId(user.id).catch(() => null),
     services.dashboardAggregation.snapshot(user.id),
+    services.repos.aiInsights.active(user.id).catch(() => [] as never[]),
+    services.repos.dailyLogs.findByDate(user.id, today).catch(() => null),
+    services.context.resumePriority(user.id).catch(() => []),
+    services.context.recommendations(user.id).catch(() => []),
+    services.context.dailyDigest(user.id).catch(() => ({
+      problemsSolved: 0,
+      revisionsCompleted: 0,
+      conceptsCreated: 0,
+      knowledgeAdded: 0,
+      iitCompleted: 0,
+      streak: 0,
+      observation: null,
+    })),
+    services.context.buildDailyPlan(user.id).catch(() => []),
+    services.repos.userPreferences
+      .findByUser(user.id)
+      .catch(() => null as Tables<"user_preferences"> | null),
+    services.habitEngine
+      .getNotificationCenter(user.id)
+      .catch(() => [] as Tables<"notifications">[]),
+    services.habitEngine.getMissedWorkQueue(user.id).catch(() => [] as MissedWorkItem[]),
   ]);
+
+  const isEvening = new Date().getHours() >= 18;
+  const eveningReviewEnabled = preferences?.evening_review_enabled ?? true;
+  const eveningReview: EveningReview | null =
+    isEvening && eveningReviewEnabled
+      ? await services.habitEngine.getEveningReview(user.id).catch(() => null)
+      : null;
 
   const name =
     profile?.display_name?.split(" ")[0] ??
     user.email?.split("@")[0] ??
     "there";
 
-  const { hero } = snapshot;
+  const focusMode = preferences?.default_focus_mode ?? "none";
+  const focusConfig = HabitEngineService.getFocusModeConfig(focusMode);
+  const visibleBattlePlan = focusConfig.hideBattlePlanKinds?.length
+    ? snapshot.battlePlan.filter(
+        (step) => !focusConfig.hideBattlePlanKinds!.includes(step.kind),
+      )
+    : snapshot.battlePlan;
 
-  const activity: LiveActivityItem[] = snapshot.activityTimeline
-    .slice(0, 6)
-    .map((item) => ({
+  const estimatedMinutes = visibleBattlePlan.reduce((sum, step) => {
+    const mins = step.kind === "revise" ? 8 : step.kind === "strengthen" ? 15 : step.kind === "academic" ? 20 : 10;
+    return sum + mins;
+  }, 0);
+
+  const topInsight = (aiInsights as { detail?: string | null }[])[0];
+  const aiSummary = topInsight?.detail ?? null;
+
+  const data: OverviewData = {
+    name,
+    greeting: greeting(),
+    estimatedMinutes,
+    aiSummary,
+    hero: snapshot.hero,
+    battlePlan: visibleBattlePlan.map((step, i) => {
+      const { href, minutes } = battlePlanLink(step);
+      return {
+        id: `${step.kind}-${step.entityId ?? i}`,
+        kind: step.kind,
+        title: step.title,
+        detail: step.detail,
+        href,
+        minutes,
+        entityId: step.entityId ?? null,
+      };
+    }),
+    resumeItems: resumeItems.map((r) => ({
+      ...r,
+      lastTouchedAt: r.lastTouchedAt ? relativeTime(r.lastTouchedAt) : null,
+    })),
+    recommendations,
+    dailyDigest,
+    dailyPlan,
+    continueLearning: snapshot.continueLearning[0]
+      ? {
+          problemId: snapshot.continueLearning[0].problemId,
+          title: snapshot.continueLearning[0].title,
+          lastTouched: relativeTime(snapshot.continueLearning[0].lastTouchedAt),
+        }
+      : null,
+    revisionQueue: snapshot.revisionQueue.slice(0, 5).map((r) => ({
+      problemId: r.problemId,
+      title: r.title,
+      state: r.state,
+    })),
+    upcomingAssignments: snapshot.upcomingAssignments.map((a) => ({
+      id: a.id,
+      title: a.title,
+      due: a.dueDate
+        ? new Date(a.dueDate).toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+          })
+        : "No date",
+      urgent: isDueSoon(a.dueDate),
+    })),
+    taxonomyProposalsCount: snapshot.taxonomyProposalsCount,
+    recentKnowledge: snapshot.recentKnowledge.map((k) => ({
+      id: k.id,
+      type: k.type,
+      title: k.title,
+      time: relativeTime(k.createdAt),
+    })),
+    activity: snapshot.activityTimeline.slice(0, 6).map((item) => ({
       id: item.id,
       text: item.text,
+      href: item.href,
       time: relativeTime(item.at),
-    }));
+    })),
+    recentSolved: snapshot.recentSolved.map((s) => ({
+      problemId: s.problemId,
+      title: s.title,
+      difficulty: s.difficulty,
+    })),
+    recentConcepts: snapshot.recentConcepts.map((c) => ({
+      id: c.id,
+      title: c.title,
+      status: c.status,
+    })),
+    solvedToday: todayLog?.problems_solved ?? 0,
+    notifications,
+    missedWork,
+    focusMode,
+    eveningReview,
+  };
 
-  return (
-    <OverviewClient
-      name={name}
-      latestTitle={snapshot.continueLearning[0]?.title ?? null}
-      activity={activity}
-      metrics={{
-        totalProblems: hero.totalProblems,
-        solved: hero.uniqueSolved,
-        revisionDue: hero.revisionDue,
-        solvedThisWeek: hero.solvedThisWeek,
-        weeklyTarget: hero.weeklyTarget,
-        trends: {
-          total: spark(hero.totalProblems),
-          solved: spark(hero.uniqueSolved),
-          revision: spark(hero.revisionDue),
-        },
-      }}
-    />
-  );
+  return <OverviewClient data={data} />;
 }

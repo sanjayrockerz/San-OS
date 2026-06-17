@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { requireContext, ensureProfile } from "@/lib/server/context";
+import { PostActionPrompt } from "@/components/ui/post-action-prompt";
 
 /**
  * Protected layout for every in-app route. The proxy already bounces anonymous
@@ -14,5 +15,10 @@ export default async function AppGroupLayout({
   const { user, services } = await requireContext();
   await ensureProfile(services, user);
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AppShell>
+      {children}
+      <PostActionPrompt />
+    </AppShell>
+  );
 }

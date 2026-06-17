@@ -1,5 +1,5 @@
 import type { Repositories } from "@/lib/repositories";
-import type { Tables, TablesInsert } from "@/types/database";
+import type { Tables, TablesInsert, TablesUpdate } from "@/types/database";
 
 import { ActivityService } from "./activity.service";
 import { BaseService } from "./base.service";
@@ -101,6 +101,37 @@ export class ConceptService extends BaseService {
     values: Omit<TablesInsert<"concept_resources">, "user_id">,
   ): Promise<Tables<"concept_resources">> {
     return this.repos.conceptResources.create({ ...values, user_id: userId });
+  }
+
+  async update(
+    userId: string,
+    conceptId: string,
+    values: TablesUpdate<"concept_notes">,
+  ): Promise<Concept> {
+    const concept = await this.repos.concepts.update(conceptId, values);
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.ConceptRevised,
+      entityType: "concept",
+      entityId: conceptId,
+      payload: { title: concept.title },
+    });
+    return concept;
+  }
+
+  async remove(userId: string, conceptId: string): Promise<void> {
+    await this.repos.concepts.delete(conceptId);
+    await this.events.emit(userId, {
+      eventType: EVENT_TYPES.ConceptRevised,
+      entityType: "concept",
+      entityId: conceptId,
+      payload: {},
+    });
+  }
+
+  /** Removes the link between a concept and a problem. */
+  unlinkProblem(userId: string, conceptId: string, problemId: string): Promise<void> {
+    void userId;
+    return this.repos.conceptProblems.deleteLink(conceptId, problemId);
   }
 
   /** Links a concept to a problem (idempotent via the unique constraint). */

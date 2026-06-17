@@ -61,4 +61,12 @@ export class ConceptProblemsRepository extends UserScopedRepository<"concept_pro
     if (error) throw error;
     return (data ?? []) as Row<"concept_problems">[];
   }
+
+  async deleteLink(conceptId: string, problemId: string): Promise<void> {
+    const { error } = await this.query
+      .delete()
+      .eq("concept_id", conceptId)
+      .eq("problem_id", problemId);
+    if (error) throw error;
+  }
 }

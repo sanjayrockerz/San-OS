@@ -9,6 +9,7 @@
  */
 export * from "./base.repository";
 
+export * from "./context.repository";
 export * from "./profile.repository";
 export * from "./taxonomy.repository";
 export * from "./problems.repository";
@@ -19,6 +20,10 @@ export * from "./activity.repository";
 export * from "./iit.repository";
 export * from "./ai.repository";
 export * from "./events.repository";
+export * from "./knowledge.repository";
+export * from "./reminders.repository";
+export * from "./notifications.repository";
+export * from "./preferences.repository";
 
 import type { DbClient } from "./base.repository";
 import { UsersProfileRepository } from "./profile.repository";
@@ -57,6 +62,14 @@ import {
 } from "./iit.repository";
 import { AiDailyBriefsRepository, AiInsightsRepository } from "./ai.repository";
 import { EventsRepository } from "./events.repository";
+import {
+  KnowledgeItemsRepository,
+  KnowledgeLinksRepository,
+} from "./knowledge.repository";
+import { UserContextRepository } from "./context.repository";
+import { RemindersRepository } from "./reminders.repository";
+import { NotificationsRepository } from "./notifications.repository";
+import { UserPreferencesRepository } from "./preferences.repository";
 
 /**
  * Constructs every repository bound to a single Supabase client. Services
@@ -89,6 +102,12 @@ export function createRepositories(client: DbClient) {
     aiBriefs: new AiDailyBriefsRepository(client),
     aiInsights: new AiInsightsRepository(client),
     events: new EventsRepository(client),
+    knowledge: new KnowledgeItemsRepository(client),
+    knowledgeLinks: new KnowledgeLinksRepository(client),
+    userContext: new UserContextRepository(client),
+    reminders: new RemindersRepository(client),
+    notifications: new NotificationsRepository(client),
+    userPreferences: new UserPreferencesRepository(client),
   };
 }
 

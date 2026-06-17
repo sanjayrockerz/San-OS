@@ -17,6 +17,7 @@ export interface HeroSummary {
   solvedThisWeek: number;
   weeklyTarget: number;
   revisionDue: number;
+  streak: number;
 }
 
 /** A revision-queue entry resolved with its problem title for display. */
@@ -57,6 +58,29 @@ export interface ContinueLearningItem {
   lastTouchedAt: string;
 }
 
+/** A recently saved Knowledge Vault item. */
+export interface RecentKnowledgeItem {
+  id: string;
+  type: string;
+  title: string;
+  createdAt: string;
+}
+
+/** A recently touched concept note. */
+export interface RecentConceptItem {
+  id: string;
+  title: string;
+  status: Tables<"concept_notes">["status"];
+}
+
+/** A recently solved problem. */
+export interface RecentSolvedItem {
+  problemId: string;
+  title: string;
+  difficulty: Tables<"problems">["difficulty"];
+  solvedAt: string;
+}
+
 /**
  * The single object the overview/dashboard renders. Everything the page needs
  * is assembled here so the React layer holds NO analytics logic and issues NO
@@ -72,6 +96,10 @@ export interface DashboardAggregate {
   roadmapProgress: RoadmapProgressItem[];
   upcomingAssignments: UpcomingAssignment[];
   continueLearning: ContinueLearningItem[];
+  taxonomyProposalsCount: number;
+  recentKnowledge: RecentKnowledgeItem[];
+  recentConcepts: RecentConceptItem[];
+  recentSolved: RecentSolvedItem[];
 }
 
 /**
@@ -127,6 +155,11 @@ export class DashboardAggregationService extends BaseService {
       activityTimeline,
       roadmapProgress,
       upcomingAssignments,
+      proposalTopics,
+      proposalPatterns,
+      recentKnowledge,
+      recentConcepts,
+      dailyLogs,
     ] = await Promise.all([
       safe(this.repos.problems.listVisible(userId), [] as Tables<"problems">[]),
       safe(this.repos.attempts.findByUser(userId), [] as Tables<"problem_attempts">[]),
@@ -137,13 +170,18 @@ export class DashboardAggregationService extends BaseService {
       safe(this.timeline.getUserTimeline(userId, 20), [] as TimelineItem[]),
       safe(this.roadmapProgress(userId), [] as RoadmapProgressItem[]),
       safe(this.upcomingAssignments(userId), [] as UpcomingAssignment[]),
+      safe(this.repos.topics.listProposals(userId), [] as Tables<"topics">[]),
+      safe(this.repos.patterns.listProposals(userId), [] as Tables<"patterns">[]),
+      safe(this.repos.knowledge.recent(userId, 5), [] as Tables<"knowledge_items">[]),
+      safe(this.repos.concepts.findByUser(userId), [] as Tables<"concept_notes">[]),
+      safe(this.recentDailyLogs(userId, 60), [] as Tables<"daily_logs">[]),
     ]);
 
     const titleByProblem = new Map(problems.map((p) => [p.id, p.title]));
     const topicByProblem = new Map(problems.map((p) => [p.id, p.topic_id]));
 
     const snapshot: DashboardAggregate = {
-      hero: this.hero(problems, attempts, due),
+      hero: this.hero(problems, attempts, due, dailyLogs),
       battlePlan,
       revisionQueue: due.slice(0, 10).map((r) => ({
         problemId: r.problem_id,
@@ -160,6 +198,19 @@ export class DashboardAggregationService extends BaseService {
       roadmapProgress,
       upcomingAssignments,
       continueLearning: this.continueLearning(attempts, titleByProblem),
+      taxonomyProposalsCount: proposalTopics.length + proposalPatterns.length,
+      recentKnowledge: recentKnowledge.map((k) => ({
+        id: k.id,
+        type: k.type,
+        title: k.title,
+        createdAt: k.created_at,
+      })),
+      recentConcepts: recentConcepts.slice(0, 5).map((c) => ({
+        id: c.id,
+        title: c.title,
+        status: c.status,
+      })),
+      recentSolved: this.recentSolved(attempts, problems),
     };
 
     cache.set(userId, { at: Date.now(), snapshot });
@@ -174,6 +225,7 @@ export class DashboardAggregationService extends BaseService {
     problems: Tables<"problems">[],
     attempts: Tables<"problem_attempts">[],
     due: Tables<"revision_queue">[],
+    dailyLogs: Tables<"daily_logs">[],
   ): HeroSummary {
     const solvedAttempts = attempts.filter(
       (a) => a.solve_status && SOLVED_STATUSES.has(a.solve_status),
@@ -190,7 +242,22 @@ export class DashboardAggregationService extends BaseService {
       solvedThisWeek,
       weeklyTarget: WEEKLY_TARGET,
       revisionDue: due.length,
+      streak: activeDayStreak(dailyLogs, new Date()),
     };
+  }
+
+  /** Daily logs for the trailing `days` window (for the streak calculation). */
+  private async recentDailyLogs(
+    userId: string,
+    days: number,
+  ): Promise<Tables<"daily_logs">[]> {
+    const to = new Date();
+    const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+    return this.repos.dailyLogs.between(
+      userId,
+      from.toISOString().slice(0, 10),
+      to.toISOString().slice(0, 10),
+    );
   }
 
   /** Group struggling revision items by their problem's topic. */
@@ -276,6 +343,30 @@ export class DashboardAggregationService extends BaseService {
     }
     return out;
   }
+
+  /** The most recently solved problems (one row per problem, newest first). */
+  private recentSolved(
+    attempts: Tables<"problem_attempts">[],
+    problems: Tables<"problems">[],
+  ): RecentSolvedItem[] {
+    const byId = new Map(problems.map((p) => [p.id, p]));
+    const seen = new Set<string>();
+    const out: RecentSolvedItem[] = [];
+    for (const a of attempts) {
+      if (!a.solve_status || !SOLVED_STATUSES.has(a.solve_status)) continue;
+      if (seen.has(a.problem_id)) continue;
+      seen.add(a.problem_id);
+      const problem = byId.get(a.problem_id);
+      out.push({
+        problemId: a.problem_id,
+        title: problem?.title ?? "Untitled problem",
+        difficulty: problem?.difficulty ?? null,
+        solvedAt: a.attempted_at ?? a.created_at,
+      });
+      if (out.length >= 5) break;
+    }
+    return out;
+  }
 }
 
 /** Resolve a promise to a fallback if it rejects — keeps each section isolated. */
@@ -285,4 +376,29 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   } catch {
     return fallback;
   }
+}
+
+/**
+ * Consecutive days (ending today, or yesterday if today is not yet logged) with
+ * any logged activity (a solve or a revision). The day's streak stays intact
+ * before the user has done anything today.
+ */
+function activeDayStreak(logs: Tables<"daily_logs">[], now: Date): number {
+  const active = new Set(
+    logs
+      .filter(
+        (l) => (l.problems_solved ?? 0) > 0 || (l.revisions_done ?? 0) > 0,
+      )
+      .map((l) => l.log_date),
+  );
+  let streak = 0;
+  const cursor = new Date(now);
+  if (!active.has(cursor.toISOString().slice(0, 10))) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  while (active.has(cursor.toISOString().slice(0, 10))) {
+    streak++;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  return streak;
 }

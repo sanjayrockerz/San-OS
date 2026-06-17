@@ -16,6 +16,7 @@ export const EVENT_TYPES = {
   RevisionScheduled: "revision.scheduled",
   RevisionSucceeded: "revision.succeeded",
   RevisionFailed: "revision.failed",
+  RevisionSnoozed: "revision.snoozed",
   RoadmapProgressed: "roadmap.progressed",
   ConceptCreated: "concept.created",
   ConceptRevised: "concept.revised",
@@ -28,8 +29,19 @@ export const EVENT_TYPES = {
   TaxonomyAutoAdded: "taxonomy.auto_added",
   TaxonomyApproved: "taxonomy.approved",
   TaxonomyDismissed: "taxonomy.dismissed",
+  KnowledgeCreated: "knowledge.created",
+  KnowledgeUpdated: "knowledge.updated",
+  KnowledgeDeleted: "knowledge.deleted",
+  KnowledgeLinked: "knowledge.linked",
+  BattlePlanTaskCompleted: "battleplan.task_completed",
   AuthLogin: "auth.login",
   AuthLogout: "auth.logout",
+  HabitReminderCreated: "habit.reminder_created",
+  HabitReminderMissed: "habit.reminder_missed",
+  HabitNotificationSnoozed: "habit.notification_snoozed",
+  HabitNotificationCompleted: "habit.notification_completed",
+  HabitStreakBroken: "habit.streak_broken",
+  HabitFocusModeChanged: "habit.focus_mode_changed",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];

@@ -7,7 +7,10 @@ import {
   LineChart,
   GraduationCap,
   Library,
+  Network,
   Settings,
+  Activity,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,21 +28,38 @@ export interface NavGroup {
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    heading: "Workspace",
     items: [
       { label: "Overview", shortLabel: "Home", href: "/overview", icon: LayoutDashboard },
-      { label: "Problems", shortLabel: "Problems", href: "/problems", icon: Code2 },
-      { label: "Concepts", shortLabel: "Concepts", href: "/concepts", icon: Brain },
-      { label: "Roadmaps", shortLabel: "Roadmaps", href: "/roadmaps", icon: Map },
-      { label: "Revision", shortLabel: "Revision", href: "/revision", icon: RefreshCw },
-      { label: "Analytics", shortLabel: "Stats", href: "/analytics", icon: LineChart },
+      { label: "Notifications", shortLabel: "Alerts", href: "/notifications", icon: Bell },
     ],
   },
   {
-    heading: "Study",
+    heading: "Learning",
+    items: [
+      { label: "Problems", shortLabel: "Problems", href: "/problems", icon: Code2 },
+      { label: "Revision", shortLabel: "Revision", href: "/revision", icon: RefreshCw },
+      { label: "Roadmaps", shortLabel: "Roadmaps", href: "/roadmaps", icon: Map },
+    ],
+  },
+  {
+    heading: "Knowledge",
+    items: [
+      { label: "Concepts", shortLabel: "Concepts", href: "/concepts", icon: Brain },
+      { label: "Knowledge Vault", shortLabel: "Vault", href: "/vault", icon: Library },
+      { label: "Taxonomy", shortLabel: "Taxonomy", href: "/taxonomy", icon: Network },
+    ],
+  },
+  {
+    heading: "Growth",
+    items: [
+      { label: "Analytics", shortLabel: "Stats", href: "/analytics", icon: LineChart },
+      { label: "Timeline", shortLabel: "Timeline", href: "/timeline", icon: Activity },
+    ],
+  },
+  {
+    heading: "IIT",
     items: [
       { label: "IIT Workspace", shortLabel: "IIT", href: "/iit-workspace", icon: GraduationCap },
-      { label: "Knowledge Vault", shortLabel: "Vault", href: "/knowledge-vault", icon: Library },
     ],
   },
   {
@@ -49,10 +69,10 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
-/** Reduced set for the mobile bottom navigation (4 + center FAB). */
-export const MOBILE_NAV: NavItem[] = [
-  NAV_ITEMS[0], // Overview
-  NAV_ITEMS[1], // Problems
-  NAV_ITEMS[4], // Revision
-  NAV_ITEMS[5], // Analytics
-];
+/** Reduced set for the mobile bottom navigation (4 + center FAB). Looked up by
+ * href rather than position so inserting nav items elsewhere can't silently
+ * shift this list onto the wrong pages. */
+const MOBILE_NAV_HREFS = ["/overview", "/problems", "/revision", "/analytics"];
+export const MOBILE_NAV: NavItem[] = MOBILE_NAV_HREFS.map(
+  (href) => NAV_ITEMS.find((item) => item.href === href)!,
+);

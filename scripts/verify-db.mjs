@@ -82,6 +82,18 @@ const SCHEMA = {
 
   // ---- Phase 5 (0012): dynamic taxonomy ----
   taxonomy_usage: ["id", "user_id", "entity_type", "entity_id", "usage_count", "last_used_at", "relevance_score"],
+
+  // ---- Phase 5B.1 (0013): knowledge vault ----
+  knowledge_items: ["id", "user_id", "type", "title", "content", "url", "storage_path", "tags"],
+  knowledge_links: ["id", "user_id", "knowledge_id", "entity_type", "entity_id"],
+
+  // ---- Phase 5C (0014): context engine ----
+  user_context: ["id", "user_id", "active_entity_type", "last_activity_at", "pending_action"],
+
+  // ---- Recovery Phase 1 (0015): habit engine + notifications ----
+  reminders: ["id", "user_id", "title", "category", "recurrence", "next_occurrence_at", "status"],
+  notifications: ["id", "user_id", "state", "source_type", "source_id", "due_at"],
+  user_preferences: ["id", "user_id", "default_focus_mode", "notifications_enabled", "hidden_categories"],
 };
 
 async function probe(table, columns) {

@@ -20,6 +20,9 @@ export * from "./ai.service";
 export * from "./taxonomy.service";
 export * from "./dashboard-aggregation.service";
 export * from "./knowledge-graph.service";
+export * from "./knowledge.service";
+export * from "./context-engine.service";
+export * from "./habit-engine.service";
 
 import { createRepositories, type DbClient } from "@/lib/repositories";
 
@@ -27,9 +30,12 @@ import { ActivityService } from "./activity.service";
 import { AiService } from "./ai.service";
 import { AnalyticsService } from "./analytics.service";
 import { ConceptService } from "./concepts.service";
+import { ContextEngineService } from "./context-engine.service";
 import { DashboardAggregationService } from "./dashboard-aggregation.service";
 import { EventService } from "./event.service";
+import { HabitEngineService } from "./habit-engine.service";
 import { KnowledgeGraphService } from "./knowledge-graph.service";
+import { KnowledgeService } from "./knowledge.service";
 import { IitService } from "./iit.service";
 import { ProblemsService } from "./problems.service";
 import { RevisionService } from "./revision.service";
@@ -59,6 +65,9 @@ export function createServices(client: DbClient) {
     taxonomy: new TaxonomyService(repos),
     dashboardAggregation: new DashboardAggregationService(repos),
     knowledgeGraph: new KnowledgeGraphService(repos),
+    knowledge: new KnowledgeService(repos),
+    context: new ContextEngineService(repos),
+    habitEngine: new HabitEngineService(repos),
   };
 }
 

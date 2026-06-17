@@ -37,6 +37,13 @@ export class IitService extends BaseService {
     return this.repos.iitCourses.create({ ...values, user_id: userId });
   }
 
+  createLecture(
+    userId: string,
+    values: Omit<TablesInsert<"iit_lectures">, "user_id">,
+  ): Promise<Tables<"iit_lectures">> {
+    return this.repos.iitLectures.create({ ...values, user_id: userId });
+  }
+
   /**
    * Stores a new assignment, logs the activity, and emits `assignment.created`
    * so it lands on the timeline and feeds dashboard aggregation.

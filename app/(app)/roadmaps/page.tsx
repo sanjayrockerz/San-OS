@@ -1,65 +1,124 @@
-"use client";
+import Link from "next/link";
+import { Map } from "lucide-react";
 
-import { Check, Circle, ArrowRight } from "lucide-react";
-
+import { requireContext } from "@/lib/server/context";
 import { PageTransition, Section } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressRing } from "@/components/charts/progress-ring";
-import { cn } from "@/lib/utils";
-import { roadmaps } from "@/lib/mock-data";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-export default function RoadmapsPage() {
+const KIND_LABEL: Record<string, string> = {
+  dsa: "DSA",
+  iit: "IIT",
+  custom: "Custom",
+};
+
+const KIND_COLOR: Record<string, string> = {
+  dsa: "#7c7dff",
+  iit: "#34d399",
+  custom: "#fbbf24",
+};
+
+export default async function RoadmapsPage() {
+  const { user, services } = await requireContext("/roadmaps");
+
+  const roadmaps = await services.roadmaps.list(user.id).catch(() => []);
+
+  // Load progress summaries in parallel (one tree call per roadmap for item count)
+  const summaries = await Promise.all(
+    roadmaps.map(async (r) => {
+      try {
+        const tree = await services.roadmaps.tree(user.id, r.id);
+        return {
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          kind: r.kind,
+          slug: r.slug,
+          total: tree?.total ?? 0,
+          completed: tree?.completed ?? 0,
+          progress: tree && tree.total > 0 ? Math.round((tree.completed / tree.total) * 100) : 0,
+        };
+      } catch {
+        return {
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          kind: r.kind,
+          slug: r.slug,
+          total: 0,
+          completed: 0,
+          progress: 0,
+        };
+      }
+    }),
+  );
+
   return (
     <PageTransition>
       <PageHeader
         title="Roadmaps"
-        description="Structured paths from fundamentals to interview-ready. Track every stage."
+        description="Structured paths from fundamentals to interview-ready. Track every milestone."
       />
 
-      <Section className="grid gap-4 lg:grid-cols-2">
-        {roadmaps.map((r) => (
-          <div key={r.id} className="surface-card flex flex-col rounded-2xl p-5">
-            <div className="flex items-start gap-4">
-              <ProgressRing value={r.progress} size={84} stroke={8} color={r.color}>
-                <span className="text-base font-bold tabular">{r.progress}%</span>
-              </ProgressRing>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-base font-semibold tracking-tight">{r.title}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{r.description}</p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{r.done}</span> / {r.total} problems
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-1.5">
-              {r.stages.map((s) => (
-                <div
-                  key={s.name}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm",
-                    s.done ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {s.done ? (
-                    <span className="flex size-5 items-center justify-center rounded-full bg-success text-success-foreground">
-                      <Check className="size-3" />
-                    </span>
-                  ) : (
-                    <Circle className="size-5 text-border-strong" />
-                  )}
-                  <span className={cn(s.done && "line-through decoration-muted-foreground/40")}>{s.name}</span>
+      {summaries.length === 0 ? (
+        <Section>
+          <EmptyState
+            icon={Map}
+            title="No roadmaps yet"
+            description="Roadmap templates will appear here once the database seed is applied."
+          />
+        </Section>
+      ) : (
+        <Section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {summaries.map((r) => {
+            const color = KIND_COLOR[r.kind] ?? "#7c7dff";
+            return (
+              <Link
+                key={r.id}
+                href={`/roadmaps/${r.id}`}
+                className="surface-card group flex flex-col rounded-2xl p-5 transition-shadow hover:shadow-md"
+              >
+                <div className="flex items-start gap-4">
+                  <ProgressRing value={r.progress} size={72} stroke={7} color={color}>
+                    <span className="text-sm font-bold tabular">{r.progress}%</span>
+                  </ProgressRing>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px]"
+                        style={{ backgroundColor: `${color}20`, color }}
+                      >
+                        {KIND_LABEL[r.kind] ?? r.kind}
+                      </Badge>
+                    </div>
+                    <h3 className="mt-1.5 text-[15px] font-semibold tracking-tight transition-colors group-hover:text-primary">
+                      {r.title}
+                    </h3>
+                    {r.description && (
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                        {r.description}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
 
-            <Button variant="secondary" className="mt-5 w-full">
-              Continue <ArrowRight className="size-4" />
-            </Button>
-          </div>
-        ))}
-      </Section>
+                <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{r.completed}</span> / {r.total} items
+                  </span>
+                  <Button variant="secondary" size="sm" className="pointer-events-none">
+                    Continue →
+                  </Button>
+                </div>
+              </Link>
+            );
+          })}
+        </Section>
+      )}
     </PageTransition>
   );
 }

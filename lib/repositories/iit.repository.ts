@@ -52,6 +52,21 @@ export class IitAssignmentsRepository extends UserScopedRepository<"iit_assignme
     if (error) throw error;
     return (data ?? []) as Row<"iit_assignments">[];
   }
+
+  /** Unresolved assignments whose due date has passed `asOf` — Habit Engine source. */
+  async findOverdue(
+    userId: string,
+    asOf: string,
+  ): Promise<Row<"iit_assignments">[]> {
+    const { data, error } = await this.query
+      .select("*")
+      .eq("user_id", userId)
+      .lt("due_date", asOf)
+      .in("status", ["pending", "in_progress", "late"])
+      .order("due_date", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Row<"iit_assignments">[];
+  }
 }
 
 /** iit_lectures — lecture progress tracker. */

@@ -454,6 +454,82 @@ export type Database = {
           },
         ];
       };
+      knowledge_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          content: string | null;
+          url: string | null;
+          storage_path: string | null;
+          tags: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type?: string;
+          title: string;
+          content?: string | null;
+          url?: string | null;
+          storage_path?: string | null;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          content?: string | null;
+          url?: string | null;
+          storage_path?: string | null;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      knowledge_links: {
+        Row: {
+          id: string;
+          user_id: string;
+          knowledge_id: string;
+          entity_type: string;
+          entity_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          knowledge_id: string;
+          entity_type: string;
+          entity_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          knowledge_id?: string;
+          entity_type?: string;
+          entity_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_links_knowledge_id_fkey";
+            columns: ["knowledge_id"];
+            referencedRelation: "knowledge_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       concept_notes: {
         Row: {
           id: string;
@@ -1231,6 +1307,189 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_context: {
+        Row: {
+          id: string;
+          user_id: string;
+          active_entity_type: string | null;
+          active_entity_id: string | null;
+          active_session_type: string | null;
+          last_activity_at: string;
+          current_focus_topic: string | null;
+          pending_action: string | null;
+          resume_payload: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          active_entity_type?: string | null;
+          active_entity_id?: string | null;
+          active_session_type?: string | null;
+          last_activity_at?: string;
+          current_focus_topic?: string | null;
+          pending_action?: string | null;
+          resume_payload?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          active_entity_type?: string | null;
+          active_entity_id?: string | null;
+          active_session_type?: string | null;
+          last_activity_at?: string;
+          current_focus_topic?: string | null;
+          pending_action?: string | null;
+          resume_payload?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      reminders: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string | null;
+          category: Database["public"]["Enums"]["reminder_category"];
+          recurrence: Database["public"]["Enums"]["reminder_recurrence"];
+          interval_days: number | null;
+          interval_weeks: number | null;
+          interval_months: number | null;
+          time_of_day: string | null;
+          scheduled_at: string | null;
+          next_occurrence_at: string | null;
+          status: Database["public"]["Enums"]["reminder_status"];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          description?: string | null;
+          category: Database["public"]["Enums"]["reminder_category"];
+          recurrence?: Database["public"]["Enums"]["reminder_recurrence"];
+          interval_days?: number | null;
+          interval_weeks?: number | null;
+          interval_months?: number | null;
+          time_of_day?: string | null;
+          scheduled_at?: string | null;
+          next_occurrence_at?: string | null;
+          status?: Database["public"]["Enums"]["reminder_status"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          description?: string | null;
+          category?: Database["public"]["Enums"]["reminder_category"];
+          recurrence?: Database["public"]["Enums"]["reminder_recurrence"];
+          interval_days?: number | null;
+          interval_weeks?: number | null;
+          interval_months?: number | null;
+          time_of_day?: string | null;
+          scheduled_at?: string | null;
+          next_occurrence_at?: string | null;
+          status?: Database["public"]["Enums"]["reminder_status"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          state: Database["public"]["Enums"]["notification_state"];
+          source_type: Database["public"]["Enums"]["notification_source_type"];
+          source_id: string | null;
+          title: string;
+          body: string | null;
+          category: Database["public"]["Enums"]["reminder_category"] | null;
+          due_at: string | null;
+          snoozed_until: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          state?: Database["public"]["Enums"]["notification_state"];
+          source_type: Database["public"]["Enums"]["notification_source_type"];
+          source_id?: string | null;
+          title: string;
+          body?: string | null;
+          category?: Database["public"]["Enums"]["reminder_category"] | null;
+          due_at?: string | null;
+          snoozed_until?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          state?: Database["public"]["Enums"]["notification_state"];
+          source_type?: Database["public"]["Enums"]["notification_source_type"];
+          source_id?: string | null;
+          title?: string;
+          body?: string | null;
+          category?: Database["public"]["Enums"]["reminder_category"] | null;
+          due_at?: string | null;
+          snoozed_until?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          default_focus_mode: Database["public"]["Enums"]["focus_mode"];
+          notifications_enabled: boolean;
+          daily_brief_enabled: boolean;
+          evening_review_enabled: boolean;
+          quiet_hours_start: string | null;
+          quiet_hours_end: string | null;
+          hidden_categories: Database["public"]["Enums"]["reminder_category"][];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          default_focus_mode?: Database["public"]["Enums"]["focus_mode"];
+          notifications_enabled?: boolean;
+          daily_brief_enabled?: boolean;
+          evening_review_enabled?: boolean;
+          quiet_hours_start?: string | null;
+          quiet_hours_end?: string | null;
+          hidden_categories?: Database["public"]["Enums"]["reminder_category"][];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          default_focus_mode?: Database["public"]["Enums"]["focus_mode"];
+          notifications_enabled?: boolean;
+          daily_brief_enabled?: boolean;
+          evening_review_enabled?: boolean;
+          quiet_hours_start?: string | null;
+          quiet_hours_end?: string | null;
+          hidden_categories?: Database["public"]["Enums"]["reminder_category"][];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1323,6 +1582,42 @@ export type Database = {
         | "recommendation"
         | "milestone"
         | "warning";
+      reminder_category:
+        | "learning_dsa"
+        | "learning_revision"
+        | "learning_concepts"
+        | "learning_roadmaps"
+        | "academic_iit"
+        | "academic_assignments"
+        | "academic_exams"
+        | "project_development"
+        | "project_client_work"
+        | "personal_priorities"
+        | "personal_relationships"
+        | "personal_family"
+        | "health_sleep"
+        | "health_exercise";
+      reminder_recurrence: "one_time" | "daily" | "weekly" | "monthly" | "custom";
+      reminder_status: "active" | "paused" | "completed" | "archived";
+      notification_state:
+        | "unread"
+        | "read"
+        | "snoozed"
+        | "completed"
+        | "expired";
+      notification_source_type:
+        | "reminder"
+        | "revision"
+        | "iit_assignment"
+        | "system";
+      focus_mode:
+        | "work"
+        | "academic"
+        | "personal"
+        | "family"
+        | "recovery"
+        | "deep_focus"
+        | "none";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1433,6 +1728,40 @@ export const Constants = {
         "recommendation",
         "milestone",
         "warning",
+      ],
+      reminder_category: [
+        "learning_dsa",
+        "learning_revision",
+        "learning_concepts",
+        "learning_roadmaps",
+        "academic_iit",
+        "academic_assignments",
+        "academic_exams",
+        "project_development",
+        "project_client_work",
+        "personal_priorities",
+        "personal_relationships",
+        "personal_family",
+        "health_sleep",
+        "health_exercise",
+      ],
+      reminder_recurrence: ["one_time", "daily", "weekly", "monthly", "custom"],
+      reminder_status: ["active", "paused", "completed", "archived"],
+      notification_state: ["unread", "read", "snoozed", "completed", "expired"],
+      notification_source_type: [
+        "reminder",
+        "revision",
+        "iit_assignment",
+        "system",
+      ],
+      focus_mode: [
+        "work",
+        "academic",
+        "personal",
+        "family",
+        "recovery",
+        "deep_focus",
+        "none",
       ],
     },
   },

@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/session";
-import { createServices } from "@/lib/services";
+import { createServices, DashboardAggregationService } from "@/lib/services";
 import { Constants } from "@/types/database";
 
 const PLATFORMS = [
@@ -251,9 +251,21 @@ export async function createLearningEntry(
     // best-effort; the next solve (or a nightly job) will catch up
   }
 
+  try {
+    await services.context.touch(user.id, {
+      active_entity_type: "problem",
+      active_entity_id: problemId,
+      active_session_type: "solve",
+      pending_action: "write_reflection",
+    });
+    await DashboardAggregationService.invalidate(user.id);
+  } catch {
+    // best effort
+  }
+
   revalidatePath("/problems");
   revalidatePath("/overview");
-  redirect(`/problems/${problemId}`);
+  redirect(`/problems/${problemId}?prompt=after-solve`);
 }
 
 /** Records a solve attempt for a problem (status = solved) and its side effects. */
@@ -271,6 +283,18 @@ export async function markSolved(problemId: string): Promise<ActionResult> {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to record" };
   }
 
+  try {
+    await services.context.touch(user.id, {
+      active_entity_type: "problem",
+      active_entity_id: problemId,
+      active_session_type: "solve",
+    });
+    await DashboardAggregationService.invalidate(user.id);
+  } catch {
+    // best effort
+  }
+
   revalidatePath("/problems");
+  revalidatePath("/overview");
   return { ok: true };
 }

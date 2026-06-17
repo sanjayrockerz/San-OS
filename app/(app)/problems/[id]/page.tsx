@@ -18,6 +18,7 @@ import {
 import { requireContext } from "@/lib/server/context";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/problems/code-block";
+import { PostSolvePanel } from "@/components/problems/post-solve-panel";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
@@ -385,8 +386,13 @@ export default async function ProblemDetailPage({
                   </p>
                   <ul className="space-y-1">
                     {related.concepts.map((c) => (
-                      <li key={c.id} className="text-xs text-muted-foreground">
-                        {c.title}
+                      <li key={c.id}>
+                        <Link
+                          href={`/concepts/${c.id}`}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {c.title}
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -396,6 +402,16 @@ export default async function ProblemDetailPage({
           )}
         </aside>
       </div>
+
+      {/* Post-solve workflow suggestions — shown when the problem has been solved */}
+      {latest?.solve_status &&
+        ["solved", "solved_with_help"].includes(latest.solve_status) && (
+          <PostSolvePanel
+            problemId={id}
+            problemTitle={problem.title}
+            inRevision={Boolean(revision)}
+          />
+        )}
     </div>
   );
 }

@@ -37,23 +37,26 @@ const OPTIONS: EntryOption[] = [
   {
     id: "concept",
     label: "Concept Note",
-    description: "Capture a concept for your knowledge vault.",
+    description: "Capture a concept in your own words.",
     icon: BookOpen,
-    enabled: false,
+    href: "/concepts/new",
+    enabled: true,
   },
   {
     id: "assignment",
     label: "IIT Assignment",
     description: "Track an academic assignment or deadline.",
     icon: GraduationCap,
-    enabled: false,
+    href: "/iit-workspace",
+    enabled: true,
   },
   {
     id: "resource",
     label: "Learning Resource",
     description: "Save a video, article or reference.",
     icon: Video,
-    enabled: false,
+    href: "/vault",
+    enabled: true,
   },
   {
     id: "project",
@@ -67,7 +70,8 @@ const OPTIONS: EntryOption[] = [
     label: "Quick Note",
     description: "Jot down a quick thought.",
     icon: StickyNote,
-    enabled: false,
+    href: "/vault",
+    enabled: true,
   },
 ];
 
