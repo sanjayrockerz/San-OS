@@ -17,7 +17,12 @@ function revalidateAll() {
   revalidatePath("/overview");
 }
 
-/** Snoozes a notification until a given timestamp (re-surfaces on its own afterwards). */
+/**
+ * Snoozes a notification for a number of days (re-surfaces on its own
+ * afterwards). The absolute timestamp is computed here, server-side, rather
+ * than by the client at render time — `Date.now()` during render is an
+ * impure call React's purity rules (and our lint config) reject.
+ */
 export async function snoozeNotification(
   _prev: ActionResult | null,
   formData: FormData,
@@ -25,14 +30,15 @@ export async function snoozeNotification(
   const user = await requireUser("/notifications");
 
   const notificationId = formData.get("notificationId");
-  const until = formData.get("until");
+  const daysRaw = formData.get("days");
   if (typeof notificationId !== "string" || !notificationId) {
     return { ok: false, error: "Missing notification" };
   }
-  const untilDate = typeof until === "string" && until ? new Date(until) : null;
-  if (!untilDate || Number.isNaN(untilDate.getTime())) {
-    return { ok: false, error: "Invalid snooze time" };
+  const days = typeof daysRaw === "string" && daysRaw ? Number(daysRaw) : 1;
+  if (!Number.isFinite(days) || days <= 0) {
+    return { ok: false, error: "Invalid snooze duration" };
   }
+  const untilDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
   const services = createServices(await createClient());
   try {

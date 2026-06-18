@@ -1,5 +1,5 @@
 -- =============================================================================
--- SanOS — Phase 5 canonical production bundle (migrations 0004–0013)
+-- SanOS — Phase 5 canonical production bundle (migrations 0004–0016)
 -- =============================================================================
 -- Paste-and-run in Supabase Dashboard -> SQL Editor, in one shot.
 --
@@ -22,6 +22,9 @@
 --   0011  events                            (append-only domain event stream)
 --   0012  dynamic taxonomy                  (per-user topics/patterns + usage)
 --   0013  knowledge vault                   (knowledge_items/knowledge_links)
+--   0014  user context engine               (user_context)
+--   0015  habit engine + notifications      (reminders/notifications/user_preferences)
+--   0016  memory intelligence engine        (recall_grades/recall_strength/topic_memory_health)
 --
 -- After running, verify with:  node scripts/verify-db.mjs
 -- =============================================================================
@@ -1306,3 +1309,443 @@ begin
   end loop;
 end
 $$;
+
+
+-- #############################################################################
+-- 0014 — User Context Engine
+-- #############################################################################
+
+-- =============================================================================
+-- 0014 — User Context Engine
+-- =============================================================================
+-- One row per user. Upserted (not inserted) on every significant action so the
+-- app can surface "what you were doing" and "what to do next" on re-entry.
+-- The pending_action + resume_payload carry lightweight hints for the UI;
+-- no heavy analytics live here — those stay in events / daily_logs.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS user_context (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- Last active entity (the thing the user was working on)
+  active_entity_type  TEXT,          -- 'problem' | 'concept' | 'vault' | 'revision' | 'iit_assignment'
+  active_entity_id    TEXT,          -- UUID of that entity
+  active_session_type TEXT,          -- 'solving' | 'revising' | 'writing' | 'uploading'
+
+  -- Recency
+  last_activity_at    TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Learning focus (derived from recent problem topics)
+  current_focus_topic TEXT,
+
+  -- Deferred nudge (the app should ask about this next time)
+  pending_action      TEXT,          -- e.g. 'add_reflection' | 'link_vault' | 'write_concept'
+  resume_payload      JSONB       NOT NULL DEFAULT '{}',
+
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT user_context_user_id_unique UNIQUE (user_id)
+);
+
+-- Auto-update updated_at
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'set_updated_at_user_context'
+  ) THEN
+    CREATE TRIGGER set_updated_at_user_context
+      BEFORE UPDATE ON user_context
+      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  END IF;
+END $$;
+
+-- RLS
+ALTER TABLE user_context ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_context_owner" ON user_context;
+CREATE POLICY "user_context_owner" ON user_context
+  USING  (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+
+-- #############################################################################
+-- 0015 — Habit Engine + Notification System
+-- #############################################################################
+
+-- =============================================================================
+-- Migration 0015 — Habit Engine + Notification System
+-- =============================================================================
+-- SanOS Recovery Phase 1. Adds the layer that turns the app from a passive
+-- tracker into one that remembers on the user's behalf:
+--   * reminders          — user-defined one-time/recurring reminders
+--   * notifications      — persistent notification log (unread/read/snoozed/
+--                           completed/expired), sourced from reminders OR the
+--                           existing revision_queue / iit_assignments tables
+--                           (polymorphic source_type/source_id, same shape as
+--                           events.entity_type/entity_id)
+--   * user_preferences   — one row per user: focus mode, notification/brief
+--                           toggles, quiet hours, hidden categories
+--
+-- Streaks remain derived from daily_logs (no new columns). revision_queue and
+-- iit_assignments are NOT migrated — the Habit Engine aggregates across all
+-- three sources rather than becoming a second source of truth.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enum types
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'reminder_category') then
+    create type public.reminder_category as enum (
+      'learning_dsa',
+      'learning_revision',
+      'learning_concepts',
+      'learning_roadmaps',
+      'academic_iit',
+      'academic_assignments',
+      'academic_exams',
+      'project_development',
+      'project_client_work',
+      'personal_priorities',
+      'personal_relationships',
+      'personal_family',
+      'health_sleep',
+      'health_exercise'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'reminder_recurrence') then
+    create type public.reminder_recurrence as enum (
+      'one_time',
+      'daily',
+      'weekly',
+      'monthly',
+      'custom'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'reminder_status') then
+    create type public.reminder_status as enum (
+      'active',
+      'paused',
+      'completed',
+      'archived'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'notification_state') then
+    create type public.notification_state as enum (
+      'unread',
+      'read',
+      'snoozed',
+      'completed',
+      'expired'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'notification_source_type') then
+    create type public.notification_source_type as enum (
+      'reminder',
+      'revision',
+      'iit_assignment',
+      'system'
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'focus_mode') then
+    create type public.focus_mode as enum (
+      'work',
+      'academic',
+      'personal',
+      'family',
+      'recovery',
+      'deep_focus',
+      'none'
+    );
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- reminders
+-- -----------------------------------------------------------------------------
+create table if not exists public.reminders (
+  id                 uuid primary key default gen_random_uuid(),
+  user_id            uuid not null references auth.users (id) on delete cascade,
+  title              text not null,
+  description        text,
+  category           public.reminder_category not null,
+  recurrence         public.reminder_recurrence not null default 'one_time',
+  interval_days      integer check (interval_days is null or interval_days > 0),
+  interval_weeks     integer check (interval_weeks is null or interval_weeks > 0),
+  interval_months    integer check (interval_months is null or interval_months > 0),
+  time_of_day        time,
+  scheduled_at       timestamptz,
+  next_occurrence_at timestamptz,
+  status             public.reminder_status not null default 'active',
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+
+create index if not exists reminders_user_id_idx on public.reminders (user_id);
+create index if not exists reminders_next_occurrence_idx
+  on public.reminders (user_id, next_occurrence_at) where status = 'active';
+create index if not exists reminders_category_idx on public.reminders (user_id, category);
+
+-- -----------------------------------------------------------------------------
+-- notifications
+-- -----------------------------------------------------------------------------
+create table if not exists public.notifications (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  state         public.notification_state not null default 'unread',
+  source_type   public.notification_source_type not null,
+  source_id     uuid,
+  title         text not null,
+  body          text,
+  category      public.reminder_category,
+  due_at        timestamptz,
+  snoozed_until timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists notifications_user_id_idx on public.notifications (user_id);
+create index if not exists notifications_state_idx on public.notifications (user_id, state);
+create index if not exists notifications_source_idx
+  on public.notifications (source_type, source_id);
+
+-- Idempotency guard: re-evaluating due items on every dashboard load must not
+-- duplicate a notification for the same source row while it's still active.
+create unique index if not exists notifications_source_once_idx
+  on public.notifications (user_id, source_type, source_id)
+  where source_id is not null and state in ('unread', 'read', 'snoozed');
+
+-- -----------------------------------------------------------------------------
+-- user_preferences — one row per user (settings, not session state)
+-- -----------------------------------------------------------------------------
+create table if not exists public.user_preferences (
+  id                     uuid primary key default gen_random_uuid(),
+  user_id                uuid not null references auth.users (id) on delete cascade,
+  default_focus_mode     public.focus_mode not null default 'none',
+  notifications_enabled  boolean not null default true,
+  daily_brief_enabled    boolean not null default true,
+  evening_review_enabled boolean not null default true,
+  quiet_hours_start      time,
+  quiet_hours_end        time,
+  hidden_categories      public.reminder_category[] not null default '{}',
+  created_at             timestamptz not null default now(),
+  updated_at             timestamptz not null default now(),
+  constraint user_preferences_user_id_unique unique (user_id)
+);
+
+-- -----------------------------------------------------------------------------
+-- updated_at triggers
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array['reminders', 'notifications', 'user_preferences'];
+begin
+  foreach tbl in array tables loop
+    execute format('drop trigger if exists set_updated_at on public.%I;', tbl);
+    execute format(
+      'create trigger set_updated_at before update on public.%I
+         for each row execute function public.set_updated_at();',
+      tbl
+    );
+  end loop;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- RLS — owner-only on all three tables
+-- -----------------------------------------------------------------------------
+alter table public.reminders enable row level security;
+alter table public.notifications enable row level security;
+alter table public.user_preferences enable row level security;
+
+drop policy if exists "reminders_owner" on public.reminders;
+create policy "reminders_owner" on public.reminders
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "notifications_owner" on public.notifications;
+create policy "notifications_owner" on public.notifications
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "user_preferences_owner" on public.user_preferences;
+create policy "user_preferences_owner" on public.user_preferences
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+
+-- #############################################################################
+-- 0016 — Memory Intelligence Engine
+-- #############################################################################
+
+-- =============================================================================
+-- Migration 0016 — Memory Intelligence Engine
+-- =============================================================================
+-- SanOS Recovery Phase 2. Adds the persistence the Memory Intelligence Engine
+-- needs to stop recomputing recall/forgetting signals on every page load:
+--
+--   * recall_grades        — a structured recall test taken at revision time
+--                             (pattern / algorithm / complexity / mistakes +
+--                             confidence), richer than the existing binary
+--                             revision_queue success/failure. Optional input to
+--                             the scoring model — recall strength still works
+--                             from revision_queue + problem_attempts alone when
+--                             no grade exists yet.
+--   * recall_strength      — cached Model 1 output: one row per (user,
+--                             problem), the 0-100 recall score, its forgetting
+--                             risk bucket (Model 3) and trend, recomputed by
+--                             MemoryIntelligenceService.evolve().
+--   * topic_memory_health  — cached Model 2 output: recall strength rolled up
+--                             per (user, topic|pattern).
+--
+-- Nothing here replaces revision_queue/problem_attempts as the source of
+-- truth — these are derived caches, rebuilt idempotently from them (same
+-- posture as taxonomy_usage in 0012).
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Enum types
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  -- Model 2 — topic/pattern memory health bucket.
+  if not exists (select 1 from pg_type where typname = 'memory_health_status') then
+    create type public.memory_health_status as enum (
+      'strong',
+      'stable',
+      'at_risk',
+      'decaying',
+      'neglected'
+    );
+  end if;
+
+  -- Model 3 — forgetting prediction bucket.
+  if not exists (select 1 from pg_type where typname = 'forgetting_risk') then
+    create type public.forgetting_risk as enum (
+      'recently_reinforced',
+      'stable',
+      'at_risk',
+      'likely_forgotten'
+    );
+  end if;
+
+  -- Shared trend direction, used by both cache tables.
+  if not exists (select 1 from pg_type where typname = 'memory_trend') then
+    create type public.memory_trend as enum (
+      'improving',
+      'stable',
+      'declining'
+    );
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- recall_grades — a graded recall test taken during a revision session
+-- -----------------------------------------------------------------------------
+create table if not exists public.recall_grades (
+  id                  uuid primary key default gen_random_uuid(),
+  user_id             uuid not null references auth.users (id) on delete cascade,
+  problem_id          uuid not null references public.problems (id) on delete cascade,
+  revision_id         uuid references public.revision_queue (id) on delete set null,
+  recalled_pattern    boolean not null default false,
+  recalled_algorithm  boolean not null default false,
+  recalled_complexity boolean not null default false,
+  recalled_mistakes   boolean not null default false,
+  confidence          smallint check (confidence between 1 and 5),
+  success             boolean not null,
+  grade_score         smallint not null check (grade_score between 0 and 100),
+  created_at          timestamptz not null default now()
+);
+
+create index if not exists recall_grades_user_id_idx on public.recall_grades (user_id);
+create index if not exists recall_grades_problem_idx
+  on public.recall_grades (user_id, problem_id, created_at desc);
+
+-- -----------------------------------------------------------------------------
+-- recall_strength — cached Model 1 + Model 3 output, one row per (user, problem)
+-- -----------------------------------------------------------------------------
+create table if not exists public.recall_strength (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  problem_id   uuid not null references public.problems (id) on delete cascade,
+  score        smallint not null check (score between 0 and 100),
+  risk         public.forgetting_risk not null default 'stable',
+  trend        public.memory_trend not null default 'stable',
+  computed_at  timestamptz not null default now(),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  unique (user_id, problem_id)
+);
+
+create index if not exists recall_strength_user_id_idx on public.recall_strength (user_id);
+create index if not exists recall_strength_risk_idx on public.recall_strength (user_id, risk);
+
+-- -----------------------------------------------------------------------------
+-- topic_memory_health — cached Model 2 output, one row per (user, topic|pattern)
+-- -----------------------------------------------------------------------------
+create table if not exists public.topic_memory_health (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users (id) on delete cascade,
+  entity_type       text not null check (entity_type in ('topic', 'pattern')),
+  entity_id         uuid not null,
+  health_score      smallint not null check (health_score between 0 and 100),
+  status            public.memory_health_status not null default 'neglected',
+  trend             public.memory_trend not null default 'stable',
+  problems_tracked  integer not null default 0,
+  problems_at_risk  integer not null default 0,
+  computed_at       timestamptz not null default now(),
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  unique (user_id, entity_type, entity_id)
+);
+
+create index if not exists topic_memory_health_user_id_idx on public.topic_memory_health (user_id);
+create index if not exists topic_memory_health_status_idx
+  on public.topic_memory_health (user_id, status);
+
+-- -----------------------------------------------------------------------------
+-- updated_at triggers
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  tbl text;
+  tables text[] := array['recall_strength', 'topic_memory_health'];
+begin
+  foreach tbl in array tables loop
+    execute format('drop trigger if exists set_updated_at on public.%I;', tbl);
+    execute format(
+      'create trigger set_updated_at before update on public.%I
+         for each row execute function public.set_updated_at();',
+      tbl
+    );
+  end loop;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- RLS — owner-only on all three tables
+-- -----------------------------------------------------------------------------
+alter table public.recall_grades enable row level security;
+alter table public.recall_strength enable row level security;
+alter table public.topic_memory_health enable row level security;
+
+drop policy if exists "recall_grades_owner" on public.recall_grades;
+create policy "recall_grades_owner" on public.recall_grades
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "recall_strength_owner" on public.recall_strength;
+create policy "recall_strength_owner" on public.recall_strength
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "topic_memory_health_owner" on public.topic_memory_health;
+create policy "topic_memory_health_owner" on public.topic_memory_health
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);

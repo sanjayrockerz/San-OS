@@ -23,6 +23,8 @@ export * from "./knowledge-graph.service";
 export * from "./knowledge.service";
 export * from "./context-engine.service";
 export * from "./habit-engine.service";
+export * from "./memory-intelligence.service";
+export * from "./memory-coach.service";
 
 import { createRepositories, type DbClient } from "@/lib/repositories";
 
@@ -37,6 +39,8 @@ import { HabitEngineService } from "./habit-engine.service";
 import { KnowledgeGraphService } from "./knowledge-graph.service";
 import { KnowledgeService } from "./knowledge.service";
 import { IitService } from "./iit.service";
+import { MemoryIntelligenceService } from "./memory-intelligence.service";
+import { MemoryCoachService } from "./memory-coach.service";
 import { ProblemsService } from "./problems.service";
 import { RevisionService } from "./revision.service";
 import { RoadmapService } from "./roadmaps.service";
@@ -68,6 +72,8 @@ export function createServices(client: DbClient) {
     knowledge: new KnowledgeService(repos),
     context: new ContextEngineService(repos),
     habitEngine: new HabitEngineService(repos),
+    memoryIntelligence: new MemoryIntelligenceService(repos),
+    memoryCoach: new MemoryCoachService(repos),
   };
 }
 

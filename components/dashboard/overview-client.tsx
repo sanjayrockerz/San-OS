@@ -116,6 +116,15 @@ export interface OverviewData {
   taxonomyProposalsCount: number;
   recentKnowledge: { id: string; type: string; title: string; time: string }[];
   activity: { id: string; text: string; href: string | null; time: string }[];
+  memoryHealth: {
+    overallScore: number;
+    atRisk: { id: string; name: string; healthScore: number }[];
+    neglected: { id: string; name: string }[];
+  };
+  forgettingForecast: {
+    likelyForgotten: { problemId: string; title: string; score: number }[];
+    atRiskCount: number;
+  };
   recentSolved: {
     problemId: string;
     title: string;
@@ -237,6 +246,10 @@ export function OverviewClient({ data }: { data: OverviewData }) {
             target={hero.weeklyTarget}
           />
           {data.eveningReview && <EveningReviewPanel review={data.eveningReview} />}
+          <MemoryHealthPanel
+            memoryHealth={data.memoryHealth}
+            forgettingForecast={data.forgettingForecast}
+          />
           <TaxonomyWaiting count={data.taxonomyProposalsCount} />
           <IitReminders items={data.upcomingAssignments} />
           <RecentKnowledge items={data.recentKnowledge} />
@@ -422,6 +435,85 @@ function WeeklyRing({
             {Math.max(0, target - solved)} solves left to hit your target.
           </p>
         </div>
+      </div>
+    </Section>
+  );
+}
+
+function MemoryHealthPanel({
+  memoryHealth,
+  forgettingForecast,
+}: {
+  memoryHealth: OverviewData["memoryHealth"];
+  forgettingForecast: OverviewData["forgettingForecast"];
+}) {
+  const nothingTracked =
+    memoryHealth.atRisk.length === 0 &&
+    memoryHealth.neglected.length === 0 &&
+    forgettingForecast.likelyForgotten.length === 0;
+
+  return (
+    <Section>
+      <div className="surface-card rounded-2xl p-5">
+        <div className="flex items-center gap-4">
+          <ProgressRing value={memoryHealth.overallScore} size={64} stroke={7}>
+            <span className="text-sm font-bold tabular">
+              {memoryHealth.overallScore}
+            </span>
+          </ProgressRing>
+          <div>
+            <p className="text-sm font-semibold">Memory Health</p>
+            <p className="text-xs text-muted-foreground">
+              Recall strength across everything you&apos;ve solved.
+            </p>
+          </div>
+        </div>
+
+        {nothingTracked ? (
+          <p className="mt-4 py-2 text-center text-xs text-muted-foreground">
+            Solve and revise a few problems to start tracking recall.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {forgettingForecast.likelyForgotten.slice(0, 3).map((item) => (
+              <Link
+                key={item.problemId}
+                href={`/problems/${item.problemId}`}
+                className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/5 p-2.5 transition-colors hover:bg-danger/10"
+              >
+                <AlertTriangle className="size-3.5 shrink-0 text-danger" />
+                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                  {item.title}
+                </span>
+                <span className="shrink-0 text-xs font-semibold text-danger">
+                  {item.score}%
+                </span>
+              </Link>
+            ))}
+            {memoryHealth.atRisk.slice(0, 2).map((topic) => (
+              <div
+                key={topic.id}
+                className="flex items-center gap-2 rounded-xl border border-border p-2.5"
+              >
+                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                  {topic.name}
+                </span>
+                <Badge variant="warning">at risk</Badge>
+              </div>
+            ))}
+            {memoryHealth.neglected.slice(0, 2).map((topic) => (
+              <div
+                key={topic.id}
+                className="flex items-center gap-2 rounded-xl border border-border p-2.5"
+              >
+                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                  {topic.name}
+                </span>
+                <Badge variant="default">neglected</Badge>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Section>
   );

@@ -252,6 +252,12 @@ export async function createLearningEntry(
   }
 
   try {
+    await services.memoryIntelligence.evolve(user.id);
+  } catch {
+    // best-effort; recall strength stays stale until the next solve/revision
+  }
+
+  try {
     await services.context.touch(user.id, {
       active_entity_type: "problem",
       active_entity_id: problemId,

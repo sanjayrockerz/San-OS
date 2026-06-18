@@ -3,6 +3,7 @@ import type { Json, Tables } from "@/types/database";
 
 import { AnalyticsService } from "./analytics.service";
 import { BaseService, isoDate } from "./base.service";
+import { MemoryCoachService } from "./memory-coach.service";
 import { RevisionService } from "./revision.service";
 
 /** One actionable step in the Daily Battle Plan. */
@@ -23,11 +24,13 @@ export interface BattlePlanStep {
 export class AiService extends BaseService {
   private readonly analytics: AnalyticsService;
   private readonly revision: RevisionService;
+  private readonly memoryCoach: MemoryCoachService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.analytics = new AnalyticsService(repos);
     this.revision = new RevisionService(repos);
+    this.memoryCoach = new MemoryCoachService(repos);
   }
 
   /**
@@ -189,6 +192,14 @@ export class AiService extends BaseService {
         )}% of attempts independently. Keep pushing difficulty.`,
         severity: 1,
       });
+    }
+
+    // Memory-aware insights: every weak/decaying/neglected topic, with a
+    // concrete recommended action attached (never a bare percentage).
+    try {
+      await this.memoryCoach.writeInsights(userId);
+    } catch {
+      // best-effort; memory tables may not be migrated yet
     }
   }
 }

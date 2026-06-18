@@ -42,6 +42,9 @@ export const EVENT_TYPES = {
   HabitNotificationCompleted: "habit.notification_completed",
   HabitStreakBroken: "habit.streak_broken",
   HabitFocusModeChanged: "habit.focus_mode_changed",
+  MemoryRecallGraded: "memory.recall_graded",
+  MemoryHealthComputed: "memory.health_computed",
+  MemoryInterventionGenerated: "memory.intervention_generated",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];

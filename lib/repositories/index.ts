@@ -24,6 +24,7 @@ export * from "./knowledge.repository";
 export * from "./reminders.repository";
 export * from "./notifications.repository";
 export * from "./preferences.repository";
+export * from "./memory.repository";
 
 import type { DbClient } from "./base.repository";
 import { UsersProfileRepository } from "./profile.repository";
@@ -70,6 +71,11 @@ import { UserContextRepository } from "./context.repository";
 import { RemindersRepository } from "./reminders.repository";
 import { NotificationsRepository } from "./notifications.repository";
 import { UserPreferencesRepository } from "./preferences.repository";
+import {
+  RecallGradesRepository,
+  RecallStrengthRepository,
+  TopicMemoryHealthRepository,
+} from "./memory.repository";
 
 /**
  * Constructs every repository bound to a single Supabase client. Services
@@ -108,6 +114,9 @@ export function createRepositories(client: DbClient) {
     reminders: new RemindersRepository(client),
     notifications: new NotificationsRepository(client),
     userPreferences: new UserPreferencesRepository(client),
+    recallGrades: new RecallGradesRepository(client),
+    recallStrength: new RecallStrengthRepository(client),
+    topicMemoryHealth: new TopicMemoryHealthRepository(client),
   };
 }
 

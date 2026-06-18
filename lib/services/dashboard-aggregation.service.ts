@@ -3,6 +3,11 @@ import type { Tables } from "@/types/database";
 
 import { AiService, type BattlePlanStep } from "./ai.service";
 import { BaseService } from "./base.service";
+import {
+  MemoryIntelligenceService,
+  type ForgettingForecast,
+  type MemoryHealthSnapshot,
+} from "./memory-intelligence.service";
 import { RevisionService } from "./revision.service";
 import { TimelineService, type TimelineItem } from "./timeline.service";
 
@@ -100,6 +105,8 @@ export interface DashboardAggregate {
   recentKnowledge: RecentKnowledgeItem[];
   recentConcepts: RecentConceptItem[];
   recentSolved: RecentSolvedItem[];
+  memoryHealth: MemoryHealthSnapshot;
+  forgettingForecast: ForgettingForecast;
 }
 
 /**
@@ -112,6 +119,20 @@ export interface DashboardAggregate {
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<string, { at: number; snapshot: DashboardAggregate }>();
 
+const EMPTY_MEMORY_HEALTH: MemoryHealthSnapshot = {
+  overallScore: 0,
+  strong: [],
+  atRisk: [],
+  neglected: [],
+  all: [],
+};
+const EMPTY_FORGETTING_FORECAST: ForgettingForecast = {
+  likelyForgotten: [],
+  atRisk: [],
+  stableCount: 0,
+  recentlyReinforcedCount: 0,
+};
+
 /**
  * DashboardAggregationService — the one read model for the overview. It NEVER
  * mutates state; it composes analytics, revision, AI (read-only battle plan),
@@ -121,12 +142,14 @@ export class DashboardAggregationService extends BaseService {
   private readonly revision: RevisionService;
   private readonly ai: AiService;
   private readonly timeline: TimelineService;
+  private readonly memory: MemoryIntelligenceService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.revision = new RevisionService(repos);
     this.ai = new AiService(repos);
     this.timeline = new TimelineService(repos);
+    this.memory = new MemoryIntelligenceService(repos);
   }
 
   /** Invalidate the cached snapshot for a user (call after a mutation if eager). */
@@ -160,6 +183,8 @@ export class DashboardAggregationService extends BaseService {
       recentKnowledge,
       recentConcepts,
       dailyLogs,
+      memoryHealth,
+      forgettingForecast,
     ] = await Promise.all([
       safe(this.repos.problems.listVisible(userId), [] as Tables<"problems">[]),
       safe(this.repos.attempts.findByUser(userId), [] as Tables<"problem_attempts">[]),
@@ -175,6 +200,8 @@ export class DashboardAggregationService extends BaseService {
       safe(this.repos.knowledge.recent(userId, 5), [] as Tables<"knowledge_items">[]),
       safe(this.repos.concepts.findByUser(userId), [] as Tables<"concept_notes">[]),
       safe(this.recentDailyLogs(userId, 60), [] as Tables<"daily_logs">[]),
+      safe(this.memory.healthSnapshot(userId), EMPTY_MEMORY_HEALTH),
+      safe(this.memory.forgettingForecast(userId), EMPTY_FORGETTING_FORECAST),
     ]);
 
     const titleByProblem = new Map(problems.map((p) => [p.id, p.title]));
@@ -211,6 +238,8 @@ export class DashboardAggregationService extends BaseService {
         status: c.status,
       })),
       recentSolved: this.recentSolved(attempts, problems),
+      memoryHealth,
+      forgettingForecast,
     };
 
     cache.set(userId, { at: Date.now(), snapshot });

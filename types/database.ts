@@ -1307,6 +1307,152 @@ export type Database = {
         };
         Relationships: [];
       };
+      recall_grades: {
+        Row: {
+          id: string;
+          user_id: string;
+          problem_id: string;
+          revision_id: string | null;
+          recalled_pattern: boolean;
+          recalled_algorithm: boolean;
+          recalled_complexity: boolean;
+          recalled_mistakes: boolean;
+          confidence: number | null;
+          success: boolean;
+          grade_score: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          problem_id: string;
+          revision_id?: string | null;
+          recalled_pattern?: boolean;
+          recalled_algorithm?: boolean;
+          recalled_complexity?: boolean;
+          recalled_mistakes?: boolean;
+          confidence?: number | null;
+          success: boolean;
+          grade_score: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          problem_id?: string;
+          revision_id?: string | null;
+          recalled_pattern?: boolean;
+          recalled_algorithm?: boolean;
+          recalled_complexity?: boolean;
+          recalled_mistakes?: boolean;
+          confidence?: number | null;
+          success?: boolean;
+          grade_score?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recall_grades_problem_id_fkey";
+            columns: ["problem_id"];
+            referencedRelation: "problems";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recall_grades_revision_id_fkey";
+            columns: ["revision_id"];
+            referencedRelation: "revision_queue";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recall_strength: {
+        Row: {
+          id: string;
+          user_id: string;
+          problem_id: string;
+          score: number;
+          risk: Database["public"]["Enums"]["forgetting_risk"];
+          trend: Database["public"]["Enums"]["memory_trend"];
+          computed_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          problem_id: string;
+          score: number;
+          risk?: Database["public"]["Enums"]["forgetting_risk"];
+          trend?: Database["public"]["Enums"]["memory_trend"];
+          computed_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          problem_id?: string;
+          score?: number;
+          risk?: Database["public"]["Enums"]["forgetting_risk"];
+          trend?: Database["public"]["Enums"]["memory_trend"];
+          computed_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recall_strength_problem_id_fkey";
+            columns: ["problem_id"];
+            referencedRelation: "problems";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      topic_memory_health: {
+        Row: {
+          id: string;
+          user_id: string;
+          entity_type: string;
+          entity_id: string;
+          health_score: number;
+          status: Database["public"]["Enums"]["memory_health_status"];
+          trend: Database["public"]["Enums"]["memory_trend"];
+          problems_tracked: number;
+          problems_at_risk: number;
+          computed_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          entity_type: string;
+          entity_id: string;
+          health_score: number;
+          status?: Database["public"]["Enums"]["memory_health_status"];
+          trend?: Database["public"]["Enums"]["memory_trend"];
+          problems_tracked?: number;
+          problems_at_risk?: number;
+          computed_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          entity_type?: string;
+          entity_id?: string;
+          health_score?: number;
+          status?: Database["public"]["Enums"]["memory_health_status"];
+          trend?: Database["public"]["Enums"]["memory_trend"];
+          problems_tracked?: number;
+          problems_at_risk?: number;
+          computed_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_context: {
         Row: {
           id: string;
@@ -1618,6 +1764,18 @@ export type Database = {
         | "recovery"
         | "deep_focus"
         | "none";
+      memory_health_status:
+        | "strong"
+        | "stable"
+        | "at_risk"
+        | "decaying"
+        | "neglected";
+      forgetting_risk:
+        | "recently_reinforced"
+        | "stable"
+        | "at_risk"
+        | "likely_forgotten";
+      memory_trend: "improving" | "stable" | "declining";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1754,6 +1912,20 @@ export const Constants = {
         "iit_assignment",
         "system",
       ],
+      memory_health_status: [
+        "strong",
+        "stable",
+        "at_risk",
+        "decaying",
+        "neglected",
+      ],
+      forgetting_risk: [
+        "recently_reinforced",
+        "stable",
+        "at_risk",
+        "likely_forgotten",
+      ],
+      memory_trend: ["improving", "stable", "declining"],
       focus_mode: [
         "work",
         "academic",

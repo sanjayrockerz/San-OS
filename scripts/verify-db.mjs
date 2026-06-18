@@ -94,6 +94,11 @@ const SCHEMA = {
   reminders: ["id", "user_id", "title", "category", "recurrence", "next_occurrence_at", "status"],
   notifications: ["id", "user_id", "state", "source_type", "source_id", "due_at"],
   user_preferences: ["id", "user_id", "default_focus_mode", "notifications_enabled", "hidden_categories"],
+
+  // ---- Recovery Phase 2 (0016): memory intelligence engine ----
+  recall_grades: ["id", "user_id", "problem_id", "confidence", "success", "grade_score"],
+  recall_strength: ["id", "user_id", "problem_id", "score", "risk", "trend"],
+  topic_memory_health: ["id", "user_id", "entity_type", "entity_id", "health_score", "status", "trend"],
 };
 
 async function probe(table, columns) {

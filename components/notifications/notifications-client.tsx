@@ -81,8 +81,6 @@ function NotificationCard({ notification }: { notification: NotificationRow }) {
   );
   const [, readAction] = useActionState(markRead, initialActionResult);
 
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
   return (
     <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -122,7 +120,7 @@ function NotificationCard({ notification }: { notification: NotificationRow }) {
         )}
         <form action={snoozeAction}>
           <input type="hidden" name="notificationId" value={notification.id} />
-          <input type="hidden" name="until" value={tomorrow} />
+          <input type="hidden" name="days" value="1" />
           <Button type="submit" size="sm" variant="outline" disabled={snoozing} title="Snooze 1 day">
             <Clock className="size-4" />
           </Button>

@@ -12,7 +12,7 @@ type RevisionState = Tables<"revision_queue">["current_state"];
  * a deliberately simple SM-2-style schedule — predictable and easy to reason
  * about — that satisfies the Forgetting Engine's needs.
  */
-const INTERVALS_DAYS = [1, 3, 7, 16, 35, 70] as const;
+export const INTERVALS_DAYS = [1, 3, 7, 16, 35, 70] as const;
 
 function addDays(from: Date, days: number): Date {
   const d = new Date(from);
@@ -20,7 +20,10 @@ function addDays(from: Date, days: number): Date {
   return d;
 }
 
-function intervalFor(successCount: number): number {
+/** The scheduled interval (days) for a given success count. Exported so
+ * MemoryIntelligenceService can measure "how overdue" against the same
+ * schedule this engine actually predicted, instead of an unrelated constant. */
+export function intervalFor(successCount: number): number {
   const idx = Math.min(successCount, INTERVALS_DAYS.length - 1);
   return INTERVALS_DAYS[idx];
 }

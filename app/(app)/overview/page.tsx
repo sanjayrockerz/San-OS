@@ -214,6 +214,26 @@ export default async function OverviewPage() {
       title: c.title,
       status: c.status,
     })),
+    memoryHealth: {
+      overallScore: snapshot.memoryHealth.overallScore,
+      atRisk: snapshot.memoryHealth.atRisk.map((t) => ({
+        id: t.entityId,
+        name: t.name,
+        healthScore: t.healthScore,
+      })),
+      neglected: snapshot.memoryHealth.neglected.map((t) => ({
+        id: t.entityId,
+        name: t.name,
+      })),
+    },
+    forgettingForecast: {
+      likelyForgotten: snapshot.forgettingForecast.likelyForgotten.map((f) => ({
+        problemId: f.problemId,
+        title: f.title,
+        score: f.score,
+      })),
+      atRiskCount: snapshot.forgettingForecast.atRisk.length,
+    },
     solvedToday: todayLog?.problems_solved ?? 0,
     notifications,
     missedWork,

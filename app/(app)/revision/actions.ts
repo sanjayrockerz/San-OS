@@ -22,10 +22,16 @@ export async function recordRevision(
 ): Promise<ActionResult> {
   const user = await requireUser("/revision");
 
+  const confidenceRaw = formData.get("confidence");
   const parsed = recordReviewSchema.safeParse({
     problemId: formData.get("problemId"),
     success: formData.get("success") === "true",
     editorialUsed: formData.get("editorialUsed") === "true",
+    recalledPattern: formData.get("recalledPattern") === "true",
+    recalledAlgorithm: formData.get("recalledAlgorithm") === "true",
+    recalledComplexity: formData.get("recalledComplexity") === "true",
+    recalledMistakes: formData.get("recalledMistakes") === "true",
+    confidence: confidenceRaw ? Number(confidenceRaw) : undefined,
   });
   if (!parsed.success) return { ok: false, error: "Invalid revision outcome" };
 
@@ -52,6 +58,35 @@ export async function recordRevision(
       ok: false,
       error: e instanceof Error ? e.message : "Failed to record revision",
     };
+  }
+
+  // Graded recall is optional input (the checklist in the revision-flow
+  // modal) — when present it sharpens Recall Strength beyond the binary
+  // success/failure already recorded above. Best-effort: a missing grade
+  // just means Model 1 falls back to the revision_queue-only formula.
+  if (formData.get("recalledPattern") !== null) {
+    try {
+      await services.memoryIntelligence.gradeRecall(user.id, {
+        problemId: parsed.data.problemId,
+        recalledPattern: parsed.data.recalledPattern ?? false,
+        recalledAlgorithm: parsed.data.recalledAlgorithm ?? false,
+        recalledComplexity: parsed.data.recalledComplexity ?? false,
+        recalledMistakes: parsed.data.recalledMistakes ?? false,
+        confidence: parsed.data.confidence ?? null,
+        success: parsed.data.success,
+      });
+    } catch {
+      // best-effort; recall strength still works from revision_queue alone
+    }
+  }
+
+  // Recall Strength/Topic Health are caches derived from revision_queue +
+  // events; recompute them now so the dashboard reflects this outcome
+  // immediately. Fail-soft and idempotent, same posture as taxonomy.evolve().
+  try {
+    await services.memoryIntelligence.evolve(user.id);
+  } catch {
+    // best-effort; a later evolve() call will catch up
   }
 
   DashboardAggregationService.invalidate(user.id);

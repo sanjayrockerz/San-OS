@@ -22,14 +22,13 @@ const initialResult: ActionResult | null = null;
 function NotificationItem({ notification }: { notification: NotificationRow }) {
   const [, completeAction, completing] = useActionState(completeNotification, initialResult);
   const [, snoozeAction, snoozing] = useActionState(snoozeNotification, initialResult);
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border p-3">
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{notification.title}</span>
       <form action={snoozeAction}>
         <input type="hidden" name="notificationId" value={notification.id} />
-        <input type="hidden" name="until" value={tomorrow} />
+        <input type="hidden" name="days" value="1" />
         <Button type="submit" size="sm" variant="ghost" disabled={snoozing} title="Snooze 1 day">
           <Clock className="size-4" />
         </Button>

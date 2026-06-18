@@ -287,6 +287,15 @@ function DueCard({
   );
 }
 
+const RECALL_CHECKS = [
+  { key: "recalledPattern", label: "Recognized the pattern" },
+  { key: "recalledAlgorithm", label: "Recalled the algorithm" },
+  { key: "recalledComplexity", label: "Recalled time/space complexity" },
+  { key: "recalledMistakes", label: "Recalled the mistake to avoid" },
+] as const;
+
+type RecallKey = (typeof RECALL_CHECKS)[number]["key"];
+
 function RevisionFlow({
   card,
   onClose,
@@ -298,6 +307,13 @@ function RevisionFlow({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [checks, setChecks] = useState<Record<RecallKey, boolean>>({
+    recalledPattern: false,
+    recalledAlgorithm: false,
+    recalledComplexity: false,
+    recalledMistakes: false,
+  });
+  const [confidence, setConfidence] = useState<number | null>(null);
 
   function record(success: boolean) {
     setError(null);
@@ -305,6 +321,8 @@ function RevisionFlow({
       const fd = new FormData();
       fd.set("problemId", card.problemId);
       fd.set("success", String(success));
+      for (const { key } of RECALL_CHECKS) fd.set(key, String(checks[key]));
+      if (confidence != null) fd.set("confidence", String(confidence));
       const res = await recordRevision(null, fd);
       if (res.ok) onResolved(card.problemId);
       else setError(res.error);
@@ -379,6 +397,65 @@ function RevisionFlow({
           )}
 
           <Separator />
+
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Before you check the answer, what did you recall?
+            </p>
+            <div className="space-y-1.5">
+              {RECALL_CHECKS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    setChecks((prev) => ({ ...prev, [key]: !prev[key] }))
+                  }
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                    checks[key]
+                      ? "border-success/40 bg-success/10 text-foreground"
+                      : "border-border text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-4 shrink-0 items-center justify-center rounded border",
+                      checks[key]
+                        ? "border-success bg-success text-success-foreground"
+                        : "border-muted-foreground/40",
+                    )}
+                  >
+                    {checks[key] && <Check className="size-3" />}
+                  </span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Confidence
+            </p>
+            <div className="flex gap-1.5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setConfidence(n)}
+                  className={cn(
+                    "flex-1 rounded-lg border py-1.5 text-sm font-medium transition-colors",
+                    confidence === n
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Link
             href={`/problems/${card.problemId}`}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
