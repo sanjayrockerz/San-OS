@@ -8,10 +8,16 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 import { NAV_GROUPS } from "./nav-config";
 
-export function Sidebar() {
+interface SidebarUser {
+  displayName: string;
+  email: string | null;
+}
+
+export function Sidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggle = useUIStore((s) => s.toggleSidebar);
+  const initial = user.displayName.charAt(0).toUpperCase() || "U";
 
   return (
     <aside
@@ -36,12 +42,14 @@ export function Sidebar() {
       {/* Profile */}
       <div className={cn("mx-3 mb-2 flex items-center gap-3 rounded-xl border border-border bg-background-subtle/50 p-2.5", collapsed && "mx-2 justify-center")}>
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#a855f7] text-xs font-semibold text-white">
-          S
+          {initial}
         </div>
         {!collapsed && (
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-xs font-semibold">Sanjay</p>
-            <p className="truncate text-[10px] text-muted-foreground">Pro · Level 8</p>
+            <p className="truncate text-xs font-semibold capitalize">{user.displayName}</p>
+            {user.email && (
+              <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+            )}
           </div>
         )}
       </div>
@@ -91,29 +99,28 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Streak / readiness card */}
+      {/* Streak / readiness — see the Overview page for live numbers; the
+          sidebar doesn't have this data without an extra layout-level fetch,
+          so it links there instead of showing stale or fake figures. */}
       <div className="p-3">
         {!collapsed ? (
-          <div className="rounded-xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-3.5">
+          <Link
+            href="/overview"
+            className="block rounded-xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-3.5 transition-colors hover:border-border-strong"
+          >
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Flame className="size-3.5 text-warning" /> Streak
+                <Flame className="size-3.5 text-warning" /> Streak &amp; readiness
               </span>
-              <span className="text-sm font-semibold tabular">14d</span>
             </div>
-            <div className="mt-2.5 flex gap-1">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <span key={i} className={cn("h-1.5 flex-1 rounded-full", i < 6 ? "bg-warning" : "bg-muted")} />
-              ))}
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Zap className="size-3 text-primary" /> See your live numbers on Overview
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Zap className="size-3 text-primary" /> 72% placement-ready
-            </div>
-          </div>
+          </Link>
         ) : (
-          <div className="flex justify-center">
+          <Link href="/overview" className="flex justify-center">
             <Flame className="size-5 text-warning" />
-          </div>
+          </Link>
         )}
       </div>
 

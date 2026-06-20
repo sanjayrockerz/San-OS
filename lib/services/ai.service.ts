@@ -5,14 +5,12 @@ import { AnalyticsService } from "./analytics.service";
 import { BaseService, isoDate } from "./base.service";
 import { MemoryCoachService } from "./memory-coach.service";
 import { RevisionService } from "./revision.service";
+import {
+  StudentIntelligenceCoreService,
+  type BattlePlanStep,
+} from "./student-intelligence-core.service";
 
-/** One actionable step in the Daily Battle Plan. */
-export interface BattlePlanStep {
-  kind: "revise" | "strengthen" | "learn" | "academic";
-  title: string;
-  detail: string;
-  entityId?: string;
-}
+export type { BattlePlanStep };
 
 /**
  * AI Mentor Engine — analytical, not a chatbot. It reads the user's learning
@@ -25,56 +23,25 @@ export class AiService extends BaseService {
   private readonly analytics: AnalyticsService;
   private readonly revision: RevisionService;
   private readonly memoryCoach: MemoryCoachService;
+  private readonly core: StudentIntelligenceCoreService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.analytics = new AnalyticsService(repos);
     this.revision = new RevisionService(repos);
     this.memoryCoach = new MemoryCoachService(repos);
+    this.core = new StudentIntelligenceCoreService(repos);
   }
 
   /**
-   * Generates (and upserts) today's brief and refreshes derived insights.
-   * Returns the persisted brief.
+   * Read-only Daily Battle Plan — a thin formatter over
+   * {@link StudentIntelligenceCoreService.battlePlan}, the single ranking
+   * pipeline every "what should I do next" surface now reads from. Pure (no
+   * writes), so the dashboard aggregator and any UI can call it freely
+   * without persisting a brief.
    */
-  /**
-   * Read-only Daily Battle Plan — the prioritised next actions derived from the
-   * revision queue and forgotten concepts. Pure (no writes), so the dashboard
-   * aggregator and any UI can call it freely without persisting a brief.
-   */
-  async battlePlan(userId: string): Promise<BattlePlanStep[]> {
-    const [due, weak, forgottenConcepts] = await Promise.all([
-      this.revision.dueQueue(userId),
-      this.revision.weakQueue(userId),
-      this.repos.concepts.findByStatus(userId, "forgotten"),
-    ]);
-
-    const steps: BattlePlanStep[] = [];
-    for (const item of due.slice(0, 5)) {
-      steps.push({
-        kind: "revise",
-        title: "Revise a due problem",
-        detail: "This problem is due for spaced revision today.",
-        entityId: item.problem_id,
-      });
-    }
-    for (const item of weak.slice(0, 3)) {
-      steps.push({
-        kind: "strengthen",
-        title: "Strengthen a weak problem",
-        detail: "You have struggled with this — attempt it again from scratch.",
-        entityId: item.problem_id,
-      });
-    }
-    for (const c of forgottenConcepts.slice(0, 3)) {
-      steps.push({
-        kind: "learn",
-        title: `Re-learn: ${c.title}`,
-        detail: "This concept is marked forgotten in your vault.",
-        entityId: c.id,
-      });
-    }
-    return steps;
+  battlePlan(userId: string): Promise<BattlePlanStep[]> {
+    return this.core.battlePlan(userId);
   }
 
   async generateDailyBrief(

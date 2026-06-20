@@ -32,30 +32,14 @@ import {
   updateReminder,
   type ActionResult,
 } from "@/app/(app)/notifications/actions";
+import { REMINDER_CATEGORY_LABEL } from "@/lib/design/status";
 
 type NotificationRow = Tables<"notifications">;
 type ReminderRow = Tables<"reminders">;
 
-const CATEGORY_LABELS: Record<string, string> = {
-  learning_dsa: "DSA",
-  learning_revision: "Revision",
-  learning_concepts: "Concepts",
-  learning_roadmaps: "Roadmaps",
-  academic_iit: "IIT",
-  academic_assignments: "Assignments",
-  academic_exams: "Exams",
-  project_development: "Development",
-  project_client_work: "Client Work",
-  personal_priorities: "Priorities",
-  personal_relationships: "Relationships",
-  personal_family: "Family",
-  health_sleep: "Sleep",
-  health_exercise: "Exercise",
-};
-
 function categoryLabel(category: string | null) {
   if (!category) return null;
-  return CATEGORY_LABELS[category] ?? category;
+  return REMINDER_CATEGORY_LABEL[category] ?? category;
 }
 
 function formatDue(dueAt: string | null) {

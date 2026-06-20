@@ -1,25 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Plus,
   Play,
   Check,
-  Circle,
-  Loader2,
   ArrowRight,
   Flame,
   RefreshCw,
-  Dumbbell,
-  GraduationCap,
-  BookOpen,
   Network,
   Library,
   Inbox,
-  CalendarCheck,
-  AlertTriangle,
   Sparkles,
   CheckCircle2,
 } from "lucide-react";
@@ -34,14 +25,26 @@ import { DailySessionPanel } from "./daily-session-panel";
 import { RecommendationsPanel } from "./recommendations-panel";
 import { DailyDigestPanel } from "./daily-digest-panel";
 import { NotificationCenterPanel } from "./notification-center-panel";
-import { MissedWorkPanel } from "./missed-work-panel";
 import { FocusModeSwitcher } from "./focus-mode-switcher";
 import { EveningReviewPanel } from "./evening-review-panel";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
-import { completeBattlePlanTask } from "@/app/(app)/overview/actions";
-import type { BattlePlanStep, EveningReview, MissedWorkItem } from "@/lib/services";
+import { MissionControlPanel } from "./mission-control-panel";
+import type {
+  BattlePlanStep,
+  EveningReview,
+  Mission,
+  MissedWorkItem,
+  RiskRegister,
+  StudentAction,
+} from "@/lib/services";
 import type { Tables } from "@/types/database";
+import { CATEGORY_TINT, CATEGORY_TEXT } from "@/lib/design/category";
+import {
+  DIFFICULTY_BADGE_VARIANT,
+  RESUME_ITEM_META,
+  type Difficulty,
+} from "@/lib/design/status";
 
 interface BattlePlanItem {
   id: string;
@@ -136,23 +139,16 @@ export interface OverviewData {
   missedWork: MissedWorkItem[];
   focusMode: string;
   eveningReview: EveningReview | null;
+  priorities: StudentAction[];
+  risks: RiskRegister;
+  missions: Mission[];
 }
 
-const KIND_META: Record<
-  BattlePlanStep["kind"],
-  { icon: typeof RefreshCw; tint: string }
-> = {
-  revise: { icon: RefreshCw, tint: "#60a5fa" },
-  strengthen: { icon: Dumbbell, tint: "#fbbf24" },
-  learn: { icon: BookOpen, tint: "#34d399" },
-  academic: { icon: GraduationCap, tint: "#a78bfa" },
-};
-
-const DIFFICULTY_VARIANT = {
-  easy: "success",
-  medium: "warning",
-  hard: "danger",
-} as const;
+/** Next round-number milestone above `count` (next multiple of 50, or 100 once past 200). */
+function nextMilestone(count: number): number {
+  const step = count >= 200 ? 100 : 50;
+  return Math.ceil((count + 1) / step) * step;
+}
 
 export function OverviewClient({ data }: { data: OverviewData }) {
   const openAddEntry = useUIStore((s) => s.setAddEntryOpen);
@@ -165,135 +161,152 @@ export function OverviewClient({ data }: { data: OverviewData }) {
   const readiness = hero.totalProblems
     ? Math.min(99, Math.round((hero.uniqueSolved / hero.totalProblems) * 100))
     : 0;
+  const milestone = nextMilestone(hero.uniqueSolved);
+  const toMilestone = milestone - hero.uniqueSolved;
 
   return (
     <PageTransition>
       <DailyReflectionModal solvedToday={solvedToday} threshold={3} />
-      {/* Hero */}
-      <Section className="mb-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              {data.greeting}
-            </p>
-            <h1 className="mt-1 text-[28px] font-bold tracking-tight sm:text-[34px]">
-              {data.name}.
-            </h1>
-            <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <Flame className="size-4 text-danger" />
-                <span className="font-semibold text-foreground">
-                  {hero.streak} day{hero.streak === 1 ? "" : "s"}
-                </span>{" "}
-                streak
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-success" />
-                <span className="font-semibold text-foreground">{readiness}%</span>{" "}
-                placement readiness
-              </span>
-              {data.estimatedMinutes > 0 && (
+
+      {/* ===================================================================
+          LEVEL 1 — MISSION: greeting/streak/readiness fused with the
+          Battle Plan. The single largest, most spacious surface on the page.
+          =================================================================== */}
+      <Section className="mb-6">
+        <div className="surface-card rounded-2xl border-category-mission/25 p-6 shadow-md sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-caption text-muted-foreground">{data.greeting}</p>
+              <h1 className="text-display mt-1">{data.name}.</h1>
+              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
-                  <Sparkles className="size-4 text-primary" />
+                  <Flame className="size-4 text-danger" />
                   <span className="font-semibold text-foreground">
-                    {data.estimatedMinutes}m
+                    {hero.streak} day{hero.streak === 1 ? "" : "s"}
                   </span>{" "}
-                  estimated today
+                  streak
                 </span>
-              )}
-            </p>
-            {data.aiSummary && (
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground border-l-2 border-primary/40 pl-3">
-                {data.aiSummary}
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-success" />
+                  <span className="font-semibold text-foreground">{readiness}%</span>{" "}
+                  placement readiness
+                </span>
+                {data.estimatedMinutes > 0 && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Sparkles className={cn("size-4", CATEGORY_TEXT.mission)} />
+                    <span className="font-semibold text-foreground">
+                      {data.estimatedMinutes}m
+                    </span>{" "}
+                    estimated today
+                  </span>
+                )}
               </p>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <FocusModeSwitcher initialMode={data.focusMode} />
-            <Button onClick={() => openAddEntry(true)}>
-              <Plus className="size-4" /> Add Learning Entry
-            </Button>
-            <Button variant="secondary" asChild>
-              <Link href="/revision">
-                <Play className="size-4" /> Start Revision
-              </Link>
-            </Button>
+              {data.aiSummary && (
+                <p className="mt-3 max-w-xl text-body leading-relaxed text-muted-foreground border-l-2 border-category-mission/40 pl-3">
+                  {data.aiSummary}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <FocusModeSwitcher initialMode={data.focusMode} />
+              <Button onClick={() => openAddEntry(true)}>
+                <Plus className="size-4" /> Add Learning Entry
+              </Button>
+              <Button variant="secondary" asChild>
+                <Link href="/revision">
+                  <Play className="size-4" /> Start Revision
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </Section>
 
-      <DailyDigestPanel data={data.dailyDigest} />
+      {/* ===================================================================
+          LEVEL 2 — MISSION CONTROL: Today's Mission + Top Priorities + Risk
+          Center, the StudentIntelligenceCore outputs surfaced as one
+          coherent "what do I do right now and why" panel.
+          =================================================================== */}
+      <MissionControlPanel
+        missions={data.missions}
+        priorities={data.priorities}
+        risks={data.risks}
+        memoryHealth={data.memoryHealth}
+        forgettingForecast={data.forgettingForecast}
+        missedWork={data.missedWork}
+        upcomingAssignments={data.upcomingAssignments}
+      />
 
-      <div className="mt-4">
-        <MissedWorkPanel items={data.missedWork} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 mt-4">
-        {/* Left column */}
+      {/* ===================================================================
+          LEVEL 3 — RECOMMENDED ACTION: "do this next" lists, visually
+          subordinate to Level 1/2.
+          =================================================================== */}
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <NotificationCenterPanel items={data.notifications} />
           <DailySessionPanel items={data.dailyPlan} />
-          <ResumePriorityCards items={data.resumeItems} />
+          <ResumePriorityCards
+            items={data.resumeItems}
+            becauseText={
+              data.recentSolved[0]
+                ? `Because you recently solved "${data.recentSolved[0].title}"`
+                : data.activity[0]
+                  ? `Because you recently: ${data.activity[0].text}`
+                  : null
+            }
+          />
+        </div>
+        <div className="space-y-4">
           <RecommendationsPanel items={data.recommendations} />
           <RevisionQueue items={data.revisionQueue} due={hero.revisionDue} />
         </div>
-
-        {/* Right column */}
-        <div className="space-y-4">
-          <WeeklyRing
-            pct={weeklyPct}
-            solved={hero.solvedThisWeek}
-            target={hero.weeklyTarget}
-          />
-          {data.eveningReview && <EveningReviewPanel review={data.eveningReview} />}
-          <MemoryHealthPanel
-            memoryHealth={data.memoryHealth}
-            forgettingForecast={data.forgettingForecast}
-          />
-          <TaxonomyWaiting count={data.taxonomyProposalsCount} />
-          <IitReminders items={data.upcomingAssignments} />
-          <RecentKnowledge items={data.recentKnowledge} />
-        </div>
       </div>
 
-      {/* Bottom */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* ===================================================================
+          LEVEL 4 — PROGRESS: "how am I doing" — smaller visual weight.
+          =================================================================== */}
+      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <WeeklyRing pct={weeklyPct} solved={hero.solvedThisWeek} target={hero.weeklyTarget} />
+        <DailyDigestPanel data={data.dailyDigest} milestone={milestone} toMilestone={toMilestone} />
+        {data.eveningReview && <EveningReviewPanel review={data.eveningReview} />}
+        <TaxonomyWaiting count={data.taxonomyProposalsCount} />
+      </div>
+
+      {/* ===================================================================
+          LEVEL 5 — HISTORY: dense, compact, intentional-lookup territory.
+          =================================================================== */}
+      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-4">
         <ActivityTimeline items={data.activity} />
         <RecentSolved items={data.recentSolved} />
         <RecentConcepts items={data.recentConcepts} />
+        <RecentKnowledge items={data.recentKnowledge} />
       </div>
     </PageTransition>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/* Resume Priority                                                              */
+/* Level 3 — Recommended Action                                                */
 /* -------------------------------------------------------------------------- */
-
-const RESUME_META: Record<
-  OverviewData["resumeItems"][0]["type"],
-  { icon: React.ElementType; tint: string }
-> = {
-  revision: { icon: RefreshCw, tint: "#60a5fa" }, // blue-400
-  concept: { icon: Sparkles, tint: "#34d399" }, // emerald-400
-  vault: { icon: Library, tint: "#fbbf24" }, // amber-400
-  problem: { icon: Dumbbell, tint: "hsl(var(--primary))" },
-  iit: { icon: GraduationCap, tint: "#a78bfa" }, // violet-400
-};
 
 function ResumePriorityCards({
   items,
+  becauseText,
 }: {
   items: OverviewData["resumeItems"];
+  becauseText?: string | null;
 }) {
   return (
     <Section>
       <div className="surface-card rounded-2xl p-5">
         <SectionHeading title="Continue Learning" />
+        {becauseText && (
+          <p className="mb-3 text-xs text-muted-foreground">{becauseText}</p>
+        )}
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <Sparkles className="size-6 text-primary/70" />
-            <p className="mt-2 text-sm font-medium">You&apos;re all caught up! ✨</p>
+            <p className="mt-2 text-sm font-medium">You&apos;re all caught up!</p>
             <p className="mt-1 text-xs text-muted-foreground">
               No active sessions or drafts found.
             </p>
@@ -301,7 +314,7 @@ function ResumePriorityCards({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {items.slice(0, 4).map((item) => {
-              const meta = RESUME_META[item.type];
+              const meta = RESUME_ITEM_META[item.type];
               const Icon = meta.icon;
               return (
                 <Link
@@ -312,8 +325,10 @@ function ResumePriorityCards({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span
-                        className="flex size-7 shrink-0 items-center justify-center rounded-lg"
-                        style={{ backgroundColor: `${meta.tint}22`, color: meta.tint }}
+                        className={cn(
+                          "flex size-7 shrink-0 items-center justify-center rounded-lg",
+                          CATEGORY_TINT[meta.category],
+                        )}
                       >
                         <Icon className="size-4" />
                       </span>
@@ -353,10 +368,6 @@ function ResumePriorityCards({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Revision Queue                                                              */
-/* -------------------------------------------------------------------------- */
-
 function RevisionQueue({
   items,
   due,
@@ -368,7 +379,7 @@ function RevisionQueue({
     <Section>
       <div className="surface-card rounded-2xl p-5">
         <SectionHeading
-          title="Revision Queue"
+          title="Memory at Risk"
           action={
             <Link
               href="/revision"
@@ -399,7 +410,7 @@ function RevisionQueue({
             ))}
             {due > items.length && (
               <p className="pt-1 text-center text-xs text-muted-foreground">
-                +{due - items.length} more due
+                +{due - items.length} more slipping
               </p>
             )}
           </div>
@@ -410,7 +421,7 @@ function RevisionQueue({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Right column widgets                                                         */
+/* Level 4 — Progress                                                          */
 /* -------------------------------------------------------------------------- */
 
 function WeeklyRing({
@@ -424,96 +435,17 @@ function WeeklyRing({
 }) {
   return (
     <Section>
-      <div className="surface-card flex items-center gap-4 rounded-2xl p-5">
-        <ProgressRing value={pct} size={92} stroke={9}>
-          <span className="text-lg font-bold tabular">{solved}</span>
+      <div className="surface-card flex items-center gap-3 rounded-xl p-4">
+        <ProgressRing value={pct} size={72} stroke={7}>
+          <span className="text-sm font-bold tabular">{solved}</span>
           <span className="text-[10px] text-muted-foreground">/ {target}</span>
         </ProgressRing>
         <div>
-          <p className="text-sm font-semibold">Weekly Goal</p>
+          <p className="text-title">Weekly Goal</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {Math.max(0, target - solved)} solves left to hit your target.
           </p>
         </div>
-      </div>
-    </Section>
-  );
-}
-
-function MemoryHealthPanel({
-  memoryHealth,
-  forgettingForecast,
-}: {
-  memoryHealth: OverviewData["memoryHealth"];
-  forgettingForecast: OverviewData["forgettingForecast"];
-}) {
-  const nothingTracked =
-    memoryHealth.atRisk.length === 0 &&
-    memoryHealth.neglected.length === 0 &&
-    forgettingForecast.likelyForgotten.length === 0;
-
-  return (
-    <Section>
-      <div className="surface-card rounded-2xl p-5">
-        <div className="flex items-center gap-4">
-          <ProgressRing value={memoryHealth.overallScore} size={64} stroke={7}>
-            <span className="text-sm font-bold tabular">
-              {memoryHealth.overallScore}
-            </span>
-          </ProgressRing>
-          <div>
-            <p className="text-sm font-semibold">Memory Health</p>
-            <p className="text-xs text-muted-foreground">
-              Recall strength across everything you&apos;ve solved.
-            </p>
-          </div>
-        </div>
-
-        {nothingTracked ? (
-          <p className="mt-4 py-2 text-center text-xs text-muted-foreground">
-            Solve and revise a few problems to start tracking recall.
-          </p>
-        ) : (
-          <div className="mt-4 space-y-2">
-            {forgettingForecast.likelyForgotten.slice(0, 3).map((item) => (
-              <Link
-                key={item.problemId}
-                href={`/problems/${item.problemId}`}
-                className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/5 p-2.5 transition-colors hover:bg-danger/10"
-              >
-                <AlertTriangle className="size-3.5 shrink-0 text-danger" />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                  {item.title}
-                </span>
-                <span className="shrink-0 text-xs font-semibold text-danger">
-                  {item.score}%
-                </span>
-              </Link>
-            ))}
-            {memoryHealth.atRisk.slice(0, 2).map((topic) => (
-              <div
-                key={topic.id}
-                className="flex items-center gap-2 rounded-xl border border-border p-2.5"
-              >
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                  {topic.name}
-                </span>
-                <Badge variant="warning">at risk</Badge>
-              </div>
-            ))}
-            {memoryHealth.neglected.slice(0, 2).map((topic) => (
-              <div
-                key={topic.id}
-                className="flex items-center gap-2 rounded-xl border border-border p-2.5"
-              >
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                  {topic.name}
-                </span>
-                <Badge variant="default">neglected</Badge>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </Section>
   );
@@ -524,13 +456,13 @@ function TaxonomyWaiting({ count }: { count: number }) {
     <Section>
       <Link
         href="/taxonomy"
-        className="surface-card group flex items-center gap-3 rounded-2xl p-5 transition-colors hover:bg-accent"
+        className="surface-card group flex items-center gap-3 rounded-xl p-4 transition-colors hover:bg-accent"
       >
-        <span className="flex size-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
-          <Network className="size-5" />
+        <span className="flex size-9 items-center justify-center rounded-xl bg-primary/12 text-primary">
+          <Network className="size-4.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Taxonomy Proposals</p>
+          <p className="text-title">Taxonomy Proposals</p>
           <p className="text-xs text-muted-foreground">
             {count > 0
               ? `${count} suggestion${count === 1 ? "" : "s"} waiting for review`
@@ -544,59 +476,9 @@ function TaxonomyWaiting({ count }: { count: number }) {
   );
 }
 
-function IitReminders({
-  items,
-}: {
-  items: OverviewData["upcomingAssignments"];
-}) {
-  return (
-    <Section>
-      <div className="surface-card rounded-2xl p-5">
-        <SectionHeading title="IIT Reminders" />
-        {items.length === 0 ? (
-          <p className="py-3 text-center text-xs text-muted-foreground">
-            No upcoming assignments.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {items.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center gap-3 rounded-xl border border-border p-3"
-              >
-                <span
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-lg",
-                    d.urgent
-                      ? "bg-danger/12 text-danger"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {d.urgent ? (
-                    <AlertTriangle className="size-4" />
-                  ) : (
-                    <CalendarCheck className="size-4" />
-                  )}
-                </span>
-                <p className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {d.title}
-                </p>
-                <span
-                  className={cn(
-                    "shrink-0 text-xs font-medium",
-                    d.urgent ? "text-danger" : "text-muted-foreground",
-                  )}
-                >
-                  {d.due}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </Section>
-  );
-}
+/* -------------------------------------------------------------------------- */
+/* Level 5 — History                                                           */
+/* -------------------------------------------------------------------------- */
 
 function RecentKnowledge({
   items,
@@ -605,7 +487,7 @@ function RecentKnowledge({
 }) {
   return (
     <Section>
-      <div className="surface-card rounded-2xl p-5">
+      <div className="surface-card h-full rounded-xl p-4">
         <SectionHeading
           title="Recent Knowledge"
           action={
@@ -618,22 +500,22 @@ function RecentKnowledge({
           }
         />
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <Library className="size-6 text-muted-foreground/50" />
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <Library className="size-5 text-muted-foreground/50" />
             <p className="mt-2 text-xs text-muted-foreground">
               Nothing saved yet.
             </p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {items.map((k) => (
               <Link
                 key={k.id}
                 href="/vault"
-                className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-accent"
               >
-                <span className="min-w-0 flex-1 truncate text-sm">{k.title}</span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">
+                <span className="min-w-0 flex-1 truncate text-xs">{k.title}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
                   {k.time}
                 </span>
               </Link>
@@ -645,48 +527,44 @@ function RecentKnowledge({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Bottom row                                                                   */
-/* -------------------------------------------------------------------------- */
-
 function ActivityTimeline({ items }: { items: OverviewData["activity"] }) {
   return (
     <Section>
-      <div className="surface-card flex h-full flex-col rounded-2xl p-5">
+      <div className="surface-card flex h-full flex-col rounded-xl p-4">
         <SectionHeading title="Activity" />
         {items.length > 0 ? (
-          <div className="space-y-4 pl-1">
+          <div className="space-y-3 pl-1">
             {items.map((a, i) => {
               const body = (
                 <>
                   <div className="flex flex-col items-center">
-                    <span className="size-2.5 rounded-full bg-primary ring-4 ring-card" />
+                    <span className="size-2 rounded-full bg-primary ring-4 ring-card" />
                     {i < items.length - 1 && (
                       <span className="mt-1 w-px flex-1 bg-border" />
                     )}
                   </div>
                   <div className="-mt-0.5 pb-1">
-                    <p className="text-sm">{a.text}</p>
-                    <p className="text-[11px] text-muted-foreground">{a.time}</p>
+                    <p className="text-xs">{a.text}</p>
+                    <p className="text-[10px] text-muted-foreground">{a.time}</p>
                   </div>
                 </>
               );
               return a.href ? (
-                <Link key={a.id} href={a.href} className="flex gap-3 hover:opacity-80">
+                <Link key={a.id} href={a.href} className="flex gap-2.5 hover:opacity-80">
                   {body}
                 </Link>
               ) : (
-                <div key={a.id} className="flex gap-3">
+                <div key={a.id} className="flex gap-2.5">
                   {body}
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
-            <Inbox className="size-7 text-muted-foreground/50" />
-            <p className="mt-2 text-sm font-medium">No activity yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+          <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
+            <Inbox className="size-6 text-muted-foreground/50" />
+            <p className="mt-2 text-xs font-medium">No activity yet</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
               Log a problem to see your timeline here.
             </p>
           </div>
@@ -699,24 +577,24 @@ function ActivityTimeline({ items }: { items: OverviewData["activity"] }) {
 function RecentSolved({ items }: { items: OverviewData["recentSolved"] }) {
   return (
     <Section>
-      <div className="surface-card h-full rounded-2xl p-5">
+      <div className="surface-card h-full rounded-xl p-4">
         <SectionHeading title="Recently Solved" />
         {items.length === 0 ? (
           <p className="py-3 text-center text-xs text-muted-foreground">
             No solved problems yet.
           </p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {items.map((p) => (
               <Link
                 key={p.problemId}
                 href={`/problems/${p.problemId}`}
-                className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-accent"
               >
-                <Check className="size-4 shrink-0 text-success" />
-                <span className="min-w-0 flex-1 truncate text-sm">{p.title}</span>
+                <Check className="size-3.5 shrink-0 text-success" />
+                <span className="min-w-0 flex-1 truncate text-xs">{p.title}</span>
                 {p.difficulty && (
-                  <Badge variant={DIFFICULTY_VARIANT[p.difficulty]}>
+                  <Badge variant={DIFFICULTY_BADGE_VARIANT[p.difficulty as Difficulty]}>
                     {p.difficulty}
                   </Badge>
                 )}
@@ -732,7 +610,7 @@ function RecentSolved({ items }: { items: OverviewData["recentSolved"] }) {
 function RecentConcepts({ items }: { items: OverviewData["recentConcepts"] }) {
   return (
     <Section>
-      <div className="surface-card h-full rounded-2xl p-5">
+      <div className="surface-card h-full rounded-xl p-4">
         <SectionHeading
           title="Recent Concepts"
           action={
@@ -749,15 +627,15 @@ function RecentConcepts({ items }: { items: OverviewData["recentConcepts"] }) {
             No concept notes yet.
           </p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {items.map((c) => (
               <Link
                 key={c.id}
                 href={`/concepts/${c.id}`}
-                className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-accent"
               >
-                <Sparkles className="size-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 truncate text-sm">{c.title}</span>
+                <Sparkles className="size-3.5 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-xs">{c.title}</span>
                 <Badge variant="secondary">{c.status}</Badge>
               </Link>
             ))}

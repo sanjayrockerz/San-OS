@@ -7,22 +7,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConceptsClient } from "@/components/concepts/concepts-client";
-
-const STATUS_COLOR: Record<string, string> = {
-  learning: "#fbbf24",
-  understood: "#60a5fa",
-  weak: "#f87171",
-  forgotten: "#a78bfa",
-  mastered: "#34d399",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  learning: "Learning",
-  understood: "Understood",
-  weak: "Weak",
-  forgotten: "Forgotten",
-  mastered: "Mastered",
-};
+import {
+  CONCEPT_STATUS_CATEGORY,
+  CONCEPT_STATUS_LABEL,
+  type ConceptStatus,
+} from "@/lib/design/status";
 
 export default async function ConceptsPage() {
   const { user, services } = await requireContext("/concepts");
@@ -41,8 +30,8 @@ export default async function ConceptsPage() {
     title: c.title,
     category: c.category,
     status: c.status,
-    statusLabel: STATUS_LABEL[c.status] ?? c.status,
-    statusColor: STATUS_COLOR[c.status] ?? "#7c7dff",
+    statusLabel: CONCEPT_STATUS_LABEL[c.status as ConceptStatus] ?? c.status,
+    statusCategory: CONCEPT_STATUS_CATEGORY[c.status as ConceptStatus] ?? "mission",
     confidence: c.confidence,
     topicName: c.topic_id ? topicMap.get(c.topic_id) ?? null : null,
     patternName: c.pattern_id ? patternMap.get(c.pattern_id) ?? null : null,

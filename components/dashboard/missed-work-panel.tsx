@@ -28,9 +28,29 @@ function MissedItem({ item }: { item: MissedWorkItem }) {
   );
 }
 
-/** "While you were away" recovery card. Renders nothing when there's nothing missed. */
-export function MissedWorkPanel({ items }: { items: MissedWorkItem[] }) {
+/**
+ * "While you were away" recovery list. Renders nothing when there's nothing
+ * missed. Pass `bare` to render just the list (no card/heading chrome) for
+ * embedding inside another section's layout (e.g. the Overview Risk block).
+ */
+export function MissedWorkPanel({
+  items,
+  bare = false,
+}: {
+  items: MissedWorkItem[];
+  bare?: boolean;
+}) {
   if (items.length === 0) return null;
+
+  const list = (
+    <div className="space-y-2">
+      {items.slice(0, 5).map((item) => (
+        <MissedItem key={item.notificationId} item={item} />
+      ))}
+    </div>
+  );
+
+  if (bare) return list;
 
   return (
     <Section>
@@ -39,11 +59,7 @@ export function MissedWorkPanel({ items }: { items: MissedWorkItem[] }) {
           <AlertTriangle className="size-4 text-warning" />
           <h2 className="text-lg font-semibold tracking-tight">While you were away</h2>
         </div>
-        <div className="space-y-2">
-          {items.slice(0, 5).map((item) => (
-            <MissedItem key={item.notificationId} item={item} />
-          ))}
-        </div>
+        {list}
       </div>
     </Section>
   );

@@ -8,13 +8,26 @@ import { TopBar } from "./top-bar";
 import { TopHeader } from "./top-header";
 import { CommandPalette } from "./command-palette";
 import { AddEntryModal } from "./add-entry-modal";
+import { MobileNavDrawer } from "./mobile-nav-drawer";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellUser {
+  displayName: string;
+  email: string | null;
+}
+
+export function AppShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: AppShellUser;
+}) {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
 
   return (
     <div className="min-h-dvh bg-background">
-      <Sidebar />
+      <Sidebar user={user} />
+      <MobileNavDrawer user={user} />
       <CommandPalette />
       <AddEntryModal />
 

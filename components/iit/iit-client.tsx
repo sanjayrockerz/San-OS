@@ -22,6 +22,8 @@ import { Progress } from "@/components/ui/progress";
 import { SectionHeading } from "@/components/layout/page-header";
 import { createCourse, type ActionResult } from "@/app/(app)/iit-workspace/actions";
 import type { CreditSummary } from "@/lib/services";
+import { CATEGORY_TINT } from "@/lib/design/category";
+import { IIT_STATUS_CATEGORY, type IitStatus } from "@/lib/design/status";
 
 interface CourseView {
   id: string;
@@ -57,13 +59,6 @@ interface Props {
   deadlines: DeadlineView[];
   credits: CreditSummary;
 }
-
-const STATUS_COLOR: Record<string, string> = {
-  in_progress: "#7c7dff",
-  completed: "#34d399",
-  dropped: "#f87171",
-  planned: "#fbbf24",
-};
 
 export function IITClient({ courses, deadlines, credits }: Props) {
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -145,7 +140,7 @@ export function IITClient({ courses, deadlines, credits }: Props) {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {courses.map((c) => {
-              const statusColor = STATUS_COLOR[c.status] ?? "#7c7dff";
+              const statusCategory = IIT_STATUS_CATEGORY[c.status as IitStatus] ?? "mission";
               return (
                 <Link
                   key={c.id}
@@ -154,8 +149,10 @@ export function IITClient({ courses, deadlines, credits }: Props) {
                 >
                   <div className="flex items-start justify-between">
                     <span
-                      className="flex size-9 items-center justify-center rounded-xl"
-                      style={{ backgroundColor: `${statusColor}20`, color: statusColor }}
+                      className={cn(
+                        "flex size-9 items-center justify-center rounded-xl",
+                        CATEGORY_TINT[statusCategory],
+                      )}
                     >
                       <GraduationCap className="size-5" />
                     </span>

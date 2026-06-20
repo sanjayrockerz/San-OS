@@ -5,15 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
   Plus,
-  FileText,
-  MonitorPlay,
-  Code2,
-  Link2,
-  BookMarked,
-  Lightbulb,
-  GraduationCap,
-  Image as ImageIcon,
-  FileType2,
   Trash2,
   Loader2,
   ExternalLink,
@@ -36,6 +27,8 @@ import {
   deleteKnowledgeItem,
   updateKnowledgeItem,
 } from "@/app/(app)/vault/actions";
+import { CATEGORY_TINT } from "@/lib/design/category";
+import { VAULT_TYPE_META, type VaultItemType } from "@/lib/design/status";
 
 export interface VaultItemView {
   id: string;
@@ -46,22 +39,6 @@ export interface VaultItemView {
   tags: string[];
   updatedAt: string;
 }
-
-/** Visual + label config per knowledge type. */
-const TYPE_META: Record<
-  string,
-  { label: string; icon: typeof FileText; tint: string }
-> = {
-  note: { label: "Note", icon: FileText, tint: "#60a5fa" },
-  youtube: { label: "YouTube", icon: MonitorPlay, tint: "#f87171" },
-  algorithm: { label: "Algorithm", icon: Code2, tint: "#34d399" },
-  resource: { label: "Resource", icon: Link2, tint: "#a78bfa" },
-  cheatsheet: { label: "Cheatsheet", icon: BookMarked, tint: "#fbbf24" },
-  observation: { label: "Observation", icon: Lightbulb, tint: "#fb923c" },
-  lecture: { label: "Lecture", icon: GraduationCap, tint: "#22d3ee" },
-  image: { label: "Image", icon: ImageIcon, tint: "#94a3b8" },
-  pdf: { label: "PDF", icon: FileType2, tint: "#94a3b8" },
-};
 
 /** Types the user can create today (text/link kinds). File kinds are deferred. */
 const CREATABLE_TYPES = [
@@ -77,7 +54,7 @@ const CREATABLE_TYPES = [
 const FILTERS = ["All", ...CREATABLE_TYPES] as const;
 
 function meta(type: string) {
-  return TYPE_META[type] ?? TYPE_META.note;
+  return VAULT_TYPE_META[type as VaultItemType] ?? VAULT_TYPE_META.note;
 }
 
 function relativeTime(iso: string): string {
@@ -244,13 +221,15 @@ function VaultCard({
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
       className="group surface-card flex flex-col rounded-2xl p-4"
-      style={{ boxShadow: `inset 3px 0 0 ${m.tint}` }}
+      style={{ boxShadow: `inset 3px 0 0 var(--category-${m.category})` }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg"
-            style={{ backgroundColor: `${m.tint}22`, color: m.tint }}
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-lg",
+              CATEGORY_TINT[m.category],
+            )}
           >
             <Icon className="size-4" />
           </span>

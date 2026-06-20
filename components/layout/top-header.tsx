@@ -9,7 +9,7 @@ export function TopHeader() {
   const setOpen = useUIStore((s) => s.setCommandOpen);
   const setAddEntryOpen = useUIStore((s) => s.setAddEntryOpen);
 
-  const today = new Date(2025, 4, 25).toLocaleDateString("en-US", {
+  const today = new Date().toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",

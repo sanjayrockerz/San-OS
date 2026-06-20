@@ -4,35 +4,21 @@ import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  RefreshCw,
-  Sparkles,
   Check,
   Circle,
   BookOpen,
-  GraduationCap,
   ArrowRight,
-  Dumbbell,
-  Target,
 } from "lucide-react";
 
 import { Section } from "@/components/layout/page-transition";
 import { SectionHeading } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
+import { CATEGORY_TEXT, CATEGORY_TINT, type Category } from "@/lib/design/category";
+import { DAILY_PLAN_TYPE_CATEGORY, type DailyPlanType } from "@/lib/design/status";
 
 import type { OverviewData } from "./overview-client";
 
 type DailyPlanItem = OverviewData["dailyPlan"][0];
-
-const TYPE_META: Record<
-  DailyPlanItem["type"],
-  { icon: React.ElementType; tint: string }
-> = {
-  revision: { icon: RefreshCw, tint: "#60a5fa" }, // blue-400
-  concept: { icon: Sparkles, tint: "#34d399" }, // emerald-400
-  problem: { icon: Dumbbell, tint: "#fbbf24" }, // amber-400
-  iit: { icon: GraduationCap, tint: "#a78bfa" }, // violet-400
-  roadmap: { icon: Target, tint: "#f472b6" }, // pink-400
-};
 
 export function DailySessionPanel({
   items,
@@ -93,7 +79,10 @@ function SessionTaskRow({
   item: DailyPlanItem;
   onComplete: (id: string) => void;
 }) {
-  const meta = TYPE_META[item.type] || { icon: BookOpen, tint: "#94a3b8" };
+  const meta = DAILY_PLAN_TYPE_CATEGORY[item.type as DailyPlanType] ?? {
+    icon: BookOpen,
+    category: "knowledge" as Category,
+  };
   const Icon = meta.icon;
 
   return (
@@ -122,8 +111,10 @@ function SessionTaskRow({
           </span>
         </button>
         <span
-          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold"
-          style={{ backgroundColor: `${meta.tint}22`, color: meta.tint }}
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold",
+            CATEGORY_TINT[meta.category],
+          )}
         >
           {index}
         </span>
@@ -135,8 +126,10 @@ function SessionTaskRow({
         </div>
         <span className="hidden shrink-0 items-center sm:flex">
           <Icon
-            className="size-4 opacity-50 transition-opacity group-hover:opacity-100"
-            style={{ color: meta.tint }}
+            className={cn(
+              "size-4 opacity-50 transition-opacity group-hover:opacity-100",
+              CATEGORY_TEXT[meta.category],
+            )}
           />
         </span>
         <ArrowRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />

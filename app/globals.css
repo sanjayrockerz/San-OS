@@ -8,6 +8,47 @@
 }
 
 /* ============================================================
+   Typography scale — six levels, one job each. Use these instead
+   of ad hoc text-[28px]/font-bold combinations so every "hero
+   number" or "section label" in the app reads at the same weight.
+   ============================================================ */
+@utility text-display {
+  font-size: 2.25rem; /* 36px */
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+@utility text-heading {
+  font-size: 1.5rem; /* 24px */
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@utility text-section {
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@utility text-title {
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.4;
+  font-weight: 600;
+}
+@utility text-body {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.55;
+  font-weight: 400;
+}
+@utility text-caption {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
    DSA OS — Premium Engineering OS Design System
    Light + Dark parity · Apple × Linear × Raycast × Vercel
    ============================================================ */
@@ -48,6 +89,17 @@
   --warning-foreground: #ffffff;
   --danger: #ef4444;
   --danger-foreground: #ffffff;
+
+  /* Category tokens — one meaning each, used everywhere instead of ad hoc
+     hex. Every feature area's "what color is this thing" question routes
+     through lib/design/category.ts, which maps onto these. */
+  --category-memory: #6366f1; /* indigo — recall/forgetting/spaced repetition */
+  --category-academic: #10b981; /* emerald — IIT/courses/assignments */
+  --category-knowledge: #06b6d4; /* cyan — vault/concepts/resources */
+  --category-mission: #7c3aed; /* violet — battle plan/missions/priorities */
+  --category-warning: #f59e0b; /* amber — at-risk, due soon */
+  --category-critical: #ef4444; /* red — overdue, failing, neglected */
+  --category-consistency: #f97316; /* orange — streaks/habits/momentum */
 
   --radius: 1rem;
 
@@ -96,6 +148,14 @@
   --danger: #f87171;
   --danger-foreground: #2a0808;
 
+  --category-memory: #818cf8;
+  --category-academic: #34d399;
+  --category-knowledge: #22d3ee;
+  --category-mission: #a78bfa;
+  --category-warning: #fbbf24;
+  --category-critical: #f87171;
+  --category-consistency: #fb923c;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
@@ -139,6 +199,14 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
+
+  --color-category-memory: var(--category-memory);
+  --color-category-academic: var(--category-academic);
+  --color-category-knowledge: var(--category-knowledge);
+  --color-category-mission: var(--category-mission);
+  --color-category-warning: var(--category-warning);
+  --color-category-critical: var(--category-critical);
+  --color-category-consistency: var(--category-consistency);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;

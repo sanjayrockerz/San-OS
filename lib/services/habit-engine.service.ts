@@ -2,7 +2,6 @@ import type { Repositories } from "@/lib/repositories";
 import type { Tables } from "@/types/database";
 
 import { ActivityService } from "./activity.service";
-import { AiService } from "./ai.service";
 import { BaseService, isoDate } from "./base.service";
 import { EVENT_TYPES, EventService } from "./event.service";
 import { RevisionService } from "./revision.service";
@@ -81,14 +80,12 @@ export class HabitEngineService extends BaseService {
   private readonly events: EventService;
   private readonly activity: ActivityService;
   private readonly revision: RevisionService;
-  private readonly ai: AiService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.events = new EventService(repos);
     this.activity = new ActivityService(repos);
     this.revision = new RevisionService(repos);
-    this.ai = new AiService(repos);
   }
 
   // ---------------------------------------------------------------------------
@@ -344,11 +341,6 @@ export class HabitEngineService extends BaseService {
         ? Math.max(0, Math.floor((now.getTime() - new Date(n.due_at).getTime()) / DAY_MS))
         : 0,
     }));
-  }
-
-  /** Thin delegate — the Daily Brief concept already lives in AiService; don't duplicate it. */
-  getDailyBrief(userId: string, date?: string): Promise<Tables<"ai_daily_briefs">> {
-    return date ? this.ai.generateDailyBrief(userId, date) : this.ai.generateDailyBrief(userId);
   }
 
   /** Read-only end-of-day summary, distinct from the mood/notes reflection modal. */

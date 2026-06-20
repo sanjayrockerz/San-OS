@@ -6,8 +6,9 @@ type FocusMode = Database["public"]["Enums"]["focus_mode"];
 
 /**
  * Global UI state for the app shell — only ephemeral interface state (command
- * palette, sidebar, the Add Learning Entry modal, notification panel, focus
- * mode display). No domain data flows here — notification rows and the
+ * palette, sidebar, the Add Learning Entry modal, mobile nav drawer,
+ * notification panel, focus mode display). No domain data flows here —
+ * notification rows and the
  * persisted focus mode preference are server-sourced; this store only mirrors
  * them for instant UI feedback.
  */
@@ -31,6 +32,9 @@ interface UIState {
   addEntryOpen: boolean;
   setAddEntryOpen: (open: boolean) => void;
 
+  mobileNavOpen: boolean;
+  setMobileNavOpen: (open: boolean) => void;
+
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
@@ -52,6 +56,9 @@ export const useUIStore = create<UIState>((set) => ({
 
   addEntryOpen: false,
   setAddEntryOpen: (addEntryOpen) => set({ addEntryOpen }),
+
+  mobileNavOpen: false,
+  setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
 
   sidebarCollapsed: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),

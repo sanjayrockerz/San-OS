@@ -22,17 +22,12 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 import { createProblem, markSolved, type ActionResult } from "@/app/(app)/problems/actions";
+import { DIFFICULTY_BADGE_VARIANT, type Difficulty } from "@/lib/design/status";
 
 type Problem = Tables<"problems">;
 type NamedRef = { id: string; name: string };
 
 const DIFFICULTY_FILTERS = ["All", "easy", "medium", "hard"] as const;
-
-const difficultyVariant: Record<string, "success" | "warning" | "danger"> = {
-  easy: "success",
-  medium: "warning",
-  hard: "danger",
-};
 
 export function ProblemsClient({
   problems,
@@ -199,7 +194,7 @@ function ProblemRow({
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {problem.difficulty && (
-            <Badge variant={difficultyVariant[problem.difficulty]}>
+            <Badge variant={DIFFICULTY_BADGE_VARIANT[problem.difficulty as Difficulty]}>
               {problem.difficulty}
             </Badge>
           )}

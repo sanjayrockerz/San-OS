@@ -15,39 +15,13 @@ import { cn } from "@/lib/utils";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { Constants, type Tables } from "@/types/database";
 import { updatePreferences, type ActionResult } from "@/app/(app)/settings/actions";
+import { FOCUS_MODE_LABEL, REMINDER_CATEGORY_LABEL } from "@/lib/design/status";
 
 const themeOptions = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
   { value: "system", label: "System", icon: Monitor },
 ];
-
-const FOCUS_MODE_LABELS: Record<string, string> = {
-  work: "Work",
-  academic: "Academic",
-  personal: "Personal",
-  family: "Family",
-  recovery: "Recovery",
-  deep_focus: "Deep Focus",
-  none: "All",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  learning_dsa: "DSA",
-  learning_revision: "Revision",
-  learning_concepts: "Concepts",
-  learning_roadmaps: "Roadmaps",
-  academic_iit: "IIT",
-  academic_assignments: "Assignments",
-  academic_exams: "Exams",
-  project_development: "Development",
-  project_client_work: "Client Work",
-  personal_priorities: "Priorities",
-  personal_relationships: "Relationships",
-  personal_family: "Family",
-  health_sleep: "Sleep",
-  health_exercise: "Exercise",
-};
 
 function SettingsCard({
   title,
@@ -116,11 +90,12 @@ function ToggleField({
 
 interface Props {
   preferences: Tables<"user_preferences"> | null;
+  profile: { displayName: string; email: string };
 }
 
 const initialResult: ActionResult | null = null;
 
-export function SettingsClient({ preferences }: Props) {
+export function SettingsClient({ preferences, profile }: Props) {
   const { theme, setTheme } = useTheme();
   const mounted = useMounted();
   const [result, action, pending] = useActionState(updatePreferences, initialResult);
@@ -238,7 +213,7 @@ export function SettingsClient({ preferences }: Props) {
                       : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground"
                   )}
                 >
-                  {FOCUS_MODE_LABELS[mode] ?? mode}
+                  {FOCUS_MODE_LABEL[mode] ?? mode}
                 </button>
               ))}
             </div>
@@ -262,7 +237,7 @@ export function SettingsClient({ preferences }: Props) {
                     defaultChecked={hidden.has(c)}
                     className="size-4 rounded border-input"
                   />
-                  {CATEGORY_LABELS[c] ?? c}
+                  {REMINDER_CATEGORY_LABEL[c] ?? c}
                 </label>
               ))}
             </div>
@@ -279,14 +254,17 @@ export function SettingsClient({ preferences }: Props) {
         <SettingsCard title="Profile">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="name">Display name</Label>
-              <Input id="name" defaultValue="Sanjay" />
+              <p className="text-xs font-medium text-muted-foreground">Display name</p>
+              <p className="text-sm font-medium capitalize">{profile.displayName}</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="sanjay@dsa.os" />
+              <p className="text-xs font-medium text-muted-foreground">Email</p>
+              <p className="text-sm font-medium">{profile.email}</p>
             </div>
           </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Managed by your account provider.
+          </p>
         </SettingsCard>
       </Section>
     </PageTransition>

@@ -12,10 +12,23 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 
 export default async function SettingsPage() {
   const { user, services } = await requireContext("/settings");
-  const preferences = await safe(
-    services.repos.userPreferences.findByUser(user.id),
-    null as Tables<"user_preferences"> | null,
-  );
+  const [preferences, profile] = await Promise.all([
+    safe(
+      services.repos.userPreferences.findByUser(user.id),
+      null as Tables<"user_preferences"> | null,
+    ),
+    safe(
+      services.repos.profile.findByUserId(user.id),
+      null as Tables<"users_profile"> | null,
+    ),
+  ]);
 
-  return <SettingsClient preferences={preferences} />;
+  const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "—";
+
+  return (
+    <SettingsClient
+      preferences={preferences}
+      profile={{ displayName, email: user.email ?? "—" }}
+    />
+  );
 }

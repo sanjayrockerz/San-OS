@@ -25,6 +25,7 @@ export * from "./context-engine.service";
 export * from "./habit-engine.service";
 export * from "./memory-intelligence.service";
 export * from "./memory-coach.service";
+export * from "./student-intelligence-core.service";
 
 import { createRepositories, type DbClient } from "@/lib/repositories";
 
@@ -44,6 +45,7 @@ import { MemoryCoachService } from "./memory-coach.service";
 import { ProblemsService } from "./problems.service";
 import { RevisionService } from "./revision.service";
 import { RoadmapService } from "./roadmaps.service";
+import { StudentIntelligenceCoreService } from "./student-intelligence-core.service";
 import { TaxonomyService } from "./taxonomy.service";
 import { TimelineService } from "./timeline.service";
 
@@ -74,6 +76,7 @@ export function createServices(client: DbClient) {
     habitEngine: new HabitEngineService(repos),
     memoryIntelligence: new MemoryIntelligenceService(repos),
     memoryCoach: new MemoryCoachService(repos),
+    studentIntelligence: new StudentIntelligenceCoreService(repos),
   };
 }
 

@@ -8,6 +8,7 @@ import { Search, Clock, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { CATEGORY_TINT, type Category } from "@/lib/design/category";
 
 export interface ConceptView {
   id: string;
@@ -15,7 +16,7 @@ export interface ConceptView {
   category: string | null;
   status: string;
   statusLabel: string;
-  statusColor: string;
+  statusCategory: Category;
   confidence: number | null;
   topicName: string | null;
   patternName: string | null;
@@ -102,14 +103,18 @@ export function ConceptsClient({ concepts }: Props) {
               >
                 <div className="flex items-start justify-between gap-2">
                   <span
-                    className="flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
-                    style={{ backgroundColor: `${c.statusColor}1f`, color: c.statusColor }}
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold",
+                      CATEGORY_TINT[c.statusCategory],
+                    )}
                   >
                     {c.title[0]?.toUpperCase()}
                   </span>
                   <span
-                    className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ backgroundColor: `${c.statusColor}20`, color: c.statusColor }}
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                      CATEGORY_TINT[c.statusCategory],
+                    )}
                   >
                     {c.statusLabel}
                   </span>

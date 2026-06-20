@@ -8,18 +8,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressRing } from "@/components/charts/progress-ring";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-const KIND_LABEL: Record<string, string> = {
-  dsa: "DSA",
-  iit: "IIT",
-  custom: "Custom",
-};
-
-const KIND_COLOR: Record<string, string> = {
-  dsa: "#7c7dff",
-  iit: "#34d399",
-  custom: "#fbbf24",
-};
+import { cn } from "@/lib/utils";
+import { CATEGORY_TINT } from "@/lib/design/category";
+import { ROADMAP_KIND_CATEGORY, ROADMAP_KIND_LABEL, type RoadmapKind } from "@/lib/design/status";
 
 export default async function RoadmapsPage() {
   const { user, services } = await requireContext("/roadmaps");
@@ -74,7 +65,7 @@ export default async function RoadmapsPage() {
       ) : (
         <Section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {summaries.map((r) => {
-            const color = KIND_COLOR[r.kind] ?? "#7c7dff";
+            const category = ROADMAP_KIND_CATEGORY[r.kind as RoadmapKind] ?? "mission";
             return (
               <Link
                 key={r.id}
@@ -82,17 +73,18 @@ export default async function RoadmapsPage() {
                 className="surface-card group flex flex-col rounded-2xl p-5 transition-shadow hover:shadow-md"
               >
                 <div className="flex items-start gap-4">
-                  <ProgressRing value={r.progress} size={72} stroke={7} color={color}>
+                  <ProgressRing
+                    value={r.progress}
+                    size={72}
+                    stroke={7}
+                    color={`var(--category-${category})`}
+                  >
                     <span className="text-sm font-bold tabular">{r.progress}%</span>
                   </ProgressRing>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px]"
-                        style={{ backgroundColor: `${color}20`, color }}
-                      >
-                        {KIND_LABEL[r.kind] ?? r.kind}
+                      <Badge variant="secondary" className={cn("text-[10px]", CATEGORY_TINT[category])}>
+                        {ROADMAP_KIND_LABEL[r.kind as RoadmapKind] ?? r.kind}
                       </Badge>
                     </div>
                     <h3 className="mt-1.5 text-[15px] font-semibold tracking-tight transition-colors group-hover:text-primary">

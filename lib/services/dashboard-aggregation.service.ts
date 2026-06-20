@@ -1,7 +1,7 @@
 import type { Repositories } from "@/lib/repositories";
 import type { Tables } from "@/types/database";
 
-import { AiService, type BattlePlanStep } from "./ai.service";
+import type { BattlePlanStep } from "./ai.service";
 import { BaseService } from "./base.service";
 import {
   MemoryIntelligenceService,
@@ -9,6 +9,12 @@ import {
   type MemoryHealthSnapshot,
 } from "./memory-intelligence.service";
 import { RevisionService } from "./revision.service";
+import {
+  StudentIntelligenceCoreService,
+  type Mission,
+  type RiskRegister,
+  type StudentIntelligenceSnapshot,
+} from "./student-intelligence-core.service";
 import { TimelineService, type TimelineItem } from "./timeline.service";
 
 const SOLVED_STATUSES = new Set(["solved", "solved_with_help", "partial"]);
@@ -107,6 +113,13 @@ export interface DashboardAggregate {
   recentSolved: RecentSolvedItem[];
   memoryHealth: MemoryHealthSnapshot;
   forgettingForecast: ForgettingForecast;
+  /**
+   * The StudentIntelligenceCore's risk register and missions — not yet
+   * rendered anywhere, but exposed here so a future dashboard phase can
+   * consume one intelligence object instead of assembling its own.
+   */
+  risks: RiskRegister;
+  missions: Mission[];
 }
 
 /**
@@ -132,6 +145,16 @@ const EMPTY_FORGETTING_FORECAST: ForgettingForecast = {
   stableCount: 0,
   recentlyReinforcedCount: 0,
 };
+const EMPTY_RISK_REGISTER: RiskRegister = { overallRiskScore: 0, entries: [] };
+const EMPTY_CORE_SNAPSHOT: StudentIntelligenceSnapshot = {
+  priorities: [],
+  risks: EMPTY_RISK_REGISTER,
+  missions: [],
+  battlePlan: [],
+  continueLearning: [],
+  recommendations: [],
+  dailyPlan: [],
+};
 
 /**
  * DashboardAggregationService — the one read model for the overview. It NEVER
@@ -140,16 +163,16 @@ const EMPTY_FORGETTING_FORECAST: ForgettingForecast = {
  */
 export class DashboardAggregationService extends BaseService {
   private readonly revision: RevisionService;
-  private readonly ai: AiService;
   private readonly timeline: TimelineService;
   private readonly memory: MemoryIntelligenceService;
+  private readonly core: StudentIntelligenceCoreService;
 
   constructor(repos: Repositories) {
     super(repos);
     this.revision = new RevisionService(repos);
-    this.ai = new AiService(repos);
     this.timeline = new TimelineService(repos);
     this.memory = new MemoryIntelligenceService(repos);
+    this.core = new StudentIntelligenceCoreService(repos);
   }
 
   /** Invalidate the cached snapshot for a user (call after a mutation if eager). */
@@ -174,7 +197,7 @@ export class DashboardAggregationService extends BaseService {
       due,
       weak,
       aiInsights,
-      battlePlan,
+      coreSnapshot,
       activityTimeline,
       roadmapProgress,
       upcomingAssignments,
@@ -191,7 +214,7 @@ export class DashboardAggregationService extends BaseService {
       safe(this.revision.dueQueue(userId), [] as Tables<"revision_queue">[]),
       safe(this.revision.weakQueue(userId), [] as Tables<"revision_queue">[]),
       safe(this.repos.aiInsights.active(userId), [] as Tables<"ai_insights">[]),
-      safe(this.ai.battlePlan(userId), [] as BattlePlanStep[]),
+      safe(this.core.snapshot(userId), EMPTY_CORE_SNAPSHOT),
       safe(this.timeline.getUserTimeline(userId, 20), [] as TimelineItem[]),
       safe(this.roadmapProgress(userId), [] as RoadmapProgressItem[]),
       safe(this.upcomingAssignments(userId), [] as UpcomingAssignment[]),
@@ -203,6 +226,7 @@ export class DashboardAggregationService extends BaseService {
       safe(this.memory.healthSnapshot(userId), EMPTY_MEMORY_HEALTH),
       safe(this.memory.forgettingForecast(userId), EMPTY_FORGETTING_FORECAST),
     ]);
+    const { battlePlan, risks, missions } = coreSnapshot;
 
     const titleByProblem = new Map(problems.map((p) => [p.id, p.title]));
     const topicByProblem = new Map(problems.map((p) => [p.id, p.topic_id]));
@@ -240,6 +264,8 @@ export class DashboardAggregationService extends BaseService {
       recentSolved: this.recentSolved(attempts, problems),
       memoryHealth,
       forgettingForecast,
+      risks,
+      missions,
     };
 
     cache.set(userId, { at: Date.now(), snapshot });

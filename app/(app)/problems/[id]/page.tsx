@@ -21,6 +21,7 @@ import { CodeBlock } from "@/components/problems/code-block";
 import { PostSolvePanel } from "@/components/problems/post-solve-panel";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
+import { DIFFICULTY_BADGE_VARIANT, type Difficulty } from "@/lib/design/status";
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {
@@ -29,12 +30,6 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
     return fallback;
   }
 }
-
-const DIFFICULTY_VARIANT = {
-  easy: "success",
-  medium: "warning",
-  hard: "danger",
-} as const;
 
 const STATUS_LABEL: Record<string, string> = {
   solved: "Solved",
@@ -146,7 +141,7 @@ export default async function ProblemDetailPage({
               {problem.title}
             </h1>
             {problem.difficulty && (
-              <Badge variant={DIFFICULTY_VARIANT[problem.difficulty]}>
+              <Badge variant={DIFFICULTY_BADGE_VARIANT[problem.difficulty as Difficulty]}>
                 {problem.difficulty}
               </Badge>
             )}

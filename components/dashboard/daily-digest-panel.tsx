@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import {
-  Flame,
   Dumbbell,
   RefreshCw,
   Sparkles,
   Library,
   GraduationCap,
-  ArrowRight,
 } from "lucide-react";
 
 import { Section } from "@/components/layout/page-transition";
@@ -18,7 +16,15 @@ import type { OverviewData } from "./overview-client";
 
 type DailyDigestData = OverviewData["dailyDigest"];
 
-export function DailyDigestPanel({ data }: { data: DailyDigestData }) {
+export function DailyDigestPanel({
+  data,
+  milestone,
+  toMilestone,
+}: {
+  data: DailyDigestData;
+  milestone?: number;
+  toMilestone?: number;
+}) {
   const hasActivity =
     data.problemsSolved > 0 ||
     data.revisionsCompleted > 0 ||
@@ -30,7 +36,7 @@ export function DailyDigestPanel({ data }: { data: DailyDigestData }) {
 
   return (
     <Section>
-      <div className="surface-card rounded-2xl p-5 border border-primary/20 bg-primary/5">
+      <div className="surface-card rounded-xl p-4 border border-primary/20 bg-primary/5">
         <SectionHeading
           title="Today's Summary"
           action={
@@ -44,12 +50,17 @@ export function DailyDigestPanel({ data }: { data: DailyDigestData }) {
         />
 
         {data.observation && (
-          <p className="mb-4 text-sm leading-relaxed text-foreground font-medium border-l-2 border-primary pl-3">
+          <p className="mb-3 text-xs leading-relaxed text-foreground font-medium border-l-2 border-primary pl-3">
             {data.observation}
           </p>
         )}
+        {milestone !== undefined && toMilestone !== undefined && toMilestone > 0 && (
+          <p className="mb-3 text-xs text-muted-foreground">
+            {toMilestone} more to your next milestone ({milestone} solved).
+          </p>
+        )}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           <MetricCard
             icon={Dumbbell}
             value={data.problemsSolved}
@@ -77,7 +88,7 @@ export function DailyDigestPanel({ data }: { data: DailyDigestData }) {
           <MetricCard
             icon={GraduationCap}
             value={data.iitCompleted}
-            label="IIT Tasks"
+            label="Academic"
             color="text-purple-500"
           />
         </div>

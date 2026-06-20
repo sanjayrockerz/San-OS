@@ -13,10 +13,12 @@ export default async function AppGroupLayout({
   children: React.ReactNode;
 }) {
   const { user, services } = await requireContext();
-  await ensureProfile(services, user);
+  const profile = await ensureProfile(services, user);
+
+  const displayName = profile.display_name ?? user.email?.split("@")[0] ?? "You";
 
   return (
-    <AppShell>
+    <AppShell user={{ displayName, email: user.email ?? null }}>
       {children}
       <PostActionPrompt />
     </AppShell>

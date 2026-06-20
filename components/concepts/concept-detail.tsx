@@ -31,14 +31,8 @@ import {
   linkConceptProblem,
   type ActionResult,
 } from "@/app/(app)/concepts/actions";
-
-const STATUS_COLOR: Record<string, string> = {
-  learning: "#fbbf24",
-  understood: "#60a5fa",
-  weak: "#f87171",
-  forgotten: "#a78bfa",
-  mastered: "#34d399",
-};
+import { CATEGORY_BG } from "@/lib/design/category";
+import { CONCEPT_STATUS_CATEGORY, DIFFICULTY_BADGE_VARIANT, type ConceptStatus } from "@/lib/design/status";
 
 const STATUS_OPTIONS = ["learning", "understood", "weak", "forgotten", "mastered"] as const;
 
@@ -95,12 +89,6 @@ interface Props {
   relatedKnowledge: RelatedKnowledgeItem[];
   allProblems: { id: string; title: string }[];
 }
-
-const DIFFICULTY_VARIANT: Record<string, "success" | "warning" | "danger" | "secondary"> = {
-  easy: "success",
-  medium: "warning",
-  hard: "danger",
-};
 
 export function ConceptDetail({
   concept,
@@ -392,7 +380,10 @@ export function ConceptDetail({
                       <BookOpen className="size-3.5 text-muted-foreground" />
                       <span className="flex-1 truncate text-sm">{p.title}</span>
                       {p.difficulty && (
-                        <Badge variant={DIFFICULTY_VARIANT[p.difficulty] ?? "secondary"} className="text-[10px]">
+                        <Badge
+                          variant={DIFFICULTY_BADGE_VARIANT[p.difficulty as keyof typeof DIFFICULTY_BADGE_VARIANT] ?? "secondary"}
+                          className="text-[10px]"
+                        >
                           {p.difficulty}
                         </Badge>
                       )}
@@ -414,26 +405,25 @@ export function ConceptDetail({
             <form action={statusAction} className="space-y-4">
               <input type="hidden" name="conceptId" value={concept.id} />
               <div className="grid grid-cols-1 gap-2">
-                {STATUS_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSelectedStatus(s)}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all",
-                      selectedStatus === s
-                        ? "border-transparent text-white"
-                        : "border-border text-muted-foreground hover:border-border-strong",
-                    )}
-                    style={selectedStatus === s ? { backgroundColor: STATUS_COLOR[s] } : {}}
-                  >
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: STATUS_COLOR[s] }}
-                    />
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </button>
-                ))}
+                {STATUS_OPTIONS.map((s) => {
+                  const category = CONCEPT_STATUS_CATEGORY[s as ConceptStatus];
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSelectedStatus(s)}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all",
+                        selectedStatus === s
+                          ? cn("border-transparent text-white", CATEGORY_BG[category])
+                          : "border-border text-muted-foreground hover:border-border-strong",
+                      )}
+                    >
+                      <span className={cn("size-2 rounded-full shrink-0", CATEGORY_BG[category])} />
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>
+                  );
+                })}
               </div>
               <input type="hidden" name="status" value={selectedStatus} />
 

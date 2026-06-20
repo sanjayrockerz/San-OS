@@ -7,13 +7,13 @@ import { ProgressRing } from "@/components/charts/progress-ring";
 import { Badge } from "@/components/ui/badge";
 import { RoadmapTree } from "@/components/roadmaps/roadmap-tree";
 import type { RoadmapNode } from "@/lib/services";
+import { cn } from "@/lib/utils";
+import { CATEGORY_TINT } from "@/lib/design/category";
+import { ROADMAP_KIND_CATEGORY, ROADMAP_KIND_LABEL, type RoadmapKind } from "@/lib/design/status";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
-
-const KIND_LABEL: Record<string, string> = { dsa: "DSA", iit: "IIT", custom: "Custom" };
-const KIND_COLOR: Record<string, string> = { dsa: "#7c7dff", iit: "#34d399", custom: "#fbbf24" };
 
 export default async function RoadmapDetailPage({ params }: Props) {
   const { id } = await params;
@@ -23,7 +23,7 @@ export default async function RoadmapDetailPage({ params }: Props) {
   if (!tree) notFound();
 
   const pct = tree.total > 0 ? Math.round((tree.completed / tree.total) * 100) : 0;
-  const color = KIND_COLOR[tree.roadmap.kind] ?? "#7c7dff";
+  const category = ROADMAP_KIND_CATEGORY[tree.roadmap.kind as RoadmapKind] ?? "mission";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -37,12 +37,8 @@ export default async function RoadmapDetailPage({ params }: Props) {
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <Badge
-              variant="secondary"
-              className="text-[10px]"
-              style={{ backgroundColor: `${color}20`, color }}
-            >
-              {KIND_LABEL[tree.roadmap.kind] ?? tree.roadmap.kind}
+            <Badge variant="secondary" className={cn("text-[10px]", CATEGORY_TINT[category])}>
+              {ROADMAP_KIND_LABEL[tree.roadmap.kind as RoadmapKind] ?? tree.roadmap.kind}
             </Badge>
           </div>
           <h1 className="mt-1 text-xl font-bold tracking-tight">{tree.roadmap.title}</h1>
@@ -51,7 +47,7 @@ export default async function RoadmapDetailPage({ params }: Props) {
           )}
         </div>
         <div className="shrink-0">
-          <ProgressRing value={pct} size={64} stroke={6} color={color}>
+          <ProgressRing value={pct} size={64} stroke={6} color={`var(--category-${category})`}>
             <span className="text-xs font-bold tabular">{pct}%</span>
           </ProgressRing>
         </div>
@@ -66,7 +62,7 @@ export default async function RoadmapDetailPage({ params }: Props) {
         <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, backgroundColor: color }}
+            style={{ width: `${pct}%`, backgroundColor: `var(--category-${category})` }}
           />
         </div>
       </div>

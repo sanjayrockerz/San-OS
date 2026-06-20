@@ -31,12 +31,8 @@ import {
   snoozeRevision,
 } from "@/app/(app)/revision/actions";
 import type { RevisionCard, RevisionWorkspace } from "@/lib/services";
-
-const DIFFICULTY_VARIANT = {
-  easy: "success",
-  medium: "warning",
-  hard: "danger",
-} as const;
+import { CATEGORY_TINT, type Category } from "@/lib/design/category";
+import { DIFFICULTY_BADGE_VARIANT, type Difficulty } from "@/lib/design/status";
 
 const URGENCY_META = {
   high: { label: "Overdue", className: "bg-danger/15 text-danger" },
@@ -81,25 +77,25 @@ export function RevisionClient({ workspace }: { workspace: RevisionWorkspace }) 
             icon={Target}
             label="Due Today"
             value={`${hero.dueToday}`}
-            tint="#60a5fa"
+            category="memory"
           />
           <HeroStat
             icon={Sparkles}
             label="Weakest Topic"
             value={hero.weakestTopic ?? "—"}
-            tint="#fb923c"
+            category="consistency"
           />
           <HeroStat
             icon={Clock}
             label="Estimated Time"
             value={hero.estimatedMinutes > 0 ? `${hero.estimatedMinutes} min` : "—"}
-            tint="#34d399"
+            category="academic"
           />
           <HeroStat
             icon={Flame}
             label="Current Streak"
             value={`${hero.streak} day${hero.streak === 1 ? "" : "s"}`}
-            tint="#f87171"
+            category="critical"
           />
         </div>
 
@@ -171,18 +167,20 @@ function HeroStat({
   icon: Icon,
   label,
   value,
-  tint,
+  category,
 }: {
   icon: typeof Target;
   label: string;
   value: string;
-  tint: string;
+  category: Category;
 }) {
   return (
     <div className="surface-card rounded-2xl p-4">
       <span
-        className="flex size-8 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `${tint}22`, color: tint }}
+        className={cn(
+          "flex size-8 items-center justify-center rounded-lg",
+          CATEGORY_TINT[category],
+        )}
       >
         <Icon className="size-4" />
       </span>
@@ -244,7 +242,7 @@ function DueCard({
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {card.difficulty && (
-              <Badge variant={DIFFICULTY_VARIANT[card.difficulty]}>
+              <Badge variant={DIFFICULTY_BADGE_VARIANT[card.difficulty as Difficulty]}>
                 {card.difficulty}
               </Badge>
             )}
@@ -364,7 +362,7 @@ function RevisionFlow({
             <div className="flex flex-wrap items-center gap-1.5">
               {card.pattern && <Badge variant="default">{card.pattern.name}</Badge>}
               {card.difficulty && (
-                <Badge variant={DIFFICULTY_VARIANT[card.difficulty]}>
+                <Badge variant={DIFFICULTY_BADGE_VARIANT[card.difficulty as Difficulty]}>
                   {card.difficulty}
                 </Badge>
               )}

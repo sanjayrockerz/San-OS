@@ -7,18 +7,9 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 import { setFocusMode, type ActionResult } from "@/app/(app)/settings/actions";
 import { Constants, type Database } from "@/types/database";
+import { FOCUS_MODE_LABEL } from "@/lib/design/status";
 
 type FocusMode = Database["public"]["Enums"]["focus_mode"];
-
-const LABELS: Record<string, string> = {
-  work: "Work",
-  academic: "Academic",
-  personal: "Personal",
-  family: "Family",
-  recovery: "Recovery",
-  deep_focus: "Deep Focus",
-  none: "All",
-};
 
 const initialResult: ActionResult | null = null;
 
@@ -51,7 +42,7 @@ export function FocusModeSwitcher({ initialMode }: { initialMode: string }) {
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
-            {LABELS[mode] ?? mode}
+            {FOCUS_MODE_LABEL[mode] ?? mode}
           </button>
         </form>
       ))}

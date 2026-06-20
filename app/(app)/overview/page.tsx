@@ -3,9 +3,18 @@ import {
   OverviewClient,
   type OverviewData,
 } from "@/components/dashboard/overview-client";
-import type { BattlePlanStep, EveningReview, MissedWorkItem } from "@/lib/services";
-import { HabitEngineService } from "@/lib/services";
-import type { SessionTask } from "@/lib/services/context-engine.service";
+import type {
+  BattlePlanStep,
+  EveningReview,
+  Mission,
+  MissedWorkItem,
+  Recommendation,
+  ResumeItem,
+  RiskRegister,
+  SessionTask,
+  StudentAction,
+} from "@/lib/services";
+import { ACTION_KIND_TO_BATTLE_KIND, HabitEngineService } from "@/lib/services";
 import type { Tables } from "@/types/database";
 
 function greeting(): string {
@@ -82,10 +91,8 @@ export default async function OverviewPage() {
     snapshot,
     aiInsights,
     todayLog,
-    resumeItems,
-    recommendations,
+    intelligence,
     dailyDigest,
-    dailyPlan,
     preferences,
     notifications,
     missedWork,
@@ -94,8 +101,14 @@ export default async function OverviewPage() {
     services.dashboardAggregation.snapshot(user.id),
     services.repos.aiInsights.active(user.id).catch(() => [] as never[]),
     services.repos.dailyLogs.findByDate(user.id, today).catch(() => null),
-    services.context.resumePriority(user.id).catch(() => []),
-    services.context.recommendations(user.id).catch(() => []),
+    services.studentIntelligence.snapshot(user.id).catch(() => ({
+      continueLearning: [] as ResumeItem[],
+      recommendations: [] as Recommendation[],
+      dailyPlan: [] as SessionTask[],
+      priorities: [] as StudentAction[],
+      risks: { overallRiskScore: 0, entries: [] } as RiskRegister,
+      missions: [] as Mission[],
+    })),
     services.context.dailyDigest(user.id).catch(() => ({
       problemsSolved: 0,
       revisionsCompleted: 0,
@@ -105,7 +118,6 @@ export default async function OverviewPage() {
       streak: 0,
       observation: null,
     })),
-    services.context.buildDailyPlan(user.id).catch(() => []),
     services.repos.userPreferences
       .findByUser(user.id)
       .catch(() => null as Tables<"user_preferences"> | null),
@@ -140,6 +152,15 @@ export default async function OverviewPage() {
     return sum + mins;
   }, 0);
 
+  const isHiddenByFocus = (kind: StudentAction["kind"]) => {
+    const bucket = ACTION_KIND_TO_BATTLE_KIND[kind];
+    return bucket ? (focusConfig.hideBattlePlanKinds?.includes(bucket) ?? false) : false;
+  };
+  const visiblePriorities = intelligence.priorities.filter((a) => !isHiddenByFocus(a.kind));
+  const visibleMissions = intelligence.missions
+    .map((m) => ({ ...m, actions: m.actions.filter((a) => !isHiddenByFocus(a.kind)) }))
+    .filter((m) => m.actions.length > 0);
+
   const topInsight = (aiInsights as { detail?: string | null }[])[0];
   const aiSummary = topInsight?.detail ?? null;
 
@@ -161,13 +182,13 @@ export default async function OverviewPage() {
         entityId: step.entityId ?? null,
       };
     }),
-    resumeItems: resumeItems.map((r) => ({
+    resumeItems: intelligence.continueLearning.map((r) => ({
       ...r,
       lastTouchedAt: r.lastTouchedAt ? relativeTime(r.lastTouchedAt) : null,
     })),
-    recommendations,
+    recommendations: intelligence.recommendations,
     dailyDigest,
-    dailyPlan,
+    dailyPlan: intelligence.dailyPlan,
     continueLearning: snapshot.continueLearning[0]
       ? {
           problemId: snapshot.continueLearning[0].problemId,
@@ -239,6 +260,9 @@ export default async function OverviewPage() {
     missedWork,
     focusMode,
     eveningReview,
+    priorities: visiblePriorities,
+    risks: intelligence.risks,
+    missions: visibleMissions,
   };
 
   return <OverviewClient data={data} />;
