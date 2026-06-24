@@ -13,6 +13,7 @@ import {
   Activity,
   Bell,
   Compass,
+  Heart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,6 +65,16 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Academic Command Center", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
       { label: "IIT Workspace", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
+    ],
+  },
+  {
+    heading: "Personal",
+    items: [
+      // Relationships/Family/Sleep/Exercise/Priorities are reminder
+      // categories with no dedicated page — this deep-links into
+      // Notifications pre-filtered to just those, since that's the only
+      // place they're actually manageable today.
+      { label: "Personal", shortLabel: "Personal", href: "/notifications?life=personal", icon: Heart },
     ],
   },
   {

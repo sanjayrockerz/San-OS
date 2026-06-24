@@ -18,8 +18,21 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
  * push notification deep link in a later phase) without depending on the
  * overview page having loaded first this session.
  */
-export default async function NotificationsPage() {
+const PERSONAL_CATEGORIES = [
+  "personal_relationships",
+  "personal_family",
+  "personal_priorities",
+  "health_sleep",
+  "health_exercise",
+] as const;
+
+export default async function NotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ life?: string }>;
+}) {
   const { user, services } = await requireContext("/notifications");
+  const { life } = await searchParams;
 
   await safe(services.habitEngine.evaluateForUser(user.id), {
     generated: 0,
@@ -34,11 +47,14 @@ export default async function NotificationsPage() {
     safe(services.repos.reminders.findByUser(user.id), [] as Tables<"reminders">[]),
   ]);
 
+  const categoryFilter = life === "personal" ? PERSONAL_CATEGORIES : null;
+
   return (
     <NotificationsClient
       notifications={notifications}
       missedWork={missedWork}
       reminders={reminders}
+      categoryFilter={categoryFilter}
     />
   );
 }

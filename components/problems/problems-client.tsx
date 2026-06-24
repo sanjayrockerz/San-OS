@@ -12,6 +12,7 @@ import {
   CircleDot,
   Loader2,
   ArrowRight,
+  Pencil,
 } from "lucide-react";
 
 import { PageTransition, Section } from "@/components/layout/page-transition";
@@ -21,7 +22,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
-import { createProblem, markSolved, type ActionResult } from "@/app/(app)/problems/actions";
+import {
+  createProblem,
+  markSolved,
+  updateProblem,
+  type ActionResult,
+} from "@/app/(app)/problems/actions";
 import { DIFFICULTY_BADGE_VARIANT, type Difficulty } from "@/lib/design/status";
 
 type Problem = Tables<"problems">;
@@ -137,6 +143,8 @@ export function ProblemsClient({
             <ProblemRow
               key={p.id}
               problem={p}
+              topics={topics}
+              patterns={patterns}
               topicName={p.topic_id ? topicName.get(p.topic_id) : undefined}
               patternName={
                 p.pattern_id ? patternName.get(p.pattern_id) : undefined
@@ -151,21 +159,38 @@ export function ProblemsClient({
 
 function ProblemRow({
   problem,
+  topics,
+  patterns,
   topicName,
   patternName,
 }: {
   problem: Problem;
+  topics: NamedRef[];
+  patterns: NamedRef[];
   topicName?: string;
   patternName?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [solved, setSolved] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   function handleSolve() {
     startTransition(async () => {
       const res = await markSolved(problem.id);
       if (res.ok) setSolved(true);
     });
+  }
+
+  if (editing) {
+    return (
+      <EditProblemForm
+        problem={problem}
+        topics={topics}
+        patterns={patterns}
+        onDone={() => setEditing(false)}
+        onCancel={() => setEditing(false)}
+      />
+    );
   }
 
   return (
@@ -191,6 +216,16 @@ function ProblemRow({
               <ExternalLink className="size-3.5" />
             </a>
           )}
+          {problem.user_id && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Edit problem"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          )}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {problem.difficulty && (
@@ -208,21 +243,145 @@ function ProblemRow({
         </div>
       </div>
 
-      <Button
-        size="sm"
-        variant={solved ? "success" : "secondary"}
-        onClick={handleSolve}
-        disabled={pending || solved}
-        className="shrink-0"
-      >
-        {pending ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Check className="size-4" />
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <Button
+          size="sm"
+          variant={solved ? "success" : "secondary"}
+          onClick={handleSolve}
+          disabled={pending || solved}
+        >
+          {pending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Check className="size-4" />
+          )}
+          {solved ? "Solved" : "Mark solved"}
+        </Button>
+        {solved && (
+          <button
+            type="button"
+            onClick={() => setSolved(false)}
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Undo
+          </button>
         )}
-        {solved ? "Solved" : "Mark solved"}
-      </Button>
+      </div>
     </div>
+  );
+}
+
+function EditProblemForm({
+  problem,
+  topics,
+  patterns,
+  onDone,
+  onCancel,
+}: {
+  problem: Problem;
+  topics: NamedRef[];
+  patterns: NamedRef[];
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const boundUpdate = updateProblem.bind(null, problem.id);
+  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
+    boundUpdate,
+    null,
+  );
+
+  useEffect(() => {
+    if (state?.ok) onDone();
+  }, [state, onDone]);
+
+  return (
+    <form
+      action={formAction}
+      className="surface-card grid grid-cols-1 gap-3 rounded-2xl p-5 sm:grid-cols-2"
+    >
+      <div className="sm:col-span-2">
+        <FieldLabel>Title</FieldLabel>
+        <Input name="title" required defaultValue={problem.title} className="h-10" />
+      </div>
+
+      <div className="sm:col-span-2">
+        <FieldLabel>URL</FieldLabel>
+        <Input
+          name="url"
+          type="url"
+          defaultValue={problem.url ?? ""}
+          placeholder="https://leetcode.com/problems/two-sum"
+          className="h-10"
+        />
+      </div>
+
+      <div>
+        <FieldLabel>Platform</FieldLabel>
+        <Select name="platform" defaultValue={problem.platform}>
+          {[
+            "leetcode",
+            "codeforces",
+            "hackerrank",
+            "codechef",
+            "geeksforgeeks",
+            "atcoder",
+            "interviewbit",
+            "other",
+          ].map((p) => (
+            <option key={p} value={p} className="capitalize">
+              {p}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div>
+        <FieldLabel>Difficulty</FieldLabel>
+        <Select name="difficulty" defaultValue={problem.difficulty ?? ""}>
+          <option value="">—</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </Select>
+      </div>
+
+      <div>
+        <FieldLabel>Topic</FieldLabel>
+        <Select name="topic_id" defaultValue={problem.topic_id ?? ""}>
+          <option value="">—</option>
+          {topics.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div>
+        <FieldLabel>Pattern</FieldLabel>
+        <Select name="pattern_id" defaultValue={problem.pattern_id ?? ""}>
+          <option value="">—</option>
+          {patterns.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-3 sm:col-span-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+          Save changes
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={pending}>
+          Cancel
+        </Button>
+        {state && !state.ok && (
+          <span className="text-xs text-danger">{state.error}</span>
+        )}
+      </div>
+    </form>
   );
 }
 

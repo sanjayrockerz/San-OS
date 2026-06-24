@@ -58,10 +58,14 @@ export async function createAssignment(
 ): Promise<ActionResult> {
   const user = await requireUser("/iit-workspace");
 
+  const dueDateRaw = formData.get("due_date");
   const raw = {
     title: formData.get("title"),
     course_id: formData.get("course_id") || null,
-    due_date: formData.get("due_date") || null,
+    // The form posts a date-only value (YYYY-MM-DD) from <input type="date">,
+    // but the schema requires a full ISO datetime with offset — anchor it to
+    // end-of-day UTC so a date-only due date doesn't fail validation.
+    due_date: dueDateRaw ? new Date(`${dueDateRaw}T23:59:59Z`).toISOString() : null,
     description: formData.get("description") || null,
     max_score: formData.get("max_score") ? Number(formData.get("max_score")) : null,
     status: "pending",

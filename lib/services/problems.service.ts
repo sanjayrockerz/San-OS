@@ -97,6 +97,10 @@ export class ProblemsService extends BaseService {
   ): Promise<RecordSolveResult> {
     const j = input.journey ?? {};
 
+    // Doesn't depend on the attempt — fetched in parallel with everything
+    // below so the title is ready by the time events need it.
+    const problemPromise = this.repos.problems.findById(input.problemId);
+
     const attempt = await this.repos.attempts.create({
       user_id: userId,
       problem_id: input.problemId,
@@ -114,89 +118,93 @@ export class ProblemsService extends BaseService {
       logic_error: j.logicError ?? false,
     });
 
-    let reflection: Tables<"problem_reflections"> | null = null;
-    if (input.reflection) {
-      const r = input.reflection;
-      reflection = await this.repos.reflections.create({
-        user_id: userId,
-        problem_id: input.problemId,
-        attempt_id: attempt.id,
-        my_explanation: r.myExplanation ?? null,
-        algorithm_in_words: r.algorithmInWords ?? null,
-        bug_that_stopped_me: r.bugThatStoppedMe ?? null,
-        final_takeaway: r.finalTakeaway ?? null,
-      });
-    }
-
-    let codeVersion: Tables<"problem_code_versions"> | null = null;
-    if (input.code) {
-      codeVersion = await this.repos.codeVersions.create({
-        user_id: userId,
-        problem_id: input.problemId,
-        attempt_id: attempt.id,
-        language: input.code.language,
-        code: input.code.code,
-        is_final: input.code.isFinal ?? false,
-      });
-    }
-
-    const revision = await this.revision.scheduleAfterSolve(
-      userId,
-      input.problemId,
-      input.editorialUsed ?? false,
-    );
-
-    const roadmapItemsUpdated = await this.fanOutToRoadmaps(
-      userId,
-      input.problemId,
-    );
-
-    await this.activity.log(userId, {
-      type: "problem_solved",
-      title: "Solved a problem",
-      entityType: "problem",
-      entityId: input.problemId,
-      metadata: { attemptId: attempt.id, solveStatus: attempt.solve_status },
-    });
-    await this.activity.bumpDailyCounters(userId, { problems_solved: 1 });
+    // Everything below only depends on `attempt.id`, not on each other —
+    // run them concurrently instead of one round trip at a time.
+    const [reflection, codeVersion, revision, roadmapItemsUpdated] =
+      await Promise.all([
+        input.reflection
+          ? this.repos.reflections.create({
+              user_id: userId,
+              problem_id: input.problemId,
+              attempt_id: attempt.id,
+              my_explanation: input.reflection.myExplanation ?? null,
+              algorithm_in_words: input.reflection.algorithmInWords ?? null,
+              bug_that_stopped_me: input.reflection.bugThatStoppedMe ?? null,
+              final_takeaway: input.reflection.finalTakeaway ?? null,
+            })
+          : Promise.resolve(null),
+        input.code
+          ? this.repos.codeVersions.create({
+              user_id: userId,
+              problem_id: input.problemId,
+              attempt_id: attempt.id,
+              language: input.code.language,
+              code: input.code.code,
+              is_final: input.code.isFinal ?? false,
+            })
+          : Promise.resolve(null),
+        this.revision.scheduleAfterSolve(
+          userId,
+          input.problemId,
+          input.editorialUsed ?? false,
+        ),
+        this.fanOutToRoadmaps(userId, input.problemId),
+        this.activity.log(userId, {
+          type: "problem_solved",
+          title: "Solved a problem",
+          entityType: "problem",
+          entityId: input.problemId,
+          metadata: { attemptId: attempt.id, solveStatus: attempt.solve_status },
+        }),
+        this.activity.bumpDailyCounters(userId, { problems_solved: 1 }),
+      ] as const);
 
     // Emit the domain events that downstream engines (timeline, analytics, AI)
     // consume. Title is looked up so the timeline reads naturally.
-    const solved = await this.repos.problems.findById(input.problemId);
+    const solved = await problemPromise;
     const title = solved?.title;
     const base = { entityType: "problem", entityId: input.problemId };
 
-    await this.events.emit(userId, {
-      eventType: EVENT_TYPES.ProblemSolved,
-      ...base,
-      payload: { title, solveStatus: attempt.solve_status },
-    });
-    if (reflection) {
-      await this.events.emit(userId, {
-        eventType: EVENT_TYPES.ReflectionCreated,
+    const events: Promise<unknown>[] = [
+      this.events.emit(userId, {
+        eventType: EVENT_TYPES.ProblemSolved,
         ...base,
-        payload: { title, reflectionId: reflection.id },
-      });
+        payload: { title, solveStatus: attempt.solve_status },
+      }),
+      this.events.emit(userId, {
+        eventType: EVENT_TYPES.RevisionScheduled,
+        ...base,
+        payload: { title, nextRevision: revision.next_revision },
+      }),
+    ];
+    if (reflection) {
+      events.push(
+        this.events.emit(userId, {
+          eventType: EVENT_TYPES.ReflectionCreated,
+          ...base,
+          payload: { title, reflectionId: reflection.id },
+        }),
+      );
     }
     if (codeVersion) {
-      await this.events.emit(userId, {
-        eventType: EVENT_TYPES.CodeVersionCreated,
-        ...base,
-        payload: { title, language: codeVersion.language },
-      });
+      events.push(
+        this.events.emit(userId, {
+          eventType: EVENT_TYPES.CodeVersionCreated,
+          ...base,
+          payload: { title, language: codeVersion.language },
+        }),
+      );
     }
-    await this.events.emit(userId, {
-      eventType: EVENT_TYPES.RevisionScheduled,
-      ...base,
-      payload: { title, nextRevision: revision.next_revision },
-    });
     if (roadmapItemsUpdated > 0) {
-      await this.events.emit(userId, {
-        eventType: EVENT_TYPES.RoadmapProgressed,
-        ...base,
-        payload: { title, itemsUpdated: roadmapItemsUpdated },
-      });
+      events.push(
+        this.events.emit(userId, {
+          eventType: EVENT_TYPES.RoadmapProgressed,
+          ...base,
+          payload: { title, itemsUpdated: roadmapItemsUpdated },
+        }),
+      );
     }
+    await Promise.all(events);
 
     return { attempt, reflection, codeVersion, revision, roadmapItemsUpdated };
   }

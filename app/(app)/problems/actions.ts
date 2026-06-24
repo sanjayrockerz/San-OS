@@ -77,6 +77,63 @@ export async function createProblem(
   return { ok: true };
 }
 
+const updateProblemSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200),
+  url: z.string().trim().url("Must be a valid URL").or(z.literal("")).optional(),
+  platform: z.enum(PLATFORMS).default("leetcode"),
+  difficulty: z.enum(DIFFICULTIES).optional(),
+  topic_id: z.string().uuid().optional().or(z.literal("")),
+  pattern_id: z.string().uuid().optional().or(z.literal("")),
+});
+
+/** Updates a user-authored problem's metadata. Catalog problems (no owner) can't be edited. */
+export async function updateProblem(
+  problemId: string,
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/problems");
+
+  const parsed = updateProblemSchema.safeParse({
+    title: formData.get("title"),
+    url: formData.get("url") ?? "",
+    platform: formData.get("platform") || "leetcode",
+    difficulty: formData.get("difficulty") || undefined,
+    topic_id: formData.get("topic_id") || "",
+    pattern_id: formData.get("pattern_id") || "",
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const v = parsed.data;
+  const supabase = await createClient();
+  const services = createServices(supabase);
+
+  const existing = await services.repos.problems.findById(problemId);
+  if (!existing || existing.user_id !== user.id) {
+    return { ok: false, error: "Problem not found" };
+  }
+
+  try {
+    await services.repos.problems.update(problemId, {
+      title: v.title,
+      url: v.url ? v.url : null,
+      platform: v.platform,
+      difficulty: v.difficulty ?? null,
+      topic_id: v.topic_id ? v.topic_id : null,
+      pattern_id: v.pattern_id ? v.pattern_id : null,
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to save" };
+  }
+
+  revalidatePath("/problems");
+  revalidatePath(`/problems/${problemId}`);
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Add Learning Entry — the full DSA workflow that drives the Problem Engine.
 // ---------------------------------------------------------------------------

@@ -33,6 +33,8 @@ import {
   type ActionResult,
 } from "@/app/(app)/notifications/actions";
 import { REMINDER_CATEGORY_LABEL } from "@/lib/design/status";
+import Link from "next/link";
+import { X } from "lucide-react";
 
 type NotificationRow = Tables<"notifications">;
 type ReminderRow = Tables<"reminders">;
@@ -192,7 +194,7 @@ function ReminderRowItem({ reminder }: { reminder: ReminderRow }) {
   );
 }
 
-function CreateReminderForm() {
+function CreateReminderForm({ defaultCategory = "learning_dsa" }: { defaultCategory?: string }) {
   const [result, action, pending] = useActionState(createReminder, initialActionResult);
   const [recurrence, setRecurrence] = useState<string>("one_time");
   const categories = Constants.public.Enums.reminder_category;
@@ -212,7 +214,7 @@ function CreateReminderForm() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="category">Category</Label>
-          <Select id="category" name="category" defaultValue="learning_dsa">
+          <Select id="category" name="category" defaultValue={defaultCategory}>
             {categories.map((c) => (
               <option key={c} value={c}>
                 {categoryLabel(c)}
@@ -269,24 +271,54 @@ interface Props {
   notifications: NotificationRow[];
   missedWork: MissedWorkItem[];
   reminders: ReminderRow[];
+  categoryFilter?: readonly string[] | null;
 }
 
-export function NotificationsClient({ notifications, missedWork, reminders }: Props) {
-  const unread = notifications.filter((n) => n.state === "unread");
-  const rest = notifications.filter((n) => n.state !== "unread");
+export function NotificationsClient({
+  notifications,
+  missedWork,
+  reminders,
+  categoryFilter,
+}: Props) {
+  const filterSet = categoryFilter ? new Set(categoryFilter) : null;
+  const visibleNotifications = filterSet
+    ? notifications.filter((n) => n.category && filterSet.has(n.category))
+    : notifications;
+  const visibleMissedWork = filterSet
+    ? missedWork.filter((m) => m.category && filterSet.has(m.category))
+    : missedWork;
+  const visibleReminders = filterSet
+    ? reminders.filter((r) => filterSet.has(r.category))
+    : reminders;
+
+  const unread = visibleNotifications.filter((n) => n.state === "unread");
+  const rest = visibleNotifications.filter((n) => n.state !== "unread");
 
   return (
     <PageTransition>
       <PageHeader
-        title="Notifications"
-        description="Everything due, missed, or waiting on you — SanOS remembers so you don't have to."
+        title={filterSet ? "Personal" : "Notifications"}
+        description={
+          filterSet
+            ? "Relationships, family, sleep, exercise, and priorities — everything due, missed, or waiting on you."
+            : "Everything due, missed, or waiting on you — SanOS remembers so you don't have to."
+        }
       />
 
-      {missedWork.length > 0 && (
+      {filterSet && (
+        <Link
+          href="/notifications"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3.5" /> Showing Personal only — view all notifications
+        </Link>
+      )}
+
+      {visibleMissedWork.length > 0 && (
         <Section className="mb-6">
-          <SectionHeading title={`While you were away (${missedWork.length})`} />
+          <SectionHeading title={`While you were away (${visibleMissedWork.length})`} />
           <div className="space-y-2">
-            {missedWork.map((item) => (
+            {visibleMissedWork.map((item) => (
               <MissedWorkCard key={item.notificationId} item={item} />
             ))}
           </div>
@@ -295,7 +327,7 @@ export function NotificationsClient({ notifications, missedWork, reminders }: Pr
 
       <Section className="mb-6">
         <SectionHeading title="Notification Center" />
-        {notifications.length === 0 ? (
+        {visibleNotifications.length === 0 ? (
           <EmptyState icon={Bell} title="Nothing here yet" description="Due reminders, revisions, and assignments will show up here." />
         ) : (
           <div className="space-y-2">
@@ -307,16 +339,16 @@ export function NotificationsClient({ notifications, missedWork, reminders }: Pr
       </Section>
 
       <Section className="mb-6">
-        <CreateReminderForm />
+        <CreateReminderForm defaultCategory={filterSet ? "personal_relationships" : "learning_dsa"} />
       </Section>
 
       <Section>
         <SectionHeading title="Your Reminders" />
-        {reminders.length === 0 ? (
+        {visibleReminders.length === 0 ? (
           <EmptyState icon={Clock} title="No reminders yet" description="Create one above to get started." />
         ) : (
           <div className="space-y-2">
-            {reminders.map((r) => (
+            {visibleReminders.map((r) => (
               <ReminderRowItem key={r.id} reminder={r} />
             ))}
           </div>
