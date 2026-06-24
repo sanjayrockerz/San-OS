@@ -14,10 +14,12 @@ function StepRow({
   step,
   state,
   onDone,
+  onUndo,
 }: {
   step: FocusStep;
   state: "done" | "current" | "upcoming";
   onDone: () => void;
+  onUndo: () => void;
 }) {
   const [, action, pending] = useActionState(
     async (_prev: ActionResult | null, formData: FormData) => {
@@ -73,6 +75,15 @@ function StepRow({
             </form>
           </div>
         )}
+        {state === "done" && (
+          <button
+            type="button"
+            onClick={onUndo}
+            className="mt-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Undo
+          </button>
+        )}
       </div>
     </div>
   );
@@ -101,6 +112,13 @@ export function FocusSession({ steps }: { steps: FocusStep[] }) {
       <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
         <PartyPopper className="size-6 text-success" />
         <p className="text-sm font-medium">Session complete — nice work.</p>
+        <button
+          type="button"
+          onClick={() => setDoneIds(new Set())}
+          className="mt-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+        >
+          Review steps again
+        </button>
       </div>
     );
   }
@@ -113,6 +131,13 @@ export function FocusSession({ steps }: { steps: FocusStep[] }) {
           step={step}
           state={i < currentIndex ? "done" : i === currentIndex ? "current" : "upcoming"}
           onDone={() => setDoneIds((prev) => new Set(prev).add(step.action.id))}
+          onUndo={() =>
+            setDoneIds((prev) => {
+              const next = new Set(prev);
+              next.delete(step.action.id);
+              return next;
+            })
+          }
         />
       ))}
     </div>

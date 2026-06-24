@@ -20,10 +20,12 @@ export function DailyDigestPanel({
   data,
   milestone,
   toMilestone,
+  className,
 }: {
   data: DailyDigestData;
   milestone?: number;
   toMilestone?: number;
+  className?: string;
 }) {
   const hasActivity =
     data.problemsSolved > 0 ||
@@ -35,8 +37,8 @@ export function DailyDigestPanel({
   if (!hasActivity) return null;
 
   return (
-    <Section>
-      <div className="surface-card rounded-xl p-4 border border-primary/20 bg-primary/5">
+    <Section className={className}>
+      <div className="surface-card h-full rounded-xl p-4 border border-primary/20 bg-primary/5">
         <SectionHeading
           title="Today's Summary"
           action={

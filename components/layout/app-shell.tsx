@@ -18,9 +18,11 @@ interface AppShellUser {
 export function AppShell({
   children,
   user,
+  unreadCount = 0,
 }: {
   children: React.ReactNode;
   user: AppShellUser;
+  unreadCount?: number;
 }) {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
 
@@ -33,7 +35,7 @@ export function AppShell({
 
       <div className={cn("transition-[padding] duration-200 ease-out", collapsed ? "lg:pl-[72px]" : "lg:pl-[248px]")}>
         <TopBar />
-        <TopHeader />
+        <TopHeader unreadCount={unreadCount} />
         <main>
           <div className="mx-auto w-full max-w-[1600px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
             {children}

@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Search, Bell, Plus } from "lucide-react";
 
 import { useUIStore } from "@/store/ui-store";
 import { ThemeToggle } from "./theme-toggle";
 
-export function TopHeader() {
+export function TopHeader({ unreadCount = 0 }: { unreadCount?: number }) {
   const setOpen = useUIStore((s) => s.setCommandOpen);
   const setAddEntryOpen = useUIStore((s) => s.setAddEntryOpen);
 
@@ -39,10 +40,16 @@ export function TopHeader() {
         </button>
         <span className="hidden text-xs font-medium text-muted-foreground xl:block">{today}</span>
         <ThemeToggle />
-        <button className="relative flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+        <Link
+          href="/notifications"
+          aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+          className="relative flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
           <Bell className="size-[18px]" />
-          <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
-        </button>
+          {unreadCount > 0 && (
+            <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
+          )}
+        </Link>
         <form action="/auth/signout" method="post">
           <button
             type="submit"

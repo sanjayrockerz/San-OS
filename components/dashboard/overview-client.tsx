@@ -268,11 +268,18 @@ export function OverviewClient({ data }: { data: OverviewData }) {
       {/* ===================================================================
           LEVEL 4 — PROGRESS: "how am I doing" — smaller visual weight.
           =================================================================== */}
-      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-4 lg:items-start">
+        <DailyDigestPanel
+          data={data.dailyDigest}
+          milestone={milestone}
+          toMilestone={toMilestone}
+          className="lg:col-span-2"
+        />
         <WeeklyRing pct={weeklyPct} solved={hero.solvedThisWeek} target={hero.weeklyTarget} />
-        <DailyDigestPanel data={data.dailyDigest} milestone={milestone} toMilestone={toMilestone} />
-        {data.eveningReview && <EveningReviewPanel review={data.eveningReview} />}
         <TaxonomyWaiting count={data.taxonomyProposalsCount} />
+        {data.eveningReview && (
+          <EveningReviewPanel review={data.eveningReview} />
+        )}
       </div>
 
       {/* ===================================================================

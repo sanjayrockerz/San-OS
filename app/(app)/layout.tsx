@@ -16,9 +16,15 @@ export default async function AppGroupLayout({
   const profile = await ensureProfile(services, user);
 
   const displayName = profile.display_name ?? user.email?.split("@")[0] ?? "You";
+  const unreadCount = await services.repos.notifications
+    .unreadCount(user.id)
+    .catch(() => 0);
 
   return (
-    <AppShell user={{ displayName, email: user.email ?? null }}>
+    <AppShell
+      user={{ displayName, email: user.email ?? null }}
+      unreadCount={unreadCount}
+    >
       {children}
       <PostActionPrompt />
     </AppShell>
