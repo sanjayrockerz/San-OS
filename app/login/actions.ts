@@ -32,16 +32,48 @@ export async function signInAction(
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.message.toLowerCase().includes("email not confirmed")) {
+      return {
+        error:
+          "Please confirm your email first — check your inbox for the confirmation link.",
+      };
+    }
+    return { error: error.message };
+  }
 
   if (data.user) {
-    await createServices(supabase).events.emit(data.user.id, {
-      eventType: EVENT_TYPES.AuthLogin,
-      payload: { method: "password" },
-    });
+    await createServices(supabase)
+      .events.emit(data.user.id, {
+        eventType: EVENT_TYPES.AuthLogin,
+        payload: { method: "password" },
+      })
+      .catch((err) => console.error("[signInAction] event emit failed", err));
   }
 
   redirect(safeNext(formData.get("next")));
+}
+
+export async function magicLinkAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const email = formData.get("email");
+  if (typeof email !== "string" || !email.includes("@")) {
+    return { error: "Enter a valid email address" };
+  }
+
+  const supabase = await createClient();
+  const next = safeNext(formData.get("next"));
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+  if (error) return { error: error.message };
+
+  return { message: "Check your email for a sign-in link." };
 }
 
 export async function signUpAction(
@@ -74,10 +106,12 @@ export async function signUpAction(
   }
 
   if (data.user) {
-    await createServices(supabase).events.emit(data.user.id, {
-      eventType: EVENT_TYPES.AuthLogin,
-      payload: { method: "signup" },
-    });
+    await createServices(supabase)
+      .events.emit(data.user.id, {
+        eventType: EVENT_TYPES.AuthLogin,
+        payload: { method: "signup" },
+      })
+      .catch((err) => console.error("[signUpAction] event emit failed", err));
   }
 
   redirect(safeNext(formData.get("next")));

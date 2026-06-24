@@ -6,6 +6,7 @@ import { requireContext } from "@/lib/server/context";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CourseDetail } from "@/components/iit/course-detail";
+import { HEALTH_CATEGORY_META } from "@/lib/design/status";
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try { return await p; } catch { return fallback; }
@@ -23,10 +24,15 @@ export default async function CourseDetailPage({ params }: Props) {
   const course = courses.find((c) => c.id === id);
   if (!course) notFound();
 
-  const [assignments, lectures] = await Promise.all([
+  const [assignments, lectures, courseHealth, assignmentRisk] = await Promise.all([
     safe(services.repos.iitAssignments.findByCourse(id), []),
     safe(services.repos.iitLectures.findByCourse(id), []),
+    safe(services.academicHealth.courseHealth(user.id), []),
+    safe(services.academicHealth.assignmentRisk(user.id), []),
   ]);
+
+  const health = courseHealth.find((h) => h.courseId === id) ?? null;
+  const riskByAssignmentId = new Map(assignmentRisk.map((r) => [r.assignmentId, r]));
 
   const completedAssignments = assignments.filter(
     (a) => a.status === "submitted" || a.status === "graded",
@@ -62,6 +68,11 @@ export default async function CourseDetailPage({ params }: Props) {
                 Grade: {course.grade}
               </Badge>
             )}
+            {health && (
+              <Badge variant={HEALTH_CATEGORY_META[health.category].badgeVariant} className="text-[10px]">
+                {HEALTH_CATEGORY_META[health.category].label}
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -80,16 +91,21 @@ export default async function CourseDetailPage({ params }: Props) {
 
       <CourseDetail
         courseId={id}
-        assignments={assignments.map((a) => ({
-          id: a.id,
-          title: a.title,
-          description: a.description,
-          dueDate: a.due_date,
-          status: a.status,
-          score: a.score,
-          maxScore: a.max_score,
-          submittedAt: a.submitted_at,
-        }))}
+        assignments={assignments.map((a) => {
+          const risk = riskByAssignmentId.get(a.id) ?? null;
+          return {
+            id: a.id,
+            title: a.title,
+            description: a.description,
+            dueDate: a.due_date,
+            status: a.status,
+            score: a.score,
+            maxScore: a.max_score,
+            submittedAt: a.submitted_at,
+            riskLevel: risk?.riskLevel ?? null,
+            riskReason: risk?.reason ?? null,
+          };
+        })}
         lectures={lectures.map((l) => ({
           id: l.id,
           title: l.title,

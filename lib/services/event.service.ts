@@ -45,6 +45,12 @@ export const EVENT_TYPES = {
   MemoryRecallGraded: "memory.recall_graded",
   MemoryHealthComputed: "memory.health_computed",
   MemoryInterventionGenerated: "memory.intervention_generated",
+  CoachBriefGenerated: "coach.brief_generated",
+  CoachRecoveryPlanGenerated: "coach.recovery_plan_generated",
+  CoachFocusSessionStarted: "coach.focus_session_started",
+  CoachFocusStepCompleted: "coach.focus_session_step_completed",
+  CoachRecommendationShown: "coach.recommendation_shown",
+  CoachActionStarted: "coach.action_started",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];

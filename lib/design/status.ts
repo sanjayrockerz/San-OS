@@ -16,9 +16,12 @@ import {
   FileType2,
   AlertTriangle,
   Network,
+  Clock,
 } from "lucide-react";
 
 import { type Category } from "./category";
+import type { GapKind } from "@/lib/services/learning-gap-engine.service";
+import type { HealthCategory } from "@/lib/services/academic-health.service";
 import type { RiskLevel, StudentAction } from "@/lib/services";
 
 /**
@@ -61,6 +64,17 @@ export const IIT_STATUS_CATEGORY: Record<IitStatus, Category> = {
   completed: "academic",
   dropped: "critical",
   planned: "warning",
+};
+
+/** AcademicHealthService.courseHealth() category → display meta. */
+export const HEALTH_CATEGORY_META: Record<
+  HealthCategory,
+  { label: string; category: Category; badgeVariant: "success" | "default" | "warning" | "danger" }
+> = {
+  excellent: { label: "Excellent", category: "academic", badgeVariant: "success" },
+  good: { label: "Good", category: "knowledge", badgeVariant: "default" },
+  warning: { label: "Needs Attention", category: "warning", badgeVariant: "warning" },
+  critical: { label: "Critical", category: "critical", badgeVariant: "danger" },
 };
 
 /* -------------------------------------------------------------------------- */
@@ -232,6 +246,21 @@ export const RISK_LEVEL_META: Record<
   medium: { label: "Medium", badgeVariant: "default" },
   high: { label: "High", badgeVariant: "warning" },
   critical: { label: "Critical", badgeVariant: "danger" },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Knowledge OS — LearningGapEngine gap kinds                                  */
+/* -------------------------------------------------------------------------- */
+
+export const GAP_KIND_META: Record<
+  GapKind,
+  { icon: typeof RefreshCw; category: Category }
+> = {
+  no_concept_notes: { icon: BookOpen, category: "knowledge" },
+  no_resources: { icon: Library, category: "warning" },
+  no_pattern_link: { icon: Network, category: "knowledge" },
+  unretained_coverage: { icon: AlertTriangle, category: "critical" },
+  stale_concept: { icon: Clock, category: "warning" },
 };
 
 /** Buckets a 0-100 StudentAction score into the same 4-tier vocabulary as {@link RiskLevel}. */

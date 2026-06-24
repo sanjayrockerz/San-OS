@@ -6,11 +6,13 @@ import {
   RefreshCw,
   LineChart,
   GraduationCap,
+  BookOpen,
   Library,
   Network,
   Settings,
   Activity,
   Bell,
+  Compass,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     heading: "Knowledge",
     items: [
+      { label: "Knowledge OS", shortLabel: "Knowledge", href: "/knowledge", icon: Compass },
       { label: "Concepts", shortLabel: "Concepts", href: "/concepts", icon: Brain },
       { label: "Knowledge Vault", shortLabel: "Vault", href: "/vault", icon: Library },
       { label: "Taxonomy", shortLabel: "Taxonomy", href: "/taxonomy", icon: Network },
@@ -57,9 +60,10 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    heading: "IIT",
+    heading: "Academic",
     items: [
-      { label: "IIT Workspace", shortLabel: "IIT", href: "/iit-workspace", icon: GraduationCap },
+      { label: "Academic Command Center", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
+      { label: "IIT Workspace", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
     ],
   },
   {

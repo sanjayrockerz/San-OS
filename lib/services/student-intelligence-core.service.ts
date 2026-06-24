@@ -1,13 +1,16 @@
 import type { Repositories } from "@/lib/repositories";
 import type { Tables } from "@/types/database";
 
+import { type AcademicAction, AcademicCoachService } from "./academic-coach.service";
 import { BaseService } from "./base.service";
 import { HabitEngineService, type MissedWorkItem } from "./habit-engine.service";
+import { type KnowledgeAction, KnowledgeCoachService } from "./knowledge-coach.service";
 import {
   MemoryCoachService,
   type MemoryIntervention,
 } from "./memory-coach.service";
 import { RevisionService } from "./revision.service";
+import { scoreAction } from "./student-action-scoring";
 import { TaxonomyService } from "./taxonomy.service";
 
 /** One actionable step in the Daily Battle Plan — kept for AiService back-compat. */
@@ -69,7 +72,10 @@ export interface StudentAction {
     | "link_vault_item"
     | "approve_taxonomy"
     | "complete_assignment"
-    | "address_missed_work";
+    | "address_missed_work"
+    | "create_concept_note"
+    | "link_pattern"
+    | "review_course";
   source: "revision" | "memory" | "habit" | "iit" | "taxonomy" | "knowledge";
   title: string;
   detail: string;
@@ -89,9 +95,9 @@ export interface StudentAction {
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
-/** One entity (topic, pattern, or piece of overdue work) the student is at risk on. */
+/** One entity (topic, pattern, course, assignment, or piece of overdue work) the student is at risk on. */
 export interface RiskEntry {
-  entityType: "topic" | "pattern" | "habit";
+  entityType: "topic" | "pattern" | "habit" | "concept" | "course" | "assignment";
   entityId: string;
   name: string;
   riskLevel: RiskLevel;
@@ -139,6 +145,7 @@ export const ACTION_KIND_TO_BATTLE_KIND: Partial<
   review_concept: "learn",
   solve_new: "learn",
   complete_assignment: "academic",
+  review_course: "academic",
 };
 
 /** One-click CTA label for a {@link StudentAction} kind. Shared with UI surfaces beyond recommendations. */
@@ -153,6 +160,9 @@ export const ACTION_LABEL_BY_KIND: Partial<Record<StudentAction["kind"], string>
   approve_taxonomy: "Review proposals",
   complete_assignment: "Open assignment",
   address_missed_work: "Resolve",
+  create_concept_note: "Write concept note",
+  link_pattern: "Link pattern",
+  review_course: "Review course",
 };
 
 const CACHE_TTL_MS = 15_000;
@@ -168,6 +178,9 @@ interface GatheredSignals {
   memoryInterventions: MemoryIntervention[];
   taxonomyProposalCount: number;
   missedWork: MissedWorkItem[];
+  knowledgeGaps: KnowledgeAction[];
+  academicActions: AcademicAction[];
+  academicRisks: RiskEntry[];
 }
 
 /**
@@ -187,6 +200,8 @@ export class StudentIntelligenceCoreService extends BaseService {
   private readonly memoryCoach: MemoryCoachService;
   private readonly taxonomy: TaxonomyService;
   private readonly habitEngine: HabitEngineService;
+  private readonly knowledgeCoach: KnowledgeCoachService;
+  private readonly academicCoach: AcademicCoachService;
 
   private static readonly cache = new Map<
     string,
@@ -199,6 +214,8 @@ export class StudentIntelligenceCoreService extends BaseService {
     this.memoryCoach = new MemoryCoachService(repos);
     this.taxonomy = new TaxonomyService(repos);
     this.habitEngine = new HabitEngineService(repos);
+    this.knowledgeCoach = new KnowledgeCoachService(repos);
+    this.academicCoach = new AcademicCoachService(repos);
   }
 
   /** Invalidate the cached snapshot for a user (call after a mutation if eager). */
@@ -288,6 +305,9 @@ export class StudentIntelligenceCoreService extends BaseService {
       memoryInterventions,
       taxonomyProposals,
       missedWork,
+      knowledgeGaps,
+      academicActions,
+      academicRisks,
     ] = await Promise.all([
       safe(this.revision.dueQueue(userId), []),
       safe(this.revision.weakQueue(userId), []),
@@ -299,6 +319,9 @@ export class StudentIntelligenceCoreService extends BaseService {
       safe(this.memoryCoach.interventions(userId), []),
       safe(this.taxonomy.listProposals(userId), { topics: [], patterns: [] }),
       safe(this.habitEngine.getMissedWorkQueue(userId), []),
+      safe(this.knowledgeCoach.actions(userId), []),
+      safe(this.academicCoach.actions(userId), []),
+      safe(this.academicCoach.risks(userId), []),
     ]);
 
     return {
@@ -312,6 +335,9 @@ export class StudentIntelligenceCoreService extends BaseService {
       memoryInterventions,
       taxonomyProposalCount: taxonomyProposals.topics.length + taxonomyProposals.patterns.length,
       missedWork,
+      knowledgeGaps,
+      academicActions,
+      academicRisks,
     };
   }
 
@@ -521,6 +547,14 @@ export class StudentIntelligenceCoreService extends BaseService {
       if (seenResume.size >= 2) break;
     }
 
+    for (const gap of signals.knowledgeGaps.slice(0, 5)) {
+      actions.push(gap);
+    }
+
+    for (const action of signals.academicActions) {
+      actions.push(action);
+    }
+
     for (const k of signals.knowledge.slice(0, 2)) {
       actions.push(
         this.action({
@@ -543,13 +577,10 @@ export class StudentIntelligenceCoreService extends BaseService {
   }
 
   private action(input: Omit<StudentAction, "id" | "score">): StudentAction {
-    const score = Math.round(
-      100 * (0.5 * input.urgency + 0.35 * input.impact + 0.15 * input.momentum),
-    );
     return {
       ...input,
       id: `${input.kind}-${input.entityId ?? input.title}`,
-      score,
+      score: scoreAction(input),
     };
   }
 
@@ -598,6 +629,21 @@ export class StudentIntelligenceCoreService extends BaseService {
           entityId: item.sourceId,
         },
       });
+    }
+
+    for (const gap of signals.knowledgeGaps.filter((g) => g.severity === "high")) {
+      entries.push({
+        entityType: gap.entityType,
+        entityId: gap.entityId ?? gap.id,
+        name: gap.title,
+        riskLevel: "high",
+        reason: gap.detail,
+        recommendedAction: { label: gap.title, href: gap.href, entityId: gap.entityId },
+      });
+    }
+
+    for (const entry of signals.academicRisks) {
+      entries.push(entry);
     }
 
     entries.sort((a, b) => RISK_WEIGHT[b.riskLevel] - RISK_WEIGHT[a.riskLevel]);

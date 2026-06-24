@@ -14,7 +14,8 @@ import type {
   SessionTask,
   StudentAction,
 } from "@/lib/services";
-import { ACTION_KIND_TO_BATTLE_KIND, HabitEngineService } from "@/lib/services";
+import { HabitEngineService } from "@/lib/services";
+import type { DailyCoachBrief, RecoveryPlan } from "@/lib/services";
 import type { Tables } from "@/types/database";
 
 function greeting(): string {
@@ -152,14 +153,22 @@ export default async function OverviewPage() {
     return sum + mins;
   }, 0);
 
-  const isHiddenByFocus = (kind: StudentAction["kind"]) => {
-    const bucket = ACTION_KIND_TO_BATTLE_KIND[kind];
-    return bucket ? (focusConfig.hideBattlePlanKinds?.includes(bucket) ?? false) : false;
-  };
-  const visiblePriorities = intelligence.priorities.filter((a) => !isHiddenByFocus(a.kind));
-  const visibleMissions = intelligence.missions
-    .map((m) => ({ ...m, actions: m.actions.filter((a) => !isHiddenByFocus(a.kind)) }))
-    .filter((m) => m.actions.length > 0);
+  const [coachBrief, recoveryPlan] = await Promise.all([
+    services.studentCoach.dailyBrief(user.id, focusMode).catch(
+      () =>
+        ({
+          greeting: greeting(),
+          yesterday: { completed: 0, missed: 0, learningWins: 0 },
+          today: { biggestOpportunity: null, insight: null, biggestRisk: null, recommendedPlan: [], estimatedMinutes: 0 },
+          confidence: null,
+        }) satisfies DailyCoachBrief,
+    ),
+    services.studentCoach
+      .recoveryPlan(user.id)
+      .catch(() => ({ totalMissed: 0, totalMinutes: 0, blocks: [] }) satisfies RecoveryPlan),
+  ]);
+
+  const visiblePriorities = services.studentCoach.gateByFocusMode(intelligence.priorities, focusMode);
 
   const topInsight = (aiInsights as { detail?: string | null }[])[0];
   const aiSummary = topInsight?.detail ?? null;
@@ -262,7 +271,8 @@ export default async function OverviewPage() {
     eveningReview,
     priorities: visiblePriorities,
     risks: intelligence.risks,
-    missions: visibleMissions,
+    coachBrief,
+    recoveryPlan,
   };
 
   return <OverviewClient data={data} />;

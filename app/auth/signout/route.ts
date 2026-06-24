@@ -14,9 +14,9 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (user) {
-    await createServices(supabase).events.emit(user.id, {
-      eventType: EVENT_TYPES.AuthLogout,
-    });
+    await createServices(supabase)
+      .events.emit(user.id, { eventType: EVENT_TYPES.AuthLogout })
+      .catch((err) => console.error("[signout] event emit failed", err));
   }
 
   await supabase.auth.signOut();

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { requireContext } from "@/lib/server/context";
 import { PageTransition } from "@/components/layout/page-transition";
 import { PageHeader } from "@/components/layout/page-header";
@@ -11,11 +13,14 @@ export default async function IITWorkspacePage() {
   const { user, services } = await requireContext("/iit-workspace");
 
   const now = new Date().toISOString();
-  const [courses, credits, upcomingAssignments] = await Promise.all([
+  const [courses, credits, upcomingAssignments, courseHealth] = await Promise.all([
     safe(services.iit.courses(user.id), []),
     safe(services.iit.creditSummary(user.id), { totalCredits: 0, completedCredits: 0, inProgressCredits: 0 }),
     safe(services.repos.iitAssignments.upcoming(user.id, now.slice(0, 10)), []),
+    safe(services.academicHealth.courseHealth(user.id), []),
   ]);
+
+  const healthByCourseId = new Map(courseHealth.map((h) => [h.courseId, h]));
 
   const courseViews = await Promise.all(
     courses.map(async (c) => {
@@ -27,6 +32,7 @@ export default async function IITWorkspacePage() {
         (a) => a.status === "submitted" || a.status === "graded",
       ).length;
       const watchedLectures = lectures.filter((l) => l.status === "completed").length;
+      const health = healthByCourseId.get(c.id) ?? null;
       return {
         id: c.id,
         code: c.code,
@@ -49,9 +55,13 @@ export default async function IITWorkspacePage() {
         nextDue: assignments
           .filter((a) => a.status === "pending" && a.due_date)
           .sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? ""))[0] ?? null,
+        healthScore: health?.healthScore ?? null,
+        healthCategory: health?.category ?? null,
       };
     }),
   );
+
+  courseViews.sort((a, b) => (a.healthScore ?? 100) - (b.healthScore ?? 100));
 
   const nowMs = new Date().getTime();
   const deadlines = upcomingAssignments.slice(0, 8).map((a) => {
@@ -76,6 +86,14 @@ export default async function IITWorkspacePage() {
       <PageHeader
         title="IIT Workspace"
         description="Your BS degree, organized. Courses, lectures and deadlines beside your DSA prep."
+        actions={
+          <Link
+            href="/academic"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            View full Academic Command Center →
+          </Link>
+        }
       />
       <IITClient
         courses={courseViews}

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +10,7 @@ import {
   DashboardAggregationService,
   EVENT_TYPES,
 } from "@/lib/services";
+import type { StudentAction } from "@/lib/services";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -52,6 +54,72 @@ export async function completeBattlePlanTask(
   DashboardAggregationService.invalidate(user.id);
   revalidatePath("/overview");
   return { ok: true };
+}
+
+/**
+ * Logs that a focus-session step was marked done. Pure telemetry (the coach
+ * timeline reads it back via the existing events table) — it does not gate
+ * or mutate anything the rest of the page depends on, so no revalidation.
+ */
+export async function completeFocusStep(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/overview");
+
+  const actionId = formData.get("actionId");
+  const actionKind = formData.get("actionKind");
+  const actionSource = formData.get("actionSource");
+  if (typeof actionId !== "string" || typeof actionKind !== "string" || typeof actionSource !== "string") {
+    return { ok: false, error: "Invalid step" };
+  }
+
+  const services = createServices(await createClient());
+  try {
+    await services.studentCoach.logStepCompleted(user.id, {
+      id: actionId,
+      kind: actionKind as StudentAction["kind"],
+      source: actionSource as StudentAction["source"],
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to log step" };
+  }
+}
+
+/**
+ * "Start Now" on a focus-session step. Logs `coach.action_started` (closing
+ * the shown -> started gap the outcome audit found — a plain Link fired no
+ * event) and then redirects server-side, so the event is guaranteed recorded
+ * before the user ever leaves the page.
+ */
+export async function startFocusAction(formData: FormData): Promise<void> {
+  const user = await requireUser("/overview");
+
+  const actionId = formData.get("actionId");
+  const actionKind = formData.get("actionKind");
+  const actionSource = formData.get("actionSource");
+  const href = formData.get("href");
+  if (
+    typeof actionId !== "string" ||
+    typeof actionKind !== "string" ||
+    typeof actionSource !== "string" ||
+    typeof href !== "string" ||
+    !href.startsWith("/")
+  ) {
+    redirect("/overview");
+  }
+
+  const services = createServices(await createClient());
+  await services.studentCoach
+    .logActionStarted(user.id, {
+      id: actionId,
+      kind: actionKind as StudentAction["kind"],
+      source: actionSource as StudentAction["source"],
+    })
+    .catch(() => null);
+
+  redirect(href);
 }
 
 /** Saves today's daily reflection (mood + notes) to daily_logs. */

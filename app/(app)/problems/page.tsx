@@ -1,7 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/session";
-import { createServices } from "@/lib/services";
+import { requireContext } from "@/lib/server/context";
 import { ProblemsClient } from "@/components/problems/problems-client";
+
+async function safe<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await promise;
+  } catch {
+    return fallback;
+  }
+}
 
 /**
  * Problems — live. Server Component: guards the route, loads the user's visible
@@ -10,14 +16,12 @@ import { ProblemsClient } from "@/components/problems/problems-client";
  * Server Actions in `./actions.ts`.
  */
 export default async function ProblemsPage() {
-  const user = await requireUser("/problems");
-  const supabase = await createClient();
-  const services = createServices(supabase);
+  const { user, services } = await requireContext("/problems");
 
   const [problems, topics, patterns] = await Promise.all([
-    services.problems.list(user.id),
-    services.taxonomy.listTopics(user.id),
-    services.taxonomy.listPatterns(user.id),
+    safe(services.problems.list(user.id), []),
+    safe(services.taxonomy.listTopics(user.id), []),
+    safe(services.taxonomy.listPatterns(user.id), []),
   ]);
 
   return (

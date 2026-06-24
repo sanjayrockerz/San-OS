@@ -7,9 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authAction, type AuthState } from "@/app/login/actions";
+import {
+  authAction,
+  magicLinkAction,
+  type AuthState,
+} from "@/app/login/actions";
 
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "magic";
 
 /**
  * Sign-in surface. Email/password (primary, via server actions) plus Google
@@ -22,6 +26,10 @@ export function LoginForm({ next }: { next?: string }) {
     authAction,
     {},
   );
+  const [magicState, magicFormAction, magicPending] = useActionState<
+    AuthState,
+    FormData
+  >(magicLinkAction, {});
 
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -50,7 +58,11 @@ export function LoginForm({ next }: { next?: string }) {
           <Terminal className="size-6" />
         </div>
         <h1 className="text-xl font-bold tracking-tight">
-          {mode === "signin" ? "Welcome back" : "Create your SanOS"}
+          {mode === "signin"
+            ? "Welcome back"
+            : mode === "signup"
+              ? "Create your SanOS"
+              : "Sign in with a link"}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground text-balance">
           Your personal engineering OS for mastering data structures and
@@ -58,62 +70,112 @@ export function LoginForm({ next }: { next?: string }) {
         </p>
       </div>
 
-      <form action={formAction} className="space-y-3">
-        <input type="hidden" name="mode" value={mode} />
-        {next && <input type="hidden" name="next" value={next} />}
-
-        {mode === "signup" && (
+      {mode === "magic" ? (
+        <form action={magicFormAction} className="space-y-3">
+          {next && <input type="hidden" name="next" value={next} />}
           <div className="space-y-1.5">
-            <Label htmlFor="displayName">Name</Label>
+            <Label htmlFor="magic-email">Email</Label>
             <Input
-              id="displayName"
-              name="displayName"
-              autoComplete="name"
-              placeholder="Sanjay"
+              id="magic-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
             />
           </div>
-        )}
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={magicPending}
+          >
+            {magicPending ? "Sending…" : "Send sign-in link"}
+          </Button>
+        </form>
+      ) : (
+        <form action={formAction} className="space-y-3">
+          <input type="hidden" name="mode" value={mode} />
+          {next && <input type="hidden" name="next" value={next} />}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-          />
-        </div>
+          {mode === "signup" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="displayName">Name</Label>
+              <Input
+                id="displayName"
+                name="displayName"
+                autoComplete="name"
+                placeholder="Sanjay"
+              />
+            </div>
+          )}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            required
-            autoComplete={
-              mode === "signin" ? "current-password" : "new-password"
-            }
-            placeholder="••••••••"
-          />
-        </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
+          </div>
 
-        <Button type="submit" size="lg" className="w-full" disabled={pending}>
-          {pending
-            ? "Please wait…"
-            : mode === "signin"
-              ? "Sign in"
-              : "Create account"}
-        </Button>
-      </form>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autoComplete={
+                mode === "signin" ? "current-password" : "new-password"
+              }
+              placeholder="••••••••"
+            />
+          </div>
 
-      {state?.error && (
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={pending}
+          >
+            {pending
+              ? "Please wait…"
+              : mode === "signin"
+                ? "Sign in"
+                : "Create account"}
+          </Button>
+        </form>
+      )}
+
+      {mode !== "magic" && state?.error && (
         <p className="mt-3 text-center text-xs text-danger">{state.error}</p>
       )}
-      {state?.message && (
+      {mode !== "magic" && state?.message && (
         <p className="mt-3 text-center text-xs text-success">{state.message}</p>
+      )}
+      {mode === "magic" && magicState?.error && (
+        <p className="mt-3 text-center text-xs text-danger">
+          {magicState.error}
+        </p>
+      )}
+      {mode === "magic" && magicState?.message && (
+        <p className="mt-3 text-center text-xs text-success">
+          {magicState.message}
+        </p>
+      )}
+
+      {mode !== "magic" && (
+        <button
+          type="button"
+          onClick={() => setMode("magic")}
+          className="mt-3 block w-full text-center text-xs font-medium text-primary hover:underline"
+        >
+          Or sign in with an email link
+        </button>
       )}
 
       <div className="my-5 flex items-center gap-3">
@@ -140,14 +202,26 @@ export function LoginForm({ next }: { next?: string }) {
       )}
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        {mode === "signin" ? "New here?" : "Already have an account?"}{" "}
-        <button
-          type="button"
-          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-          className="font-medium text-primary hover:underline"
-        >
-          {mode === "signin" ? "Create an account" : "Sign in"}
-        </button>
+        {mode === "magic" ? (
+          <button
+            type="button"
+            onClick={() => setMode("signin")}
+            className="font-medium text-primary hover:underline"
+          >
+            Back to password sign-in
+          </button>
+        ) : (
+          <>
+            {mode === "signin" ? "New here?" : "Already have an account?"}{" "}
+            <button
+              type="button"
+              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+              className="font-medium text-primary hover:underline"
+            >
+              {mode === "signin" ? "Create an account" : "Sign in"}
+            </button>
+          </>
+        )}
       </p>
     </div>
   );

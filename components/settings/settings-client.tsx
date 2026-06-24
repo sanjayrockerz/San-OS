@@ -200,7 +200,7 @@ export function SettingsClient({ preferences, profile }: Props) {
             description="Your default lens for the dashboard — filters the battle plan, recommendations, and assignments."
           >
             <input type="hidden" name="defaultFocusMode" value={focusMode} />
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {focusModes.map((mode) => (
                 <button
                   key={mode}

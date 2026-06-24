@@ -32,9 +32,10 @@ import { useUIStore } from "@/store/ui-store";
 import { MissionControlPanel } from "./mission-control-panel";
 import type {
   BattlePlanStep,
+  DailyCoachBrief,
   EveningReview,
-  Mission,
   MissedWorkItem,
+  RecoveryPlan,
   RiskRegister,
   StudentAction,
 } from "@/lib/services";
@@ -141,7 +142,8 @@ export interface OverviewData {
   eveningReview: EveningReview | null;
   priorities: StudentAction[];
   risks: RiskRegister;
-  missions: Mission[];
+  coachBrief: DailyCoachBrief;
+  recoveryPlan: RecoveryPlan;
 }
 
 /** Next round-number milestone above `count` (next multiple of 50, or 100 once past 200). */
@@ -228,7 +230,8 @@ export function OverviewClient({ data }: { data: OverviewData }) {
           coherent "what do I do right now and why" panel.
           =================================================================== */}
       <MissionControlPanel
-        missions={data.missions}
+        brief={data.coachBrief}
+        recovery={data.recoveryPlan}
         priorities={data.priorities}
         risks={data.risks}
         memoryHealth={data.memoryHealth}

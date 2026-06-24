@@ -132,13 +132,14 @@ export class HabitEngineService extends BaseService {
     let created = 0;
     let missed = 0;
 
+    const existingIds = await this.repos.notifications.findExistingSourceIds(
+      userId,
+      "reminder",
+      due.map((r) => r.id),
+    );
+
     for (const reminder of due) {
-      const existing = await this.repos.notifications.findBySource(
-        userId,
-        "reminder",
-        reminder.id,
-      );
-      if (!existing) {
+      if (!existingIds.has(reminder.id)) {
         const dueAt = reminder.next_occurrence_at ?? reminder.scheduled_at ?? nowIso;
         await this.repos.notifications.create({
           user_id: userId,
@@ -175,9 +176,14 @@ export class HabitEngineService extends BaseService {
     let created = 0;
     let missed = 0;
 
+    const existingIds = await this.repos.notifications.findExistingSourceIds(
+      userId,
+      "revision",
+      due.map((item) => item.id),
+    );
+
     for (const item of due) {
-      const existing = await this.repos.notifications.findBySource(userId, "revision", item.id);
-      if (existing) continue;
+      if (existingIds.has(item.id)) continue;
 
       const dueAt = item.next_revision ?? nowIso;
       await this.repos.notifications.create({
@@ -207,9 +213,14 @@ export class HabitEngineService extends BaseService {
     let created = 0;
     let missed = 0;
 
+    const existingIds = await this.repos.notifications.findExistingSourceIds(
+      userId,
+      "iit_assignment",
+      overdue.map((a) => a.id),
+    );
+
     for (const a of overdue) {
-      const existing = await this.repos.notifications.findBySource(userId, "iit_assignment", a.id);
-      if (existing) continue;
+      if (existingIds.has(a.id)) continue;
 
       const dueAt = a.due_date ?? nowIso;
       await this.repos.notifications.create({
@@ -237,14 +248,16 @@ export class HabitEngineService extends BaseService {
 
   private async reactivateSnoozed(userId: string, nowIso: string): Promise<number> {
     const snoozed = await this.repos.notifications.findByState(userId, "snoozed");
-    let count = 0;
-    for (const n of snoozed) {
-      if (n.snoozed_until && n.snoozed_until <= nowIso) {
-        await this.repos.notifications.update(n.id, { state: "unread", snoozed_until: null });
-        count++;
-      }
-    }
-    return count;
+    const dueIds = snoozed
+      .filter((n) => n.snoozed_until && n.snoozed_until <= nowIso)
+      .map((n) => n.id);
+    if (dueIds.length === 0) return 0;
+    // Batched: one update query for all reactivated rows instead of one per row.
+    await this.repos.notifications.updateMany(dueIds, {
+      state: "unread",
+      snoozed_until: null,
+    });
+    return dueIds.length;
   }
 
   private async expireOld(userId: string, nowIso: string): Promise<number> {
@@ -253,14 +266,13 @@ export class HabitEngineService extends BaseService {
       this.repos.notifications.findByState(userId, "unread"),
       this.repos.notifications.findByState(userId, "read"),
     ]);
-    let count = 0;
-    for (const n of [...unread, ...read]) {
-      if (n.due_at && n.due_at < cutoff) {
-        await this.repos.notifications.update(n.id, { state: "expired" });
-        count++;
-      }
-    }
-    return count;
+    const expiredIds = [...unread, ...read]
+      .filter((n) => n.due_at && n.due_at < cutoff)
+      .map((n) => n.id);
+    if (expiredIds.length === 0) return 0;
+    // Batched: one update query for all expired rows instead of one per row.
+    await this.repos.notifications.updateManyState(expiredIds, "expired");
+    return expiredIds.length;
   }
 
   /** Emits `habit.streak_broken` once for a given gap day (de-duped via recent events). */

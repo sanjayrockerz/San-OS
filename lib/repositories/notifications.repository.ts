@@ -15,25 +15,44 @@ export class NotificationsRepository extends UserScopedRepository<"notifications
   }
 
   /**
-   * The notification already generated for a given source row, if any. Used
-   * by `evaluateForUser` to avoid creating duplicates on every dashboard load
-   * (the partial unique index on the table is the backstop, this is the
-   * primary check-then-insert path).
+   * Returns the set of `source_id`s that already have an active notification,
+   * in one query instead of one per candidate row. Used by
+   * `HabitEngineService.evaluateForUser`, which runs on every
+   * overview/notifications page load.
    */
-  async findBySource(
+  async findExistingSourceIds(
     userId: string,
     sourceType: Row<"notifications">["source_type"],
-    sourceId: string,
-  ): Promise<Row<"notifications"> | null> {
+    sourceIds: string[],
+  ): Promise<Set<string>> {
+    if (sourceIds.length === 0) return new Set();
     const { data, error } = await this.query
-      .select("*")
+      .select("source_id")
       .eq("user_id", userId)
       .eq("source_type", sourceType)
-      .eq("source_id", sourceId)
-      .in("state", ["unread", "read", "snoozed"])
-      .maybeSingle();
+      .in("source_id", sourceIds)
+      .in("state", ["unread", "read", "snoozed"]);
     if (error) throw error;
-    return (data as Row<"notifications"> | null) ?? null;
+    return new Set((data ?? []).map((row) => row.source_id as string));
+  }
+
+  /** Batched state transition for multiple notifications in one query. */
+  async updateManyState(
+    ids: string[],
+    state: Row<"notifications">["state"],
+  ): Promise<number> {
+    return this.updateMany(ids, { state });
+  }
+
+  /** Applies the same partial update to multiple notifications in one query. */
+  async updateMany(
+    ids: string[],
+    values: Partial<Row<"notifications">>,
+  ): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { error } = await this.query.update(values).in("id", ids);
+    if (error) throw error;
+    return ids.length;
   }
 
   async findByState(

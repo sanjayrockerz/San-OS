@@ -23,7 +23,8 @@ import { SectionHeading } from "@/components/layout/page-header";
 import { createCourse, type ActionResult } from "@/app/(app)/iit-workspace/actions";
 import type { CreditSummary } from "@/lib/services";
 import { CATEGORY_TINT } from "@/lib/design/category";
-import { IIT_STATUS_CATEGORY, type IitStatus } from "@/lib/design/status";
+import { IIT_STATUS_CATEGORY, HEALTH_CATEGORY_META, type IitStatus } from "@/lib/design/status";
+import type { HealthCategory } from "@/lib/services/academic-health.service";
 
 interface CourseView {
   id: string;
@@ -42,6 +43,8 @@ interface CourseView {
   watchedLectures: number;
   progress: number;
   nextDue: { title: string; due_date: string | null } | null;
+  healthScore: number | null;
+  healthCategory: HealthCategory | null;
 }
 
 interface DeadlineView {
@@ -156,7 +159,14 @@ export function IITClient({ courses, deadlines, credits }: Props) {
                     >
                       <GraduationCap className="size-5" />
                     </span>
-                    <ArrowUpRight className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                    <div className="flex items-center gap-2">
+                      {c.healthCategory && (
+                        <Badge variant={HEALTH_CATEGORY_META[c.healthCategory].badgeVariant} className="text-[10px]">
+                          {HEALTH_CATEGORY_META[c.healthCategory].label}
+                        </Badge>
+                      )}
+                      <ArrowUpRight className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                    </div>
                   </div>
                   {c.code && (
                     <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

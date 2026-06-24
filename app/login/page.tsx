@@ -1,6 +1,13 @@
 import { redirectIfAuthenticated } from "@/lib/auth/session";
 import { LoginForm } from "@/components/auth/login-form";
 
+const ERROR_COPY: Record<string, string> = {
+  consent_denied: "You declined access. Sign in again when you're ready.",
+  oauth_failed: "Google sign-in failed. Please try again.",
+  missing_code: "Sign-in link was incomplete. Please try again.",
+  exchange_failed: "That sign-in link expired or was already used.",
+};
+
 /**
  * Public sign-in route (outside the `(app)` group, so it has no app shell).
  * Already-authenticated visitors are bounced straight to the app.
@@ -30,7 +37,7 @@ export default async function LoginPage({
         <LoginForm next={next} />
         {error && (
           <p className="mt-4 text-center text-xs text-danger">
-            Sign-in failed. Please try again.
+            {ERROR_COPY[error] ?? "Sign-in failed. Please try again."}
           </p>
         )}
       </div>

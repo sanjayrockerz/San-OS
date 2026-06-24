@@ -58,6 +58,14 @@ export abstract class BaseRepository<T extends TableName> {
     return (data as Row<T> | null) ?? null;
   }
 
+  /** Returns rows matching any of the given primary keys, in one query. */
+  async findByIds(ids: string[]): Promise<Row<T>[]> {
+    if (ids.length === 0) return [];
+    const { data, error } = await this.query.select("*").in("id", ids);
+    if (error) throw error;
+    return (data ?? []) as Row<T>[];
+  }
+
   /** Returns all rows the current RLS context is allowed to read. */
   async findAll(): Promise<Row<T>[]> {
     const { data, error } = await this.query.select("*");

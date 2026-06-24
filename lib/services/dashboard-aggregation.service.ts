@@ -329,15 +329,14 @@ export class DashboardAggregationService extends BaseService {
     }
     if (counts.size === 0) return [];
 
-    const out: WeakTopic[] = [];
-    for (const [topicId, strugglingCount] of counts) {
-      const topic = await this.repos.topics.findById(topicId);
-      out.push({
-        topicId,
-        name: topic?.name ?? "Unknown topic",
-        strugglingCount,
-      });
-    }
+    const topics = await this.repos.topics.findByIds(Array.from(counts.keys()));
+    const nameById = new Map(topics.map((t) => [t.id, t.name]));
+
+    const out: WeakTopic[] = Array.from(counts, ([topicId, strugglingCount]) => ({
+      topicId,
+      name: nameById.get(topicId) ?? "Unknown topic",
+      strugglingCount,
+    }));
     return out.sort((a, b) => b.strugglingCount - a.strugglingCount).slice(0, 6);
   }
 

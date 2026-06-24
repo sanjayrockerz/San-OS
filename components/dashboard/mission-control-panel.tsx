@@ -3,8 +3,6 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarCheck,
-  CheckCircle2,
-  Compass,
 } from "lucide-react";
 
 import { Section } from "@/components/layout/page-transition";
@@ -12,8 +10,10 @@ import { SectionHeading } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { ProgressRing } from "@/components/charts/progress-ring";
 import { MissedWorkPanel } from "./missed-work-panel";
+import { CoachBrief } from "./coach-brief";
+import { RecoveryPlanPanel } from "./recovery-plan-panel";
 import { cn } from "@/lib/utils";
-import type { Mission, MissedWorkItem, RiskRegister, StudentAction } from "@/lib/services";
+import type { DailyCoachBrief, MissedWorkItem, RecoveryPlan, RiskRegister, StudentAction } from "@/lib/services";
 import { ACTION_LABEL_BY_KIND } from "@/lib/services";
 import { CATEGORY_TEXT, CATEGORY_TINT } from "@/lib/design/category";
 import { RISK_LEVEL_META, STUDENT_ACTION_SOURCE_META, scoreToRiskLevel } from "@/lib/design/status";
@@ -37,7 +37,8 @@ interface OverviewAssignment {
 }
 
 export function MissionControlPanel({
-  missions,
+  brief,
+  recovery,
   priorities,
   risks,
   memoryHealth,
@@ -45,7 +46,8 @@ export function MissionControlPanel({
   missedWork,
   upcomingAssignments,
 }: {
-  missions: Mission[];
+  brief: DailyCoachBrief;
+  recovery: RecoveryPlan;
   priorities: StudentAction[];
   risks: RiskRegister;
   memoryHealth: OverviewMemoryHealth;
@@ -55,7 +57,8 @@ export function MissionControlPanel({
 }) {
   return (
     <div className="mt-5 space-y-5">
-      <TodaysMission missions={missions} />
+      <CoachBrief brief={brief} recovery={recovery} />
+      <RecoveryPlanPanel recovery={recovery} />
       <PriorityStack priorities={priorities} />
       <RiskCenter
         risks={risks}
@@ -65,81 +68,6 @@ export function MissionControlPanel({
         upcomingAssignments={upcomingAssignments}
       />
     </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Today's Mission                                                             */
-/* -------------------------------------------------------------------------- */
-
-function TodaysMission({ missions }: { missions: Mission[] }) {
-  const mission = missions[0];
-
-  return (
-    <Section>
-      <div className="surface-card rounded-2xl border-category-mission/25 p-5">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Compass className={cn("size-4.5", CATEGORY_TEXT.mission)} />
-            <h2 className="text-section">
-              {mission ? `Today's Mission: ${mission.title}` : "Today's Mission"}
-            </h2>
-          </div>
-          {mission && (
-            <Badge variant="default">~{mission.estimatedMinutes} min</Badge>
-          )}
-        </div>
-
-        {!mission ? (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <CheckCircle2 className="size-6 text-success" />
-            <p className="mt-2 text-sm font-medium">Nothing urgent right now.</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Good time to get ahead —{" "}
-              <Link href="/problems" className="text-primary hover:underline">
-                solve a new problem
-              </Link>
-              .
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {mission.actions.slice(0, 4).map((action) => (
-              <ActionRow key={action.id} action={action} />
-            ))}
-          </div>
-        )}
-      </div>
-    </Section>
-  );
-}
-
-function ActionRow({ action }: { action: StudentAction }) {
-  const meta = STUDENT_ACTION_SOURCE_META[action.source];
-  const Icon = meta.icon;
-  const ctaLabel = ACTION_LABEL_BY_KIND[action.kind] ?? "Open";
-
-  return (
-    <Link
-      href={action.href}
-      className="lift group flex items-start gap-3 rounded-xl border border-border bg-card p-3"
-    >
-      <span
-        className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-lg",
-          CATEGORY_TINT[meta.category],
-        )}
-      >
-        <Icon className="size-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium line-clamp-1">{action.title}</p>
-        <p className="line-clamp-1 text-xs text-muted-foreground mt-0.5">{action.detail}</p>
-      </div>
-      <span className="flex shrink-0 items-center gap-1 self-center text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-        {ctaLabel} <ArrowRight className="size-3" />
-      </span>
-    </Link>
   );
 }
 
@@ -217,7 +145,9 @@ function RiskCenter({
 }) {
   const urgentAssignments = upcomingAssignments.filter((a) => a.urgent);
   const otherAssignments = upcomingAssignments.filter((a) => !a.urgent);
-  const patternRisks = risks.entries.filter((e) => e.entityType === "pattern");
+  const patternRisks = risks.entries.filter(
+    (e) => e.entityType === "pattern" || e.entityType === "concept",
+  );
 
   const nothingAtRisk =
     memoryHealth.atRisk.length === 0 &&
@@ -361,10 +291,10 @@ function RiskCenter({
             )}
           </div>
 
-          {/* Pattern risk — previously never surfaced anywhere */}
+          {/* Pattern & knowledge risk — previously never surfaced anywhere */}
           {patternRisks.length > 0 && (
             <div>
-              <p className="text-caption text-muted-foreground mb-2">Pattern Risk</p>
+              <p className="text-caption text-muted-foreground mb-2">Pattern & Knowledge Risk</p>
               <div className="space-y-1.5">
                 {patternRisks.slice(0, 4).map((entry) => (
                   <Link

@@ -28,7 +28,9 @@ function dayLabel(date: Date): string {
 export default async function TimelinePage() {
   const { user, services } = await requireContext("/timeline");
 
-  const items = await services.timeline.getUserTimeline(user.id, 150);
+  const items = await services.timeline
+    .getUserTimeline(user.id, 150)
+    .catch((): Awaited<ReturnType<typeof services.timeline.getUserTimeline>> => []);
 
   // Group by calendar day
   const groupMap = new Map<string, typeof items>();

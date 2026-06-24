@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 
 import { hasSupabaseEnv } from "./env";
+import { captureException } from "@/lib/observability/logger";
 
 /**
  * Refreshes the Supabase auth session on every matched request AND enforces
@@ -23,6 +24,15 @@ export async function updateSession(
   request: NextRequest,
 ): Promise<NextResponse> {
   if (!hasSupabaseEnv()) {
+    // In production this means every route is wide open with no auth wall —
+    // never let that fail silently. Local/dev frontend-shell work without a
+    // backend is the only intended use of this fallback.
+    if (process.env.NODE_ENV === "production") {
+      captureException(
+        new Error("SUPABASE env vars are missing in production — auth is DISABLED for all routes."),
+        { scope: "middleware" },
+      );
+    }
     return NextResponse.next({ request });
   }
 

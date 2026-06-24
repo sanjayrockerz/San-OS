@@ -23,6 +23,8 @@ import {
   createLecture,
   type ActionResult,
 } from "@/app/(app)/iit-workspace/actions";
+import { RISK_LEVEL_META } from "@/lib/design/status";
+import type { AssignmentRiskLevel } from "@/lib/services/academic-health.service";
 
 interface AssignmentView {
   id: string;
@@ -33,6 +35,8 @@ interface AssignmentView {
   score: number | null;
   maxScore: number | null;
   submittedAt: string | null;
+  riskLevel: AssignmentRiskLevel | null;
+  riskReason: string | null;
 }
 
 interface LectureView {
@@ -59,6 +63,7 @@ function AssignmentRow({ a, courseId }: { a: AssignmentView; courseId: string })
 
   const dueDate = a.dueDate ? new Date(a.dueDate) : null;
   const isOverdue = dueDate && dueDate < new Date() && !isDone;
+  const riskMeta = a.riskLevel ? RISK_LEVEL_META[a.riskLevel] : null;
 
   return (
     <div
@@ -103,9 +108,14 @@ function AssignmentRow({ a, courseId }: { a: AssignmentView; courseId: string })
             </Badge>
           )}
         </div>
+        {!isDone && riskMeta && a.riskReason && (
+          <p className="mt-1 text-[11px] text-muted-foreground">{a.riskReason}</p>
+        )}
       </div>
-      {!isDone && (
-        <Badge variant="secondary" className="text-[10px] shrink-0">{a.status}</Badge>
+      {!isDone && riskMeta && (
+        <Badge variant={riskMeta.badgeVariant} className="text-[10px] shrink-0">
+          {riskMeta.label} risk
+        </Badge>
       )}
     </div>
   );

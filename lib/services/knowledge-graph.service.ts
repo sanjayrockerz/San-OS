@@ -77,12 +77,8 @@ export class KnowledgeGraphService extends BaseService {
     limit = 8,
   ): Promise<Concept[]> {
     const links = await this.repos.conceptProblems.findByProblem(problemId);
-    const concepts: Concept[] = [];
-    for (const link of links.slice(0, limit)) {
-      const c = await this.repos.concepts.findById(link.concept_id);
-      if (c) concepts.push(c);
-    }
-    return concepts;
+    const conceptIds = links.slice(0, limit).map((l) => l.concept_id);
+    return this.repos.concepts.findByIds(conceptIds);
   }
 
   /** The problem's own pattern plus patterns carried by its linked concepts. */
@@ -97,12 +93,7 @@ export class KnowledgeGraphService extends BaseService {
     const concepts = await this.getRelatedConcepts(userId, problemId);
     for (const c of concepts) if (c.pattern_id) ids.add(c.pattern_id);
 
-    const patterns: Pattern[] = [];
-    for (const id of ids) {
-      const p = await this.repos.patterns.findById(id);
-      if (p) patterns.push(p);
-    }
-    return patterns;
+    return this.repos.patterns.findByIds(Array.from(ids));
   }
 
   /**
@@ -125,11 +116,7 @@ export class KnowledgeGraphService extends BaseService {
     if (problem?.topic_id) topicIds.add(problem.topic_id);
     for (const c of concepts) if (c.topic_id) topicIds.add(c.topic_id);
 
-    const topics: Topic[] = [];
-    for (const id of topicIds) {
-      const t = await this.repos.topics.findById(id);
-      if (t) topics.push(t);
-    }
+    const topics = await this.repos.topics.findByIds(Array.from(topicIds));
 
     return { problems, concepts, patterns, topics };
   }

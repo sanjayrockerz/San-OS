@@ -25,10 +25,21 @@ export * from "./context-engine.service";
 export * from "./habit-engine.service";
 export * from "./memory-intelligence.service";
 export * from "./memory-coach.service";
+export * from "./knowledge-health.service";
+export * from "./learning-gap-engine.service";
+export * from "./resource-effectiveness.service";
+export * from "./knowledge-coach.service";
+export * from "./academic-health.service";
+export * from "./gpa-projection.service";
+export * from "./academic-coach.service";
 export * from "./student-intelligence-core.service";
+export * from "./student-coach.service";
+export * from "./coach-outcome.service";
 
 import { createRepositories, type DbClient } from "@/lib/repositories";
 
+import { AcademicCoachService } from "./academic-coach.service";
+import { AcademicHealthService } from "./academic-health.service";
 import { ActivityService } from "./activity.service";
 import { AiService } from "./ai.service";
 import { AnalyticsService } from "./analytics.service";
@@ -36,16 +47,23 @@ import { ConceptService } from "./concepts.service";
 import { ContextEngineService } from "./context-engine.service";
 import { DashboardAggregationService } from "./dashboard-aggregation.service";
 import { EventService } from "./event.service";
+import { GpaProjectionService } from "./gpa-projection.service";
 import { HabitEngineService } from "./habit-engine.service";
 import { KnowledgeGraphService } from "./knowledge-graph.service";
 import { KnowledgeService } from "./knowledge.service";
 import { IitService } from "./iit.service";
+import { KnowledgeCoachService } from "./knowledge-coach.service";
+import { KnowledgeHealthService } from "./knowledge-health.service";
+import { LearningGapEngine } from "./learning-gap-engine.service";
 import { MemoryIntelligenceService } from "./memory-intelligence.service";
 import { MemoryCoachService } from "./memory-coach.service";
 import { ProblemsService } from "./problems.service";
+import { ResourceEffectivenessService } from "./resource-effectiveness.service";
 import { RevisionService } from "./revision.service";
 import { RoadmapService } from "./roadmaps.service";
 import { StudentIntelligenceCoreService } from "./student-intelligence-core.service";
+import { StudentCoachService } from "./student-coach.service";
+import { CoachOutcomeService } from "./coach-outcome.service";
 import { TaxonomyService } from "./taxonomy.service";
 import { TimelineService } from "./timeline.service";
 
@@ -76,7 +94,16 @@ export function createServices(client: DbClient) {
     habitEngine: new HabitEngineService(repos),
     memoryIntelligence: new MemoryIntelligenceService(repos),
     memoryCoach: new MemoryCoachService(repos),
+    knowledgeHealth: new KnowledgeHealthService(repos),
+    learningGapEngine: new LearningGapEngine(repos),
+    resourceEffectiveness: new ResourceEffectivenessService(repos),
+    knowledgeCoach: new KnowledgeCoachService(repos),
+    academicHealth: new AcademicHealthService(repos),
+    gpaProjection: new GpaProjectionService(repos),
+    academicCoach: new AcademicCoachService(repos),
     studentIntelligence: new StudentIntelligenceCoreService(repos),
+    studentCoach: new StudentCoachService(repos),
+    coachOutcome: new CoachOutcomeService(repos),
   };
 }
 
