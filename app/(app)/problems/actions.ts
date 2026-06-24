@@ -361,3 +361,125 @@ export async function markSolved(problemId: string): Promise<ActionResult> {
   revalidatePath("/overview");
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Post-solve editing — code vault + reflection blocks stay editable after the
+// initial solve instead of being locked once saved.
+// ---------------------------------------------------------------------------
+
+const codeVersionSchema = z.object({
+  code: z.string().trim().min(1, "Code is required").max(100000),
+  language: z.string().trim().min(1, "Language is required").max(40),
+  versionId: z.string().uuid().optional().or(z.literal("")),
+});
+
+/** Saves (or in-place edits) a problem's latest code version. */
+export async function saveCodeVersion(
+  problemId: string,
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/problems");
+
+  const parsed = codeVersionSchema.safeParse({
+    code: formData.get("code"),
+    language: formData.get("language"),
+    versionId: formData.get("versionId") ?? "",
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const supabase = await createClient();
+  const services = createServices(supabase);
+  const v = parsed.data;
+
+  try {
+    if (v.versionId) {
+      await services.repos.codeVersions.update(v.versionId, {
+        code: v.code,
+        language: v.language,
+      });
+    } else {
+      const attempts = await services.repos.attempts.findByProblem(user.id, problemId);
+      const latestAttempt = attempts[0];
+      if (!latestAttempt) {
+        return { ok: false, error: "Mark the problem solved before adding code" };
+      }
+      await services.repos.codeVersions.create({
+        user_id: user.id,
+        problem_id: problemId,
+        attempt_id: latestAttempt.id,
+        language: v.language,
+        code: v.code,
+        is_final: true,
+      });
+    }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to save code" };
+  }
+
+  revalidatePath(`/problems/${problemId}`);
+  return { ok: true };
+}
+
+const reflectionSchema = z.object({
+  myExplanation: z.string().trim().max(20000).optional().or(z.literal("")),
+  algorithmInWords: z.string().trim().max(20000).optional().or(z.literal("")),
+  bugThatStoppedMe: z.string().trim().max(5000).optional().or(z.literal("")),
+  finalTakeaway: z.string().trim().max(5000).optional().or(z.literal("")),
+  reflectionId: z.string().uuid().optional().or(z.literal("")),
+});
+
+/** Saves (or in-place edits) a problem's latest reflection. */
+export async function saveReflection(
+  problemId: string,
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/problems");
+
+  const parsed = reflectionSchema.safeParse({
+    myExplanation: formData.get("myExplanation") ?? "",
+    algorithmInWords: formData.get("algorithmInWords") ?? "",
+    bugThatStoppedMe: formData.get("bugThatStoppedMe") ?? "",
+    finalTakeaway: formData.get("finalTakeaway") ?? "",
+    reflectionId: formData.get("reflectionId") ?? "",
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const supabase = await createClient();
+  const services = createServices(supabase);
+  const v = parsed.data;
+  const values = {
+    my_explanation: v.myExplanation ? v.myExplanation : null,
+    algorithm_in_words: v.algorithmInWords ? v.algorithmInWords : null,
+    bug_that_stopped_me: v.bugThatStoppedMe ? v.bugThatStoppedMe : null,
+    final_takeaway: v.finalTakeaway ? v.finalTakeaway : null,
+  };
+
+  try {
+    if (v.reflectionId) {
+      await services.repos.reflections.update(v.reflectionId, values);
+    } else {
+      const attempts = await services.repos.attempts.findByProblem(user.id, problemId);
+      const latestAttempt = attempts[0];
+      if (!latestAttempt) {
+        return { ok: false, error: "Mark the problem solved before adding notes" };
+      }
+      await services.repos.reflections.create({
+        user_id: user.id,
+        problem_id: problemId,
+        attempt_id: latestAttempt.id,
+        ...values,
+      });
+    }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to save notes" };
+  }
+
+  revalidatePath(`/problems/${problemId}`);
+  return { ok: true };
+}

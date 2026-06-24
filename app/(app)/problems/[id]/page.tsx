@@ -6,7 +6,6 @@ import {
   Brain,
   Code2,
   ListChecks,
-  Lightbulb,
   RefreshCw,
   Activity as ActivityIcon,
   Target,
@@ -17,7 +16,8 @@ import {
 
 import { requireContext } from "@/lib/server/context";
 import { Badge } from "@/components/ui/badge";
-import { CodeBlock } from "@/components/problems/code-block";
+import { CodeVaultEditor } from "@/components/problems/code-vault-editor";
+import { ReflectionEditor } from "@/components/problems/reflection-editor";
 import { PostSolvePanel } from "@/components/problems/post-solve-panel";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
@@ -180,22 +180,9 @@ export default async function ProblemDetailPage({
             <Stat label="Attempts" value={String(attempts.length)} />
           </div>
 
-          {/* Algorithm */}
-          <Panel icon={Brain} title="Algorithm in own words">
-            {reflection?.algorithm_in_words ? (
-              <Prose text={reflection.algorithm_in_words} />
-            ) : (
-              <Empty text="No algorithm written yet." />
-            )}
-          </Panel>
-
-          {/* Explanation */}
-          <Panel icon={Lightbulb} title="My explanation">
-            {reflection?.my_explanation ? (
-              <Prose text={reflection.my_explanation} />
-            ) : (
-              <Empty text="No explanation captured." />
-            )}
+          {/* Reflection notes — algorithm, explanation, bug, takeaway (editable) */}
+          <Panel icon={Brain} title="Reflection">
+            <ReflectionEditor problemId={id} reflection={reflection} />
           </Panel>
 
           {/* Cognitive pipeline */}
@@ -229,42 +216,10 @@ export default async function ProblemDetailPage({
             )}
           </Panel>
 
-          {/* Code versions */}
+          {/* Code versions — editable in place */}
           <Panel icon={Code2} title={`Code vault (${codeVersions.length})`}>
-            {codeVersions.length > 0 ? (
-              <div className="space-y-4">
-                {codeVersions.map((cv) => (
-                  <div key={cv.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{fmtDate(cv.created_at)}</span>
-                      {cv.is_final && <Badge variant="success">Final</Badge>}
-                    </div>
-                    <CodeBlock code={cv.code} language={cv.language} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Empty text="No code saved yet." />
-            )}
+            <CodeVaultEditor problemId={id} versions={codeVersions} />
           </Panel>
-
-          {/* Reflection extras */}
-          {(reflection?.bug_that_stopped_me || reflection?.final_takeaway) && (
-            <Panel icon={Target} title="Takeaways">
-              <div className="space-y-3">
-                {reflection?.bug_that_stopped_me && (
-                  <LabeledBlock label="Bug that stopped me" tone="danger">
-                    {reflection.bug_that_stopped_me}
-                  </LabeledBlock>
-                )}
-                {reflection?.final_takeaway && (
-                  <LabeledBlock label="Final takeaway" tone="primary">
-                    {reflection.final_takeaway}
-                  </LabeledBlock>
-                )}
-              </div>
-            </Panel>
-          )}
 
           {/* Activity history */}
           <Panel icon={ActivityIcon} title="Activity history">
@@ -464,14 +419,6 @@ function SideCard({
   );
 }
 
-function Prose({ text }: { text: string }) {
-  return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-      {text}
-    </p>
-  );
-}
-
 function Empty({ text }: { text: string }) {
   return <p className="text-sm text-muted-foreground">{text}</p>;
 }
@@ -507,32 +454,6 @@ function Row({
     <div className="flex items-center justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium text-foreground">{children}</span>
-    </div>
-  );
-}
-
-function LabeledBlock({
-  label,
-  tone,
-  children,
-}: {
-  label: string;
-  tone: "danger" | "primary";
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p
-        className={cn(
-          "mb-1 text-[11px] font-semibold uppercase tracking-wider",
-          tone === "danger" ? "text-danger" : "text-primary",
-        )}
-      >
-        {label}
-      </p>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-        {children}
-      </p>
     </div>
   );
 }
