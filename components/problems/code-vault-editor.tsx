@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Pencil, Plus, Loader2, Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { CodeEditor } from "@/components/editor/code-editor";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/problems/code-block";
@@ -62,13 +62,12 @@ export function CodeVaultEditor({
           placeholder="e.g. python, typescript"
           className="h-9 max-w-[200px]"
         />
-        <Textarea
+        <CodeEditor
           name="code"
-          required
+          language={latest?.language ?? "typescript"}
           defaultValue={latest?.code ?? ""}
-          rows={10}
-          placeholder="Paste or write your solution…"
-          className="min-h-[220px] font-mono text-[13px]"
+          height="220px"
+          minHeight="220px"
         />
         {error && <p className="text-xs text-danger">{error}</p>}
         <div className="flex items-center gap-2">

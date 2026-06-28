@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { CodeEditor } from "@/components/editor/code-editor";
 import { CheckboxField } from "@/components/ui/checkbox-field";
 import {
   createLearningEntry,
@@ -114,6 +115,7 @@ export function NewProblemForm({
   patterns: Option[];
 }) {
   const [step, setStep] = useState(0);
+  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
   const [state, formAction, pending] = useActionState<
     ActionResult | null,
     FormData
@@ -355,8 +357,9 @@ export function NewProblemForm({
               <Select
                 id="codeLanguage"
                 name="codeLanguage"
-                defaultValue="Java"
-                className="sm:max-w-[200px]"
+                required
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
               >
                 {LANGUAGES.map((l) => (
                   <option key={l} value={l}>
@@ -366,13 +369,11 @@ export function NewProblemForm({
               </Select>
             </Field>
             <Field label="Solution code" htmlFor="code">
-              <Textarea
-                id="code"
+              <CodeEditor
                 name="code"
-                rows={14}
-                spellCheck={false}
-                className="font-mono text-[13px] leading-relaxed"
-                placeholder={"// Paste your final solution here"}
+                language={selectedLanguage}
+                defaultValue={"// Paste your final solution here"}
+                height="300px"
               />
             </Field>
           </FormCard>

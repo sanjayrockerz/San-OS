@@ -151,7 +151,7 @@ function ProjectCard({
   project: Tables<"projects">;
   health: ProjectHealth | null;
 }) {
-  const now = React.useMemo(() => Date.now(), []);
+  const [now] = React.useState(() => Date.now());
   
   const daysUntilDeadline = project.deadline
     ? Math.ceil((new Date(project.deadline).getTime() - now) / 86_400_000)

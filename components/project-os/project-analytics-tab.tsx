@@ -41,7 +41,7 @@ export function ProjectAnalyticsTab({
   minutesByCategory,
   health,
 }: Props) {
-  const now = React.useMemo(() => Date.now(), []);
+  const [now] = React.useState(() => Date.now());
 
   const totalMinutes = Object.values(minutesByCategory).reduce((sum, m) => sum + m, 0);
   const totalHours = totalMinutes / 60;

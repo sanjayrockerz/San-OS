@@ -271,7 +271,7 @@ function MilestoneRow({
   milestone: Tables<"project_milestones">;
   projectId: string;
 }) {
-  const now = React.useMemo(() => Date.now(), []);
+  const [now] = React.useState(() => Date.now());
   
   const daysLeft = milestone.target_date
     ? Math.ceil((new Date(milestone.target_date).getTime() - now) / 86_400_000)
