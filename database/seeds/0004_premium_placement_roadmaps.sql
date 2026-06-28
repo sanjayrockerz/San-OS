@@ -37,7 +37,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ─── FAANG Prep ─────────────────────────────────────────────────────────────
 INSERT INTO roadmaps (id, user_id, kind, tier, title, slug, description, source_url)
 VALUES (
-  'fng00000-0000-0000-0000-000000000001',
+  'faad0000-0000-0000-0000-000000000001',
   NULL,
   'placement',
   'FAANG',
@@ -49,14 +49,14 @@ VALUES (
 
 INSERT INTO roadmap_items (id, roadmap_id, parent_item_id, title, is_section, order_index, depends_on_item_id)
 VALUES
-  ('fng10000-0000-0000-0000-000000000001','fng00000-0000-0000-0000-000000000001',NULL,'Phase 1: Advanced Data Structures', true, 1, NULL),
-  ('fng10000-0000-0000-0000-000000000002','fng00000-0000-0000-0000-000000000001',NULL,'Phase 2: Complex Graphs & DP', true, 2, 'fng10000-0000-0000-0000-000000000001'),
-  ('fng10000-0000-0000-0000-000000000003','fng00000-0000-0000-0000-000000000001',NULL,'Phase 3: System Design Overlap', true, 3, 'fng10000-0000-0000-0000-000000000002')
+  ('faad1000-0000-0000-0000-000000000001','faad0000-0000-0000-0000-000000000001',NULL,'Phase 1: Advanced Data Structures', true, 1, NULL),
+  ('faad1000-0000-0000-0000-000000000002','faad0000-0000-0000-0000-000000000001',NULL,'Phase 2: Complex Graphs & DP', true, 2, 'faad1000-0000-0000-0000-000000000001'),
+  ('faad1000-0000-0000-0000-000000000003','faad0000-0000-0000-0000-000000000001',NULL,'Phase 3: System Design Overlap', true, 3, 'faad1000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
 -- Phase 1 Items
 INSERT INTO roadmap_items (id, roadmap_id, parent_item_id, title, is_section, order_index)
 VALUES
-  ('fng20000-0000-0000-0000-000000000001','fng00000-0000-0000-0000-000000000001','fng10000-0000-0000-0000-000000000001','Segment Tree & Fenwick Tree', false, 1),
-  ('fng20000-0000-0000-0000-000000000002','fng00000-0000-0000-0000-000000000001','fng10000-0000-0000-0000-000000000001','Trie Implementation', false, 2)
+  ('faad2000-0000-0000-0000-000000000001','faad0000-0000-0000-0000-000000000001','faad1000-0000-0000-0000-000000000001','Segment Tree & Fenwick Tree', false, 1),
+  ('faad2000-0000-0000-0000-000000000002','faad0000-0000-0000-0000-000000000001','faad1000-0000-0000-0000-000000000001','Trie Implementation', false, 2)
 ON CONFLICT (id) DO NOTHING;
