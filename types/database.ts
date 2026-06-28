@@ -686,6 +686,7 @@ export type Database = {
           slug: string | null;
           description: string | null;
           source_url: string | null;
+          tier: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -697,6 +698,7 @@ export type Database = {
           slug?: string | null;
           description?: string | null;
           source_url?: string | null;
+          tier?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -708,6 +710,7 @@ export type Database = {
           slug?: string | null;
           description?: string | null;
           source_url?: string | null;
+          tier?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -718,6 +721,7 @@ export type Database = {
           id: string;
           roadmap_id: string;
           parent_item_id: string | null;
+          depends_on_item_id: string | null;
           title: string;
           problem_id: string | null;
           topic_id: string | null;
@@ -730,6 +734,7 @@ export type Database = {
           id?: string;
           roadmap_id: string;
           parent_item_id?: string | null;
+          depends_on_item_id?: string | null;
           title: string;
           problem_id?: string | null;
           topic_id?: string | null;
@@ -742,6 +747,7 @@ export type Database = {
           id?: string;
           roadmap_id?: string;
           parent_item_id?: string | null;
+          depends_on_item_id?: string | null;
           title?: string;
           problem_id?: string | null;
           topic_id?: string | null;
@@ -947,6 +953,87 @@ export type Database = {
         };
         Relationships: [];
       };
+      academic_semesters: {
+        Row: {
+          id: string;
+          user_id: string;
+          semester_number: number;
+          name: string;
+          academic_year: string | null;
+          total_credits: number | null;
+          earned_credits: number | null;
+          sgpa: number | null;
+          cgpa_after: number | null;
+          backlogs: number | null;
+          status: Database["public"]["Enums"]["semester_status"];
+          is_current: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          semester_number: number;
+          name: string;
+          academic_year?: string | null;
+          total_credits?: number | null;
+          earned_credits?: number | null;
+          sgpa?: number | null;
+          cgpa_after?: number | null;
+          backlogs?: number | null;
+          status?: Database["public"]["Enums"]["semester_status"];
+          is_current?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          semester_number?: number;
+          name?: string;
+          academic_year?: string | null;
+          total_credits?: number | null;
+          earned_credits?: number | null;
+          sgpa?: number | null;
+          cgpa_after?: number | null;
+          backlogs?: number | null;
+          status?: Database["public"]["Enums"]["semester_status"];
+          is_current?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      academic_goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          target_cgpa: number | null;
+          dream_company: string | null;
+          total_semesters: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          target_cgpa?: number | null;
+          dream_company?: string | null;
+          total_semesters?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          target_cgpa?: number | null;
+          dream_company?: string | null;
+          total_semesters?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       iit_courses: {
         Row: {
           id: string;
@@ -955,11 +1042,15 @@ export type Database = {
           name: string;
           credits: number | null;
           semester: string | null;
+          semester_id: string | null;
           status: Database["public"]["Enums"]["course_status"];
           instructor: string | null;
           grade: string | null;
+          grade_point: number | null;
           marks: number | null;
           max_marks: number | null;
+          attempts: number | null;
+          attendance_percentage: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -970,11 +1061,15 @@ export type Database = {
           name: string;
           credits?: number | null;
           semester?: string | null;
+          semester_id?: string | null;
           status?: Database["public"]["Enums"]["course_status"];
           instructor?: string | null;
           grade?: string | null;
+          grade_point?: number | null;
           marks?: number | null;
           max_marks?: number | null;
+          attempts?: number | null;
+          attendance_percentage?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -985,15 +1080,26 @@ export type Database = {
           name?: string;
           credits?: number | null;
           semester?: string | null;
+          semester_id?: string | null;
           status?: Database["public"]["Enums"]["course_status"];
           instructor?: string | null;
           grade?: string | null;
+          grade_point?: number | null;
           marks?: number | null;
           max_marks?: number | null;
+          attempts?: number | null;
+          attendance_percentage?: number | null;
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "iit_courses_semester_id_fkey";
+            columns: ["semester_id"];
+            referencedRelation: "academic_semesters";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       iit_assignments: {
         Row: {
@@ -1605,6 +1711,7 @@ export type Database = {
           quiet_hours_start: string | null;
           quiet_hours_end: string | null;
           hidden_categories: Database["public"]["Enums"]["reminder_category"][];
+          default_hourly_rate: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -1618,6 +1725,7 @@ export type Database = {
           quiet_hours_start?: string | null;
           quiet_hours_end?: string | null;
           hidden_categories?: Database["public"]["Enums"]["reminder_category"][];
+          default_hourly_rate?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1631,6 +1739,659 @@ export type Database = {
           quiet_hours_start?: string | null;
           quiet_hours_end?: string | null;
           hidden_categories?: Database["public"]["Enums"]["reminder_category"][];
+          default_hourly_rate?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      projects: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string | null;
+          type: Database["public"]["Enums"]["project_type"];
+          status: Database["public"]["Enums"]["project_status"];
+          priority: Database["public"]["Enums"]["project_priority"];
+          tags: string[];
+          client_id: string | null;
+          client_name: string | null;
+          client_email: string | null;
+          repository_url: string | null;
+          deployment_url: string | null;
+          production_url: string | null;
+          estimated_hours: number | null;
+          actual_hours: number;
+          budget: number | null;
+          revenue: number | null;
+          start_date: string | null;
+          deadline: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          description?: string | null;
+          type?: Database["public"]["Enums"]["project_type"];
+          status?: Database["public"]["Enums"]["project_status"];
+          priority?: Database["public"]["Enums"]["project_priority"];
+          tags?: string[];
+          client_id?: string | null;
+          client_name?: string | null;
+          client_email?: string | null;
+          repository_url?: string | null;
+          deployment_url?: string | null;
+          production_url?: string | null;
+          estimated_hours?: number | null;
+          actual_hours?: number;
+          budget?: number | null;
+          revenue?: number | null;
+          start_date?: string | null;
+          deadline?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          description?: string | null;
+          type?: Database["public"]["Enums"]["project_type"];
+          status?: Database["public"]["Enums"]["project_status"];
+          priority?: Database["public"]["Enums"]["project_priority"];
+          tags?: string[];
+          client_id?: string | null;
+          client_name?: string | null;
+          client_email?: string | null;
+          repository_url?: string | null;
+          deployment_url?: string | null;
+          production_url?: string | null;
+          estimated_hours?: number | null;
+          actual_hours?: number;
+          budget?: number | null;
+          revenue?: number | null;
+          start_date?: string | null;
+          deadline?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey";
+            columns: ["client_id"];
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_tasks: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          description: string | null;
+          status: Database["public"]["Enums"]["task_status"];
+          priority: Database["public"]["Enums"]["project_priority"];
+          estimated_minutes: number | null;
+          actual_minutes: number;
+          due_date: string | null;
+          completed_at: string | null;
+          order_index: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          description?: string | null;
+          status?: Database["public"]["Enums"]["task_status"];
+          priority?: Database["public"]["Enums"]["project_priority"];
+          estimated_minutes?: number | null;
+          actual_minutes?: number;
+          due_date?: string | null;
+          completed_at?: string | null;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string;
+          title?: string;
+          description?: string | null;
+          status?: Database["public"]["Enums"]["task_status"];
+          priority?: Database["public"]["Enums"]["project_priority"];
+          estimated_minutes?: number | null;
+          actual_minutes?: number;
+          due_date?: string | null;
+          completed_at?: string | null;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_project_id_fkey";
+            columns: ["project_id"];
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_milestones: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          description: string | null;
+          target_date: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          description?: string | null;
+          target_date?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string;
+          title?: string;
+          description?: string | null;
+          target_date?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_project_id_fkey";
+            columns: ["project_id"];
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_time_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          task_id: string | null;
+          category: Database["public"]["Enums"]["time_entry_category"];
+          description: string | null;
+          minutes: number;
+          logged_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          task_id?: string | null;
+          category?: Database["public"]["Enums"]["time_entry_category"];
+          description?: string | null;
+          minutes: number;
+          logged_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string;
+          task_id?: string | null;
+          category?: Database["public"]["Enums"]["time_entry_category"];
+          description?: string | null;
+          minutes?: number;
+          logged_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_time_entries_project_id_fkey";
+            columns: ["project_id"];
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_documents: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          doc_type: string;
+          content: string | null;
+          file_url: string | null;
+          storage_path: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          doc_type?: string;
+          content?: string | null;
+          file_url?: string | null;
+          storage_path?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string;
+          title?: string;
+          doc_type?: string;
+          content?: string | null;
+          file_url?: string | null;
+          storage_path?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey";
+            columns: ["project_id"];
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_change_requests: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          description: string | null;
+          original_scope: string | null;
+          requested_change: string | null;
+          estimated_hours: number | null;
+          suggested_price: number | null;
+          status: Database["public"]["Enums"]["change_request_status"];
+          approved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id: string;
+          title: string;
+          description?: string | null;
+          original_scope?: string | null;
+          requested_change?: string | null;
+          estimated_hours?: number | null;
+          suggested_price?: number | null;
+          status?: Database["public"]["Enums"]["change_request_status"];
+          approved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string;
+          title?: string;
+          description?: string | null;
+          original_scope?: string | null;
+          requested_change?: string | null;
+          estimated_hours?: number | null;
+          suggested_price?: number | null;
+          status?: Database["public"]["Enums"]["change_request_status"];
+          approved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_change_requests_project_id_fkey";
+            columns: ["project_id"];
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_quotes: {
+        Row: {
+          id: string;
+          user_id: string;
+          project_id: string | null;
+          client_id: string | null;
+          title: string;
+          summary: string | null;
+          features: Json;
+          milestones: Json;
+          total_estimated_hours: number | null;
+          price_min: number | null;
+          price_max: number | null;
+          status: Database["public"]["Enums"]["quote_status"];
+          sent_at: string | null;
+          expires_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          project_id?: string | null;
+          client_id?: string | null;
+          title: string;
+          summary?: string | null;
+          features?: Json;
+          milestones?: Json;
+          total_estimated_hours?: number | null;
+          price_min?: number | null;
+          price_max?: number | null;
+          status?: Database["public"]["Enums"]["quote_status"];
+          sent_at?: string | null;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          project_id?: string | null;
+          client_id?: string | null;
+          title?: string;
+          summary?: string | null;
+          features?: Json;
+          milestones?: Json;
+          total_estimated_hours?: number | null;
+          price_min?: number | null;
+          price_max?: number | null;
+          status?: Database["public"]["Enums"]["quote_status"];
+          sent_at?: string | null;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_quotes_client_id_fkey";
+            columns: ["client_id"];
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      clients: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          company: string | null;
+          industry: string | null;
+          website: string | null;
+          email: string | null;
+          phone: string | null;
+          whatsapp: string | null;
+          timezone: string | null;
+          address: string | null;
+          tax_info: string | null;
+          status: Database["public"]["Enums"]["client_status"];
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          company?: string | null;
+          industry?: string | null;
+          website?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          whatsapp?: string | null;
+          timezone?: string | null;
+          address?: string | null;
+          tax_info?: string | null;
+          status?: Database["public"]["Enums"]["client_status"];
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          company?: string | null;
+          industry?: string | null;
+          website?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          whatsapp?: string | null;
+          timezone?: string | null;
+          address?: string | null;
+          tax_info?: string | null;
+          status?: Database["public"]["Enums"]["client_status"];
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      pipeline_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          client_id: string | null;
+          title: string;
+          value_estimate: number | null;
+          stage: Database["public"]["Enums"]["pipeline_stage"];
+          probability: number;
+          expected_close_date: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          client_id?: string | null;
+          title: string;
+          value_estimate?: number | null;
+          stage?: Database["public"]["Enums"]["pipeline_stage"];
+          probability?: number;
+          expected_close_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          client_id?: string | null;
+          title?: string;
+          value_estimate?: number | null;
+          stage?: Database["public"]["Enums"]["pipeline_stage"];
+          probability?: number;
+          expected_close_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_entries_client_id_fkey";
+            columns: ["client_id"];
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      invoices: {
+        Row: {
+          id: string;
+          user_id: string;
+          client_id: string;
+          project_id: string | null;
+          invoice_number: string;
+          line_items: Json;
+          total_amount: number;
+          currency: string;
+          status: Database["public"]["Enums"]["invoice_status"];
+          due_date: string | null;
+          sent_at: string | null;
+          paid_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          client_id: string;
+          project_id?: string | null;
+          invoice_number: string;
+          line_items?: Json;
+          total_amount?: number;
+          currency?: string;
+          status?: Database["public"]["Enums"]["invoice_status"];
+          due_date?: string | null;
+          sent_at?: string | null;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          client_id?: string;
+          project_id?: string | null;
+          invoice_number?: string;
+          line_items?: Json;
+          total_amount?: number;
+          currency?: string;
+          status?: Database["public"]["Enums"]["invoice_status"];
+          due_date?: string | null;
+          sent_at?: string | null;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey";
+            columns: ["client_id"];
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey";
+            columns: ["project_id"];
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      income_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          client_id: string | null;
+          project_id: string | null;
+          invoice_id: string | null;
+          amount: number;
+          currency: string;
+          category: string;
+          description: string | null;
+          received_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          client_id?: string | null;
+          project_id?: string | null;
+          invoice_id?: string | null;
+          amount: number;
+          currency?: string;
+          category?: string;
+          description?: string | null;
+          received_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          client_id?: string | null;
+          project_id?: string | null;
+          invoice_id?: string | null;
+          amount?: number;
+          currency?: string;
+          category?: string;
+          description?: string | null;
+          received_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "income_entries_invoice_id_fkey";
+            columns: ["invoice_id"];
+            referencedRelation: "invoices";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      expense_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          amount: number;
+          currency: string;
+          description: string | null;
+          occurred_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category?: string;
+          amount: number;
+          currency?: string;
+          description?: string | null;
+          occurred_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: string;
+          amount?: number;
+          currency?: string;
+          description?: string | null;
+          occurred_at?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -1686,7 +2447,8 @@ export type Database = {
         | "blind_75"
         | "neetcode_150"
         | "iit"
-        | "custom";
+        | "custom"
+        | "placement";
       roadmap_item_status:
         | "not_started"
         | "in_progress"
@@ -1705,6 +2467,7 @@ export type Database = {
         | "study_session"
         | "note_added";
       course_status: "planned" | "in_progress" | "completed" | "dropped";
+      semester_status: "upcoming" | "in_progress" | "completed";
       assignment_status:
         | "pending"
         | "in_progress"
@@ -1776,6 +2539,16 @@ export type Database = {
         | "at_risk"
         | "likely_forgotten";
       memory_trend: "improving" | "stable" | "declining";
+      project_status: "planning" | "active" | "on_hold" | "completed" | "cancelled" | "archived";
+      project_type: "client" | "internal" | "open_source";
+      project_priority: "critical" | "high" | "medium" | "low";
+      task_status: "backlog" | "ready" | "in_progress" | "review" | "testing" | "completed" | "cancelled";
+      time_entry_category: "design" | "frontend" | "backend" | "testing" | "meetings" | "research" | "deployment" | "other";
+      change_request_status: "pending" | "estimated" | "approved" | "rejected" | "implemented";
+      quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired";
+      client_status: "prospect" | "active" | "inactive" | "churned";
+      pipeline_stage: "lead" | "discovery" | "proposal" | "negotiation" | "won" | "lost";
+      invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1840,6 +2613,7 @@ export const Constants = {
         "neetcode_150",
         "iit",
         "custom",
+        "placement",
       ],
       roadmap_item_status: [
         "not_started",
@@ -1861,6 +2635,7 @@ export const Constants = {
         "note_added",
       ],
       course_status: ["planned", "in_progress", "completed", "dropped"],
+      semester_status: ["upcoming", "in_progress", "completed"],
       assignment_status: [
         "pending",
         "in_progress",
@@ -1935,6 +2710,16 @@ export const Constants = {
         "deep_focus",
         "none",
       ],
+      project_status: ["planning", "active", "on_hold", "completed", "cancelled", "archived"],
+      project_type: ["client", "internal", "open_source"],
+      project_priority: ["critical", "high", "medium", "low"],
+      task_status: ["backlog", "ready", "in_progress", "review", "testing", "completed", "cancelled"],
+      time_entry_category: ["design", "frontend", "backend", "testing", "meetings", "research", "deployment", "other"],
+      change_request_status: ["pending", "estimated", "approved", "rejected", "implemented"],
+      quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
+      client_status: ["prospect", "active", "inactive", "churned"],
+      pipeline_stage: ["lead", "discovery", "proposal", "negotiation", "won", "lost"],
+      invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
     },
   },
 } as const;

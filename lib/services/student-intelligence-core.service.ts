@@ -2,6 +2,9 @@ import type { Repositories } from "@/lib/repositories";
 import type { Tables } from "@/types/database";
 
 import { type AcademicAction, AcademicCoachService } from "./academic-coach.service";
+import { type ProjectAction, ProjectCoachService } from "./project-coach.service";
+import { type BusinessAction, BusinessCoachService } from "./business-coach.service";
+import { type RoadmapAction, RoadmapCoachService } from "./roadmap-coach.service";
 import { BaseService } from "./base.service";
 import { HabitEngineService, type MissedWorkItem } from "./habit-engine.service";
 import { type KnowledgeAction, KnowledgeCoachService } from "./knowledge-coach.service";
@@ -75,8 +78,22 @@ export interface StudentAction {
     | "address_missed_work"
     | "create_concept_note"
     | "link_pattern"
-    | "review_course";
-  source: "revision" | "memory" | "habit" | "iit" | "taxonomy" | "knowledge";
+    | "review_course"
+    | "complete_project_task"
+    | "review_project_milestone"
+    | "collect_invoice"
+    | "advance_pipeline"
+    | "resume_roadmap";
+  source:
+    | "revision"
+    | "memory"
+    | "habit"
+    | "iit"
+    | "taxonomy"
+    | "knowledge"
+    | "project"
+    | "business"
+    | "roadmap";
   title: string;
   detail: string;
   href: string;
@@ -97,7 +114,19 @@ export type RiskLevel = "low" | "medium" | "high" | "critical";
 
 /** One entity (topic, pattern, course, assignment, or piece of overdue work) the student is at risk on. */
 export interface RiskEntry {
-  entityType: "topic" | "pattern" | "habit" | "concept" | "course" | "assignment";
+  entityType:
+    | "topic"
+    | "pattern"
+    | "habit"
+    | "concept"
+    | "course"
+    | "assignment"
+    | "project"
+    | "project_task"
+    | "invoice"
+    | "pipeline_entry"
+    | "cgpa"
+    | "roadmap";
   entityId: string;
   name: string;
   riskLevel: RiskLevel;
@@ -163,6 +192,11 @@ export const ACTION_LABEL_BY_KIND: Partial<Record<StudentAction["kind"], string>
   create_concept_note: "Write concept note",
   link_pattern: "Link pattern",
   review_course: "Review course",
+  complete_project_task: "Open task",
+  review_project_milestone: "Review milestone",
+  collect_invoice: "Open invoices",
+  advance_pipeline: "Open pipeline",
+  resume_roadmap: "Continue roadmap",
 };
 
 const CACHE_TTL_MS = 15_000;
@@ -181,6 +215,12 @@ interface GatheredSignals {
   knowledgeGaps: KnowledgeAction[];
   academicActions: AcademicAction[];
   academicRisks: RiskEntry[];
+  projectActions: ProjectAction[];
+  projectRisks: RiskEntry[];
+  businessActions: BusinessAction[];
+  businessRisks: RiskEntry[];
+  roadmapActions: RoadmapAction[];
+  roadmapRisks: RiskEntry[];
 }
 
 /**
@@ -202,6 +242,9 @@ export class StudentIntelligenceCoreService extends BaseService {
   private readonly habitEngine: HabitEngineService;
   private readonly knowledgeCoach: KnowledgeCoachService;
   private readonly academicCoach: AcademicCoachService;
+  private readonly projectCoach: ProjectCoachService;
+  private readonly businessCoach: BusinessCoachService;
+  private readonly roadmapCoach: RoadmapCoachService;
 
   private static readonly cache = new Map<
     string,
@@ -216,6 +259,9 @@ export class StudentIntelligenceCoreService extends BaseService {
     this.habitEngine = new HabitEngineService(repos);
     this.knowledgeCoach = new KnowledgeCoachService(repos);
     this.academicCoach = new AcademicCoachService(repos);
+    this.roadmapCoach = new RoadmapCoachService(repos);
+    this.projectCoach = new ProjectCoachService(repos);
+    this.businessCoach = new BusinessCoachService(repos);
   }
 
   /** Invalidate the cached snapshot for a user (call after a mutation if eager). */
@@ -295,19 +341,11 @@ export class StudentIntelligenceCoreService extends BaseService {
   private async gatherSignals(userId: string): Promise<GatheredSignals> {
     const nowIso = new Date().toISOString();
     const [
-      due,
-      weak,
-      problems,
-      attempts,
-      concepts,
-      knowledge,
-      upcomingAssignments,
-      memoryInterventions,
-      taxonomyProposals,
-      missedWork,
-      knowledgeGaps,
-      academicActions,
-      academicRisks,
+      due, weak, problems, attempts, concepts, knowledge,
+      upcomingAssignments, memoryInterventions, taxonomyProposals,
+      missedWork, knowledgeGaps, academicActions, academicRisks,
+      projectActions, projectRisks, businessActions, businessRisks,
+      roadmapActions, roadmapRisks,
     ] = await Promise.all([
       safe(this.revision.dueQueue(userId), []),
       safe(this.revision.weakQueue(userId), []),
@@ -322,6 +360,12 @@ export class StudentIntelligenceCoreService extends BaseService {
       safe(this.knowledgeCoach.actions(userId), []),
       safe(this.academicCoach.actions(userId), []),
       safe(this.academicCoach.risks(userId), []),
+      safe(this.projectCoach.actions(userId), []),
+      safe(this.projectCoach.risks(userId), []),
+      safe(this.businessCoach.actions(userId), []),
+      safe(this.businessCoach.risks(userId), []),
+      safe(this.roadmapCoach.actions(userId), []),
+      safe(this.roadmapCoach.risks(userId), []),
     ]);
 
     return {
@@ -338,6 +382,12 @@ export class StudentIntelligenceCoreService extends BaseService {
       knowledgeGaps,
       academicActions,
       academicRisks,
+      projectActions,
+      projectRisks,
+      businessActions,
+      businessRisks,
+      roadmapActions,
+      roadmapRisks,
     };
   }
 
@@ -555,6 +605,18 @@ export class StudentIntelligenceCoreService extends BaseService {
       actions.push(action);
     }
 
+    for (const action of signals.projectActions) {
+      actions.push(action);
+    }
+
+    for (const action of signals.businessActions) {
+      actions.push(action);
+    }
+
+    for (const action of signals.roadmapActions) {
+      actions.push(action);
+    }
+
     for (const k of signals.knowledge.slice(0, 2)) {
       actions.push(
         this.action({
@@ -646,6 +708,18 @@ export class StudentIntelligenceCoreService extends BaseService {
       entries.push(entry);
     }
 
+    for (const entry of signals.projectRisks) {
+      entries.push(entry);
+    }
+
+    for (const entry of signals.businessRisks) {
+      entries.push(entry);
+    }
+
+    for (const entry of signals.roadmapRisks) {
+      entries.push(entry);
+    }
+
     entries.sort((a, b) => RISK_WEIGHT[b.riskLevel] - RISK_WEIGHT[a.riskLevel]);
 
     const overallRiskScore = entries.length
@@ -671,6 +745,9 @@ export class StudentIntelligenceCoreService extends BaseService {
       { id: "academic", title: "Academic Catch-Up", sources: ["iit"] },
       { id: "knowledge", title: "Knowledge Tidy-Up", sources: ["taxonomy", "knowledge"] },
       { id: "habit", title: "Clear the Backlog", sources: ["habit"] },
+      { id: "project", title: "Project Work", sources: ["project"] },
+      { id: "business", title: "Business Work", sources: ["business"] },
+      { id: "roadmap", title: "Roadmap Progress", sources: ["roadmap"] },
     ];
 
     const missions: Mission[] = [];
@@ -793,6 +870,7 @@ export class StudentIntelligenceCoreService extends BaseService {
       resume_problem: "problem",
       solve_new: "problem",
       complete_assignment: "iit",
+      resume_roadmap: "roadmap",
     };
 
     const tasks: SessionTask[] = [];

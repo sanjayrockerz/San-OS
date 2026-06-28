@@ -6,7 +6,7 @@ import { SectionHeading } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { ProgressRing } from "@/components/charts/progress-ring";
 import { cn } from "@/lib/utils";
-import type { AcademicAction } from "@/lib/services/academic-coach.service";
+import type { AcademicAction, AcademicInsight } from "@/lib/services/academic-coach.service";
 import type { HealthCategory } from "@/lib/services/academic-health.service";
 import type { AssignmentRiskLevel } from "@/lib/services/academic-health.service";
 import type { CreditHealthStatus } from "@/lib/services/academic-health.service";
@@ -50,12 +50,23 @@ export interface WeeklyReviewView {
   weakestCourse: string | null;
 }
 
+export interface CgpaView {
+  currentCgpa: number | null;
+  projectedGraduationCgpa: number | null;
+  targetCgpa: number | null;
+  requiredGpaPerRemainingSemester: number | null;
+  remainingSemesters: number;
+  explanation: string;
+}
+
 export interface AcademicCommandCenterData {
   creditStatus: CreditHealthStatus;
   courseHealth: CourseHealthView[];
   assignmentRisk: AssignmentRiskView[];
   gpa: GpaView;
+  cgpa: CgpaView;
   actions: AcademicAction[];
+  insights: AcademicInsight[];
   weeklyReview: WeeklyReviewView;
 }
 
@@ -72,6 +83,8 @@ export function AcademicCommandCenter({ data }: { data: AcademicCommandCenterDat
       <HealthOverview courseHealth={data.courseHealth} creditStatus={data.creditStatus} />
       <AssignmentRiskCenter risks={data.assignmentRisk} />
       <RecommendedActions actions={data.actions} />
+      <CgpaInsightsPanel insights={data.insights} />
+      <CgpaEnginePanel cgpa={data.cgpa} />
       <GpaProjectionPanel gpa={data.gpa} />
       <CourseHealthGrid courses={data.courseHealth} />
       <WeeklyReview review={data.weeklyReview} />
@@ -224,6 +237,93 @@ function RecommendedActions({ actions }: { actions: AcademicAction[] }) {
             <ActionRow key={action.id} action={action} />
           ))}
         </div>
+      </div>
+    </Section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* CGPA Insights Panel — explainable, maths-derived grade recommendations    */
+/* -------------------------------------------------------------------------- */
+
+function CgpaInsightsPanel({ insights }: { insights: AcademicInsight[] }) {
+  if (insights.length === 0) return null;
+
+  return (
+    <Section>
+      <div className="surface-card rounded-2xl p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Sparkles className={cn("size-4.5", CATEGORY_TEXT.academic)} />
+          <h2 className="text-section">CGPA Opportunity Map</h2>
+        </div>
+        <div className="space-y-2">
+          {insights.map((insight) => (
+            <Link
+              key={insight.id}
+              href={insight.href}
+              className="lift group flex items-start gap-3 rounded-xl border border-border bg-card p-3"
+            >
+              <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", CATEGORY_TINT.academic)}>
+                <GraduationCap className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium line-clamp-1">{insight.title}</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground mt-0.5">{insight.explanation}</p>
+              </div>
+              {insight.cgpaDelta !== null && insight.cgpaDelta > 0 && (
+                <span className="shrink-0 self-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-400">
+                  +{insight.cgpaDelta.toFixed(2)} CGPA
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* CGPA Engine Panel — cumulative across all semesters                        */
+/* -------------------------------------------------------------------------- */
+
+function CgpaEnginePanel({ cgpa }: { cgpa: CgpaView }) {
+  return (
+    <Section>
+      <div className="surface-card rounded-2xl p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <LineChart className={cn("size-4.5", CATEGORY_TEXT.academic)} />
+            <h2 className="text-section">CGPA Engine</h2>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-medium text-primary">
+            <Link href="/academic/history" className="hover:underline">
+              Academic History
+            </Link>
+            <Link href="/academic/planner" className="hover:underline">
+              GPA Planner →
+            </Link>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-center">
+          <div className="rounded-xl border border-border p-3">
+            <p className="text-2xl font-bold tabular">{cgpa.currentCgpa?.toFixed(2) ?? "—"}</p>
+            <p className="text-[11px] text-muted-foreground">Current CGPA</p>
+          </div>
+          <div className="rounded-xl border border-border p-3">
+            <p className="text-2xl font-bold tabular">{cgpa.projectedGraduationCgpa?.toFixed(2) ?? "—"}</p>
+            <p className="text-[11px] text-muted-foreground">Projected Graduation</p>
+          </div>
+          <div className="rounded-xl border border-border p-3">
+            <p className="text-2xl font-bold tabular">{cgpa.targetCgpa?.toFixed(2) ?? "—"}</p>
+            <p className="text-[11px] text-muted-foreground">Target CGPA</p>
+          </div>
+          <div className="rounded-xl border border-border p-3">
+            <p className="text-2xl font-bold tabular">{cgpa.requiredGpaPerRemainingSemester?.toFixed(2) ?? "—"}</p>
+            <p className="text-[11px] text-muted-foreground">Required / semester</p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">{cgpa.explanation}</p>
       </div>
     </Section>
   );

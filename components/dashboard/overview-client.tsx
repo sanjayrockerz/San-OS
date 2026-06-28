@@ -34,6 +34,7 @@ import type {
   BattlePlanStep,
   DailyCoachBrief,
   EveningReview,
+  Mission,
   MissedWorkItem,
   RecoveryPlan,
   RiskRegister,
@@ -141,6 +142,7 @@ export interface OverviewData {
   focusMode: string;
   eveningReview: EveningReview | null;
   priorities: StudentAction[];
+  missions: Mission[];
   risks: RiskRegister;
   coachBrief: DailyCoachBrief;
   recoveryPlan: RecoveryPlan;
@@ -233,6 +235,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
         brief={data.coachBrief}
         recovery={data.recoveryPlan}
         priorities={data.priorities}
+        missions={data.missions}
         risks={data.risks}
         memoryHealth={data.memoryHealth}
         forgettingForecast={data.forgettingForecast}

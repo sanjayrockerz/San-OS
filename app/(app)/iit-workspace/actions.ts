@@ -181,3 +181,118 @@ export async function watchLecture(
     return { ok: false, error: e instanceof Error ? e.message : "Failed to mark lecture watched" };
   }
 }
+
+const updateCourseSchema = createCourseSchema.partial();
+
+export async function updateCourse(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/iit-workspace");
+
+  const courseId = uuidSchema.safeParse(formData.get("courseId"));
+  if (!courseId.success) return { ok: false, error: "Invalid course" };
+
+  const raw = {
+    name: formData.get("name") || undefined,
+    code: formData.get("code") || null,
+    credits: formData.get("credits") ? Number(formData.get("credits")) : undefined,
+    semester: formData.get("semester") || null,
+    status: formData.get("status") || undefined,
+    instructor: formData.get("instructor") || null,
+    grade: formData.get("grade") || null,
+    marks: formData.get("marks") ? Number(formData.get("marks")) : null,
+    max_marks: formData.get("max_marks") ? Number(formData.get("max_marks")) : null,
+    grade_point: formData.get("grade_point") ? Number(formData.get("grade_point")) : null,
+    attendance_percentage: formData.get("attendance_percentage")
+      ? Number(formData.get("attendance_percentage"))
+      : null,
+  };
+  const parsed = updateCourseSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const services = createServices(await createClient());
+  try {
+    await services.repos.iitCourses.update(courseId.data, parsed.data);
+    DashboardAggregationService.invalidate(user.id);
+    revalidate(courseId.data);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to update course" };
+  }
+}
+
+export async function updateAssignment(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/iit-workspace");
+
+  const assignmentId = uuidSchema.safeParse(formData.get("assignmentId"));
+  const courseId = formData.get("courseId");
+  if (!assignmentId.success) return { ok: false, error: "Invalid assignment" };
+
+  const dueDateRaw = formData.get("due_date");
+  const patch: Record<string, unknown> = {};
+  const title = formData.get("title");
+  if (title) patch.title = title;
+  if (dueDateRaw) patch.due_date = new Date(`${dueDateRaw}T23:59:59Z`).toISOString();
+  const maxScore = formData.get("max_score");
+  if (maxScore) patch.max_score = Number(maxScore);
+  const description = formData.get("description");
+  if (description !== null) patch.description = description || null;
+
+  const services = createServices(await createClient());
+  try {
+    await services.repos.iitAssignments.update(assignmentId.data, patch);
+    DashboardAggregationService.invalidate(user.id);
+    revalidate(typeof courseId === "string" ? courseId : undefined);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to update assignment" };
+  }
+}
+
+export async function deleteAssignment(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/iit-workspace");
+
+  const assignmentId = uuidSchema.safeParse(formData.get("assignmentId"));
+  const courseId = formData.get("courseId");
+  if (!assignmentId.success) return { ok: false, error: "Invalid assignment" };
+
+  const services = createServices(await createClient());
+  try {
+    await services.repos.iitAssignments.delete(assignmentId.data);
+    DashboardAggregationService.invalidate(user.id);
+    revalidate(typeof courseId === "string" ? courseId : undefined);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to delete assignment" };
+  }
+}
+
+export async function deleteLecture(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireUser("/iit-workspace");
+
+  const lectureId = uuidSchema.safeParse(formData.get("lectureId"));
+  const courseId = formData.get("courseId");
+  if (!lectureId.success) return { ok: false, error: "Invalid lecture" };
+
+  const services = createServices(await createClient());
+  try {
+    await services.repos.iitLectures.delete(lectureId.data);
+    DashboardAggregationService.invalidate(user.id);
+    revalidate(typeof courseId === "string" ? courseId : undefined);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to delete lecture" };
+  }
+}

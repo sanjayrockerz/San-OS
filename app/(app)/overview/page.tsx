@@ -270,6 +270,7 @@ export default async function OverviewPage() {
     focusMode,
     eveningReview,
     priorities: visiblePriorities,
+    missions: intelligence.missions,
     risks: intelligence.risks,
     coachBrief,
     recoveryPlan,

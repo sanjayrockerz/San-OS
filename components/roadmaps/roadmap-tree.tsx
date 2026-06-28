@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { ChevronDown, ChevronRight, Check, Loader2 } from "lucide-react";
+import { useActionState, useState, useOptimistic } from "react";
+import { ChevronDown, ChevronRight, Check, Loader2, Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { markRoadmapItem, type ActionResult } from "@/app/(app)/roadmaps/actions";
@@ -21,11 +21,20 @@ interface NodeProps {
 function TreeNode({ node, roadmapId, depth = 0 }: NodeProps) {
   const [open, setOpen] = useState(depth === 0);
   const isSection = node.is_section;
-  const isCompleted = node.status === "completed";
+  const isLocked = node.locked;
 
-  const [, action, pending] = useActionState(
-    (prev: ActionResult | null, formData: FormData) =>
-      markRoadmapItem(prev, formData),
+  const [optimisticStatus, addOptimisticStatus] = useOptimistic(
+    node.status,
+    (state, newStatus: string) => newStatus as RoadmapNode["status"]
+  );
+  const isCompleted = optimisticStatus === "completed";
+
+  const [state, action, pending] = useActionState(
+    async (prev: ActionResult | null, formData: FormData) => {
+      const statusRaw = formData.get("status") as string;
+      addOptimisticStatus(statusRaw);
+      return markRoadmapItem(prev, formData);
+    },
     null,
   );
 
@@ -37,6 +46,7 @@ function TreeNode({ node, roadmapId, depth = 0 }: NodeProps) {
           isSection
             ? "cursor-pointer hover:bg-secondary/50"
             : "hover:bg-secondary/30",
+          isLocked && !isSection && "opacity-60",
         )}
         onClick={isSection ? () => setOpen(!open) : undefined}
       >
@@ -48,6 +58,13 @@ function TreeNode({ node, roadmapId, depth = 0 }: NodeProps) {
             ) : (
               <ChevronRight className="size-4" />
             )}
+          </span>
+        ) : isLocked ? (
+          <span
+            title={node.dependsOnTitle ? `Complete "${node.dependsOnTitle}" first` : "Locked"}
+            className="flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-border text-muted-foreground"
+          >
+            <Lock className="size-2.5" />
           </span>
         ) : (
           <form action={action}>
@@ -87,14 +104,17 @@ function TreeNode({ node, roadmapId, depth = 0 }: NodeProps) {
           {node.title}
         </span>
 
-        {/* Section item count */}
-        {isSection && node.children.length > 0 && (
+        {/* Section item count — recursive across all descendants, not just direct children */}
+        {isSection && node.leafTotal > 0 && (
           <span className="text-[11px] text-muted-foreground">
-            {node.children.filter((c) => c.status === "completed").length}/
-            {node.children.filter((c) => !c.is_section).length}
+            {node.leafCompleted}/{node.leafTotal}
           </span>
         )}
       </div>
+
+      {!isSection && state && !state.ok && (
+        <p className="ml-8 -mt-1 pb-1.5 text-[11px] text-destructive">{state.error}</p>
+      )}
 
       {/* Children */}
       {isSection && open && node.children.length > 0 && (

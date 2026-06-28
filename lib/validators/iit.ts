@@ -17,6 +17,10 @@ export const createCourseSchema = z.object({
   grade: z.string().max(10).nullish(),
   marks: z.number().min(0).nullish(),
   max_marks: z.number().min(0).nullish(),
+  semester_id: uuidSchema.nullish(),
+  grade_point: z.number().min(0).max(10).nullish(),
+  attempts: z.number().int().positive().max(10).nullish(),
+  attendance_percentage: z.number().min(0).max(100).nullish(),
 });
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 

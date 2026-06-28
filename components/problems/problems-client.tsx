@@ -194,24 +194,24 @@ function ProblemRow({
   }
 
   return (
-    <div className="surface-card lift flex items-center gap-3 rounded-2xl p-4">
+    <div className="surface-card group flex flex-col justify-between rounded-2xl p-4 transition-all hover:shadow-md sm:flex-row sm:items-center sm:gap-4">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Link
             href={`/problems/${problem.id}`}
-            className="group flex min-w-0 items-center gap-1.5"
+            className="flex min-w-0 items-center gap-1.5"
           >
-            <h3 className="truncate text-sm font-semibold transition-colors group-hover:text-primary">
+            <h3 className="truncate text-[15px] font-semibold tracking-tight transition-colors group-hover:text-primary">
               {problem.title}
             </h3>
-            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+            <ArrowRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
           </Link>
           {problem.url && (
             <a
               href={problem.url}
               target="_blank"
               rel="noreferrer"
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              className="ml-1 text-muted-foreground/60 transition-colors hover:text-foreground"
             >
               <ExternalLink className="size-3.5" />
             </a>
@@ -220,40 +220,43 @@ function ProblemRow({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground/60 transition-colors hover:text-foreground"
               aria-label="Edit problem"
             >
               <Pencil className="size-3.5" />
             </button>
           )}
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {problem.difficulty && (
-            <Badge variant={DIFFICULTY_BADGE_VARIANT[problem.difficulty as Difficulty]}>
+            <Badge variant={DIFFICULTY_BADGE_VARIANT[problem.difficulty as Difficulty]} className="capitalize px-2 py-0.5 text-[11px]">
               {problem.difficulty}
             </Badge>
           )}
-          <Badge variant="secondary" className="capitalize">
+          <Badge variant="secondary" className="capitalize px-2 py-0.5 text-[11px] bg-secondary/50">
             {problem.platform}
           </Badge>
-          {patternName && <Badge variant="outline">{patternName}</Badge>}
+          {patternName && <Badge variant="outline" className="px-2 py-0.5 text-[11px] font-normal">{patternName}</Badge>}
           {topicName && (
-            <span className="text-[11px] text-muted-foreground">{topicName}</span>
+            <span className="text-[11px] font-medium text-muted-foreground border-l border-border pl-2">
+              {topicName}
+            </span>
           )}
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-col items-end gap-1">
+      <div className="mt-4 flex shrink-0 items-center justify-between sm:mt-0 sm:flex-col sm:items-end sm:gap-1.5">
         <Button
           size="sm"
           variant={solved ? "success" : "secondary"}
           onClick={handleSolve}
           disabled={pending || solved}
+          className={cn("h-8 px-3 text-xs font-medium", !solved && "bg-secondary/40 hover:bg-secondary")}
         >
           {pending ? (
-            <Loader2 className="size-4 animate-spin" />
+            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
           ) : (
-            <Check className="size-4" />
+            <Check className={cn("mr-1.5 size-3.5", solved ? "opacity-100" : "opacity-50")} />
           )}
           {solved ? "Solved" : "Mark solved"}
         </Button>
@@ -261,9 +264,9 @@ function ProblemRow({
           <button
             type="button"
             onClick={() => setSolved(false)}
-            className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+            className="text-[10px] font-medium text-muted-foreground hover:text-foreground hover:underline"
           >
-            Undo
+            Undo completion
           </button>
         )}
       </div>

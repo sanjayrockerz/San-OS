@@ -2,6 +2,7 @@ import {
   BaseRepository,
   UserScopedRepository,
   type DbClient,
+  type Insert,
   type Row,
 } from "./base.repository";
 
@@ -90,5 +91,19 @@ export class RoadmapProgressRepository extends UserScopedRepository<"roadmap_pro
       .maybeSingle();
     if (error) throw error;
     return (data as Row<"roadmap_progress"> | null) ?? null;
+  }
+
+  /**
+   * Atomic write keyed on the (user_id, item_id) unique constraint — avoids
+   * the find-then-create/update race a double-click on the checkbox could
+   * otherwise hit.
+   */
+  async upsert(values: Insert<"roadmap_progress">): Promise<Row<"roadmap_progress">> {
+    const { data, error } = await this.query
+      .upsert(values, { onConflict: "user_id,item_id" })
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data as Row<"roadmap_progress">;
   }
 }

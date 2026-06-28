@@ -8,6 +8,7 @@ import {
   Plus,
   ExternalLink,
   Clock,
+  Trash2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -21,6 +22,8 @@ import {
   watchLecture,
   createAssignment,
   createLecture,
+  deleteAssignment,
+  deleteLecture,
   type ActionResult,
 } from "@/app/(app)/iit-workspace/actions";
 import { RISK_LEVEL_META } from "@/lib/design/status";
@@ -59,7 +62,8 @@ type Tab = "assignments" | "lectures";
 
 function AssignmentRow({ a, courseId }: { a: AssignmentView; courseId: string }) {
   const isDone = a.status === "submitted" || a.status === "graded";
-  const [, action, pending] = useActionState(completeAssignment, null);
+  const [, completeAction, completePending] = useActionState(completeAssignment, null);
+  const [, deleteAction] = useActionState(deleteAssignment, null);
 
   const dueDate = a.dueDate ? new Date(a.dueDate) : null;
   const isOverdue = dueDate && dueDate < new Date() && !isDone;
@@ -72,12 +76,12 @@ function AssignmentRow({ a, courseId }: { a: AssignmentView; courseId: string })
         isDone ? "border-success/30 bg-success/5" : "border-border hover:border-border-strong",
       )}
     >
-      <form action={action} className="mt-0.5">
+      <form action={completeAction} className="mt-0.5">
         <input type="hidden" name="assignmentId" value={a.id} />
         <input type="hidden" name="courseId" value={courseId} />
         <button
           type="submit"
-          disabled={pending || isDone}
+          disabled={completePending || isDone}
           className={cn(
             "flex size-5 items-center justify-center rounded-full border-2 transition-colors",
             isDone
@@ -117,13 +121,26 @@ function AssignmentRow({ a, courseId }: { a: AssignmentView; courseId: string })
           {riskMeta.label} risk
         </Badge>
       )}
+      <form action={deleteAction}>
+        <input type="hidden" name="assignmentId" value={a.id} />
+        <input type="hidden" name="courseId" value={courseId} />
+        <button
+          type="submit"
+          title="Delete assignment"
+          onClick={(e) => { if (!confirm(`Delete "${a.title}"?`)) e.preventDefault(); }}
+          className="text-muted-foreground/40 hover:text-destructive transition-colors"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </form>
     </div>
   );
 }
 
 function LectureRow({ l, courseId }: { l: LectureView; courseId: string }) {
   const isWatched = l.status === "completed";
-  const [, action, pending] = useActionState(watchLecture, null);
+  const [, watchAction, watchPending] = useActionState(watchLecture, null);
+  const [, deleteAction] = useActionState(deleteLecture, null);
 
   return (
     <div
@@ -132,12 +149,12 @@ function LectureRow({ l, courseId }: { l: LectureView; courseId: string }) {
         isWatched ? "border-success/30 bg-success/5" : "border-border hover:border-border-strong",
       )}
     >
-      <form action={action}>
+      <form action={watchAction}>
         <input type="hidden" name="lectureId" value={l.id} />
         <input type="hidden" name="courseId" value={courseId} />
         <button
           type="submit"
-          disabled={pending || isWatched}
+          disabled={watchPending || isWatched}
           className={cn(
             "flex size-5 items-center justify-center rounded-full border-2 transition-colors",
             isWatched
@@ -168,6 +185,18 @@ function LectureRow({ l, courseId }: { l: LectureView; courseId: string }) {
           <ExternalLink className="size-4" />
         </a>
       )}
+      <form action={deleteAction}>
+        <input type="hidden" name="lectureId" value={l.id} />
+        <input type="hidden" name="courseId" value={courseId} />
+        <button
+          type="submit"
+          title="Delete lecture"
+          onClick={(e) => { if (!confirm(`Delete "${l.title}"?`)) e.preventDefault(); }}
+          className="text-muted-foreground/40 hover:text-destructive transition-colors"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </form>
     </div>
   );
 }

@@ -1,0 +1,324 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useActionState } from "react";
+import { Plus, X, TrendingUp, TrendingDown } from "lucide-react";
+
+import type { Tables } from "@/types/database";
+import type { FinanceSnapshot } from "@/lib/services/finance.service";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { BarChart } from "@/components/charts/bar-chart";
+import { recordIncome, recordExpense } from "@/app/(app)/finance/actions";
+
+function formatCurrency(amount: number, currency = "INR") {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(
+    amount,
+  );
+}
+
+export interface MonthlyTrendPoint {
+  label: string;
+  key: string;
+  revenue: number;
+  expenses: number;
+}
+
+interface Props {
+  snapshot: FinanceSnapshot;
+  income: Tables<"income_entries">[];
+  expenses: Tables<"expense_entries">[];
+  clients: Tables<"clients">[];
+  projects: Tables<"projects">[];
+  monthlyTrend: MonthlyTrendPoint[];
+}
+
+export function FinanceDashboard({ snapshot, income, expenses, clients, projects, monthlyTrend }: Props) {
+  const [activeForm, setActiveForm] = useState<"income" | "expense" | null>(null);
+
+  return (
+    <div className="space-y-6">
+      {/* KPI grid */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">This Month Revenue</p>
+          <p className="mt-1 text-2xl font-semibold text-emerald-400">
+            {formatCurrency(snapshot.monthRevenue)}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">This Month Expenses</p>
+          <p className="mt-1 text-2xl font-semibold text-red-400">
+            {formatCurrency(snapshot.monthExpenses)}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Net Profit</p>
+          <p className="mt-1 text-2xl font-semibold">{formatCurrency(snapshot.monthProfit)}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Outstanding AR</p>
+          <p className="mt-1 text-2xl font-semibold text-amber-400">
+            {formatCurrency(snapshot.outstandingAr)}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Pipeline Value</p>
+          <p className="mt-1 text-2xl font-semibold">{formatCurrency(snapshot.pipelineValue)}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Weighted Pipeline</p>
+          <p className="mt-1 text-2xl font-semibold">{formatCurrency(snapshot.pipelineWeighted)}</p>
+        </Card>
+      </div>
+
+      {/* Finance Coach */}
+      <FinanceCoach snapshot={snapshot} />
+
+      {/* 6-month trend */}
+      <MonthlyTrendChart monthlyTrend={monthlyTrend} />
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => setActiveForm(activeForm === "income" ? null : "income")}
+        >
+          {activeForm === "income" ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          Record Income
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => setActiveForm(activeForm === "expense" ? null : "expense")}
+        >
+          {activeForm === "expense" ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          Record Expense
+        </Button>
+      </div>
+
+      {activeForm === "income" && (
+        <IncomeForm clients={clients} projects={projects} onClose={() => setActiveForm(null)} />
+      )}
+      {activeForm === "expense" && <ExpenseForm onClose={() => setActiveForm(null)} />}
+
+      {/* Recent lists */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="p-4">
+          <h3 className="text-sm font-medium mb-3">Recent Income</h3>
+          {income.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No income recorded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {income.slice(0, 10).map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {entry.description ?? entry.category} · {entry.received_at}
+                  </span>
+                  <span className="text-emerald-400">{formatCurrency(entry.amount, entry.currency)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+        <Card className="p-4">
+          <h3 className="text-sm font-medium mb-3">Recent Expenses</h3>
+          {expenses.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No expenses recorded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {expenses.slice(0, 10).map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {entry.description ?? entry.category} · {entry.occurred_at}
+                  </span>
+                  <span className="text-red-400">{formatCurrency(entry.amount, entry.currency)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function FinanceCoach({ snapshot }: { snapshot: FinanceSnapshot }) {
+  const { monthRevenue, monthExpenses, outstandingAr, pipelineWeighted } = snapshot;
+  const margin = monthRevenue > 0 ? Math.round(((monthRevenue - monthExpenses) / monthRevenue) * 100) : null;
+  const arRatio = monthRevenue > 0 ? Math.round((outstandingAr / monthRevenue) * 100) : null;
+  const isHealthy = margin !== null && margin >= 30;
+
+  const insight = (() => {
+    if (monthRevenue === 0)
+      return "No income this month yet. Record your first payment to start tracking your business health.";
+    if (outstandingAr > monthRevenue)
+      return `Outstanding invoices (${formatCurrency(outstandingAr)}) exceed this month's revenue — follow up to improve cash flow.`;
+    if (margin !== null && margin < 0)
+      return `Expenses exceeded revenue this month by ${formatCurrency(monthExpenses - monthRevenue)}. Review your largest expense categories.`;
+    if (arRatio !== null && arRatio > 50)
+      return `${arRatio}% of this month's revenue is still outstanding. Chase invoices before month end.`;
+    if (pipelineWeighted > 0)
+      return `${formatCurrency(pipelineWeighted)} in weighted pipeline — close deals to build on this month's ${formatCurrency(monthRevenue)} revenue.`;
+    return `Healthy month — ${formatCurrency(monthRevenue)} in revenue${margin !== null ? ` at ${margin}% margin` : ""}.`;
+  })();
+
+  return (
+    <Card className="p-4 flex items-start gap-3">
+      <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${isHealthy ? "bg-emerald-500/10" : "bg-amber-500/10"}`}>
+        {isHealthy ? (
+          <TrendingUp className="size-4 text-emerald-400" />
+        ) : (
+          <TrendingDown className="size-4 text-amber-400" />
+        )}
+      </span>
+      <div>
+        <p className="text-sm font-medium">Finance Coach</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{insight}</p>
+      </div>
+    </Card>
+  );
+}
+
+function MonthlyTrendChart({ monthlyTrend }: { monthlyTrend: MonthlyTrendPoint[] }) {
+  const hasData = monthlyTrend.some((m) => m.revenue > 0 || m.expenses > 0);
+  if (!hasData) return null;
+
+  const revenueData = monthlyTrend.map((m) => ({ label: m.label, value: m.revenue }));
+  const expenseData = monthlyTrend.map((m) => ({ label: m.label, value: m.expenses }));
+
+  return (
+    <Card className="p-4">
+      <h3 className="text-sm font-medium mb-4">6-Month Trend</h3>
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">Revenue</p>
+          <BarChart data={revenueData} color="var(--color-emerald-400, #34d399)" height={100} />
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">Expenses</p>
+          <BarChart data={expenseData} color="var(--color-red-400, #f87171)" height={100} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function IncomeForm({
+  clients,
+  projects,
+  onClose,
+}: {
+  clients: Tables<"clients">[];
+  projects: Tables<"projects">[];
+  onClose: () => void;
+}) {
+  const [state, action, pending] = useActionState(recordIncome, null);
+
+  useEffect(() => {
+    if (state?.ok) onClose();
+  }, [state, onClose]);
+
+  return (
+    <form action={action} className="p-4 rounded-lg border border-border/60 bg-white/5 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor="inc-amount">Amount (₹) *</Label>
+          <Input id="inc-amount" name="amount" type="number" min="0" required />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor="inc-category">Category</Label>
+          <Input id="inc-category" name="category" defaultValue="project_revenue" />
+        </div>
+        <div className="space-y-1.5 col-span-2">
+          <Label className="text-xs" htmlFor="inc-desc">Description</Label>
+          <Input id="inc-desc" name="description" placeholder="e.g. Retainer payment" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor="inc-date">Received Date</Label>
+          <Input id="inc-date" name="received_at" type="date" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor="inc-client">Client</Label>
+          <select
+            id="inc-client"
+            name="client_id"
+            defaultValue=""
+            className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="">No client</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        {projects.length > 0 && (
+          <div className="space-y-1.5 col-span-2">
+            <Label className="text-xs" htmlFor="inc-project">Project</Label>
+            <select
+              id="inc-project"
+              name="project_id"
+              defaultValue=""
+              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">No project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+      {state && !state.ok && <p className="text-xs text-destructive">{state.error}</p>}
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Saving…" : "Record Income"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
+function ExpenseForm({ onClose }: { onClose: () => void }) {
+  const [state, action, pending] = useActionState(recordExpense, null);
+
+  useEffect(() => {
+    if (state?.ok) onClose();
+  }, [state, onClose]);
+
+  return (
+    <form action={action} className="p-4 rounded-lg border border-border/60 bg-white/5 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor="exp-amount">Amount (₹) *</Label>
+          <Input id="exp-amount" name="amount" type="number" min="0" required />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor="exp-category">Category</Label>
+          <Input id="exp-category" name="category" defaultValue="other" />
+        </div>
+        <div className="space-y-1.5 col-span-2">
+          <Label className="text-xs" htmlFor="exp-desc">Description</Label>
+          <Input id="exp-desc" name="description" placeholder="e.g. Software subscription" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor="exp-date">Date</Label>
+          <Input id="exp-date" name="occurred_at" type="date" />
+        </div>
+      </div>
+      {state && !state.ok && <p className="text-xs text-destructive">{state.error}</p>}
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Saving…" : "Record Expense"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+      </div>
+    </form>
+  );
+}

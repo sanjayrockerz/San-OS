@@ -23,8 +23,13 @@ export function gradePointFromLetter(grade: string | null): number | null {
   return points ?? null;
 }
 
-/** Falls back to marks/max_marks (scaled to /10) when no letter grade is recorded yet. */
+/**
+ * Resolution order: explicit grade_point override (for transcripts where the
+ * letter scale doesn't map cleanly), then letter grade, then marks/max_marks
+ * scaled to /10.
+ */
 export function gradePointFromCourse(course: Tables<"iit_courses">): number | null {
+  if (course.grade_point != null) return clampGradePoint(course.grade_point);
   const fromLetter = gradePointFromLetter(course.grade);
   if (fromLetter !== null) return fromLetter;
   if (course.marks != null && course.max_marks) {

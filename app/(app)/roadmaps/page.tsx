@@ -27,6 +27,7 @@ export default async function RoadmapsPage() {
           title: r.title,
           description: r.description,
           kind: r.kind,
+          tier: r.tier,
           slug: r.slug,
           total: tree?.total ?? 0,
           completed: tree?.completed ?? 0,
@@ -38,6 +39,7 @@ export default async function RoadmapsPage() {
           title: r.title,
           description: r.description,
           kind: r.kind,
+          tier: r.tier,
           slug: r.slug,
           total: 0,
           completed: 0,
@@ -86,6 +88,11 @@ export default async function RoadmapsPage() {
                       <Badge variant="secondary" className={cn("text-[10px]", CATEGORY_TINT[category])}>
                         {ROADMAP_KIND_LABEL[r.kind as RoadmapKind] ?? r.kind}
                       </Badge>
+                      {r.tier && (
+                        <Badge variant="outline" className="text-[10px] bg-background">
+                          {r.tier}
+                        </Badge>
+                      )}
                     </div>
                     <h3 className="mt-1.5 text-[15px] font-semibold tracking-tight transition-colors group-hover:text-primary">
                       {r.title}

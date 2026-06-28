@@ -13,7 +13,7 @@ import { MissedWorkPanel } from "./missed-work-panel";
 import { CoachBrief } from "./coach-brief";
 import { RecoveryPlanPanel } from "./recovery-plan-panel";
 import { cn } from "@/lib/utils";
-import type { DailyCoachBrief, MissedWorkItem, RecoveryPlan, RiskRegister, StudentAction } from "@/lib/services";
+import type { DailyCoachBrief, Mission, MissedWorkItem, RecoveryPlan, RiskRegister, StudentAction } from "@/lib/services";
 import { ACTION_LABEL_BY_KIND } from "@/lib/services";
 import { CATEGORY_TEXT, CATEGORY_TINT } from "@/lib/design/category";
 import { RISK_LEVEL_META, STUDENT_ACTION_SOURCE_META, scoreToRiskLevel } from "@/lib/design/status";
@@ -40,6 +40,7 @@ export function MissionControlPanel({
   brief,
   recovery,
   priorities,
+  missions,
   risks,
   memoryHealth,
   forgettingForecast,
@@ -49,6 +50,7 @@ export function MissionControlPanel({
   brief: DailyCoachBrief;
   recovery: RecoveryPlan;
   priorities: StudentAction[];
+  missions: Mission[];
   risks: RiskRegister;
   memoryHealth: OverviewMemoryHealth;
   forgettingForecast: OverviewForgettingForecast;
@@ -60,6 +62,7 @@ export function MissionControlPanel({
       <CoachBrief brief={brief} recovery={recovery} />
       <RecoveryPlanPanel recovery={recovery} />
       <PriorityStack priorities={priorities} />
+      <MissionCenter missions={missions} />
       <RiskCenter
         risks={risks}
         memoryHealth={memoryHealth}
@@ -118,6 +121,80 @@ function PriorityStack({ priorities }: { priorities: StudentAction[] }) {
                   {ctaLabel} <ArrowRight className="size-3" />
                 </span>
               </Link>
+            );
+          })}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mission Center                                                              */
+/* -------------------------------------------------------------------------- */
+
+const MISSION_DOMAIN_ICON: Record<string, string> = {
+  revision: "📚",
+  memory: "🧠",
+  academic: "🎓",
+  knowledge: "💡",
+  habit: "⚡",
+  project: "🛠",
+  business: "💼",
+};
+
+function MissionCenter({ missions }: { missions: Mission[] }) {
+  const visible = missions.slice(0, 4);
+  if (visible.length === 0) return null;
+
+  return (
+    <Section>
+      <div className="surface-card rounded-2xl p-5">
+        <SectionHeading title="Today's Missions" />
+        <p className="text-xs text-muted-foreground mb-4">
+          Time-boxed focus areas ranked by combined urgency and impact.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {visible.map((mission) => {
+            const domainKey = Object.keys(MISSION_DOMAIN_ICON).find((k) =>
+              mission.title.toLowerCase().includes(k),
+            ) ?? "habit";
+            const emoji = MISSION_DOMAIN_ICON[domainKey] ?? "⚡";
+            const topActions = mission.actions.slice(0, 3);
+
+            return (
+              <div
+                key={mission.id}
+                className="rounded-xl border border-border bg-card p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{emoji}</span>
+                    <p className="text-sm font-semibold">{mission.title}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    ~{mission.estimatedMinutes}m
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {topActions.map((action) => {
+                    const ctaLabel = ACTION_LABEL_BY_KIND[action.kind] ?? "Open";
+                    return (
+                      <Link
+                        key={action.id}
+                        href={action.href}
+                        className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors"
+                      >
+                        <CalendarCheck className="size-3 text-muted-foreground shrink-0" />
+                        <span className="flex-1 text-xs truncate">{action.title}</span>
+                        <span className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          {ctaLabel} →
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>

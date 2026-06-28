@@ -14,6 +14,12 @@ import {
   Bell,
   Compass,
   Heart,
+  FolderKanban,
+  Users,
+  Receipt,
+  Wallet,
+  TrendingUp,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,10 +67,27 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    heading: "Projects",
+    items: [
+      { label: "Project OS", shortLabel: "Projects", href: "/projects", icon: FolderKanban },
+    ],
+  },
+  {
+    heading: "Business",
+    items: [
+      { label: "Clients", shortLabel: "Clients", href: "/clients", icon: Users },
+      { label: "Pipeline", shortLabel: "Pipeline", href: "/pipeline", icon: TrendingUp },
+      { label: "Invoices", shortLabel: "Invoices", href: "/invoices", icon: Receipt },
+      { label: "Finance", shortLabel: "Finance", href: "/finance", icon: Wallet },
+    ],
+  },
+  {
     heading: "Academic",
     items: [
       { label: "Academic Command Center", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
       { label: "IIT Workspace", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
+      { label: "Academic History", shortLabel: "History", href: "/academic/history", icon: BookOpen },
+      { label: "GPA Planner", shortLabel: "Planner", href: "/academic/planner", icon: Target },
     ],
   },
   {

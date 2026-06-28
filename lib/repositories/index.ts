@@ -25,6 +25,12 @@ export * from "./reminders.repository";
 export * from "./notifications.repository";
 export * from "./preferences.repository";
 export * from "./memory.repository";
+export * from "./projects.repository";
+export * from "./clients.repository";
+export * from "./pipeline.repository";
+export * from "./invoices.repository";
+export * from "./finance.repository";
+export * from "./academic.repository";
 
 import type { DbClient } from "./base.repository";
 import { UsersProfileRepository } from "./profile.repository";
@@ -76,6 +82,26 @@ import {
   RecallStrengthRepository,
   TopicMemoryHealthRepository,
 } from "./memory.repository";
+import {
+  ProjectsRepository,
+  ProjectTasksRepository,
+  ProjectMilestonesRepository,
+  ProjectTimeEntriesRepository,
+  ProjectDocumentsRepository,
+  ProjectChangeRequestsRepository,
+  ProjectQuotesRepository,
+} from "./projects.repository";
+import { ClientsRepository } from "./clients.repository";
+import { PipelineEntriesRepository } from "./pipeline.repository";
+import { InvoicesRepository } from "./invoices.repository";
+import {
+  IncomeEntriesRepository,
+  ExpenseEntriesRepository,
+} from "./finance.repository";
+import {
+  AcademicSemestersRepository,
+  AcademicGoalsRepository,
+} from "./academic.repository";
 
 /**
  * Constructs every repository bound to a single Supabase client. Services
@@ -117,6 +143,20 @@ export function createRepositories(client: DbClient) {
     recallGrades: new RecallGradesRepository(client),
     recallStrength: new RecallStrengthRepository(client),
     topicMemoryHealth: new TopicMemoryHealthRepository(client),
+    projects: new ProjectsRepository(client),
+    projectTasks: new ProjectTasksRepository(client),
+    projectMilestones: new ProjectMilestonesRepository(client),
+    projectTimeEntries: new ProjectTimeEntriesRepository(client),
+    projectDocuments: new ProjectDocumentsRepository(client),
+    projectChangeRequests: new ProjectChangeRequestsRepository(client),
+    projectQuotes: new ProjectQuotesRepository(client),
+    clients: new ClientsRepository(client),
+    pipelineEntries: new PipelineEntriesRepository(client),
+    invoices: new InvoicesRepository(client),
+    incomeEntries: new IncomeEntriesRepository(client),
+    expenseEntries: new ExpenseEntriesRepository(client),
+    academicSemesters: new AcademicSemestersRepository(client),
+    academicGoals: new AcademicGoalsRepository(client),
   };
 }
 

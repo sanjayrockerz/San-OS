@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Network,
   Clock,
+  Receipt,
 } from "lucide-react";
 
 import { type Category } from "./category";
@@ -81,18 +82,20 @@ export const HEALTH_CATEGORY_META: Record<
 /* Roadmaps                                                                     */
 /* -------------------------------------------------------------------------- */
 
-export type RoadmapKind = "dsa" | "iit" | "custom";
+export type RoadmapKind = "dsa" | "iit" | "custom" | "placement";
 
 export const ROADMAP_KIND_CATEGORY: Record<RoadmapKind, Category> = {
   dsa: "mission",
   iit: "academic",
   custom: "warning",
+  placement: "critical",
 };
 
 export const ROADMAP_KIND_LABEL: Record<RoadmapKind, string> = {
   dsa: "DSA",
   iit: "IIT",
   custom: "Custom",
+  placement: "Placement",
 };
 
 /* -------------------------------------------------------------------------- */
@@ -236,6 +239,9 @@ export const STUDENT_ACTION_SOURCE_META: Record<
   iit: { icon: GraduationCap, category: "mission" },
   taxonomy: { icon: Network, category: "knowledge" },
   knowledge: { icon: Library, category: "knowledge" },
+  project: { icon: Clock, category: "mission" },
+  business: { icon: Receipt, category: "mission" },
+  roadmap: { icon: Target, category: "consistency" },
 };
 
 export const RISK_LEVEL_META: Record<

@@ -43,6 +43,8 @@ export async function markRoadmapItem(
     revalidatePath(`/roadmaps/${roadmapId.data}`);
     revalidatePath("/roadmaps");
     revalidatePath("/overview");
+    revalidatePath("/analytics");
+    revalidatePath("/revision");
     return { ok: true };
   } catch (e) {
     return {

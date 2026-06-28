@@ -9,7 +9,7 @@ import {
 export default async function AcademicPage() {
   const { user, services } = await requireContext("/academic");
 
-  const [courseHealth, assignmentRisk, credit, gpa, actions] = await Promise.all([
+  const [courseHealth, assignmentRisk, credit, gpa, actions, insights, graduationProjection] = await Promise.all([
     services.academicHealth.courseHealth(user.id).catch(() => []),
     services.academicHealth.assignmentRisk(user.id).catch(() => []),
     services.academicHealth
@@ -19,6 +19,19 @@ export default async function AcademicPage() {
       .projection(user.id)
       .catch(() => ({ currentGpa: null, targetGpa: null, projectedGpa: null, helping: [], hurting: [], contributions: [] })),
     services.academicCoach.actions(user.id).catch(() => []),
+    services.academicCoach.insights(user.id).catch(() => []),
+    services.academicPerformance.graduationProjection(user.id).catch(() => ({
+      currentCgpa: null,
+      projectedGraduationCgpa: null,
+      targetCgpa: null,
+      remainingSemesters: 0,
+      remainingCredits: 0,
+      requiredGpaPerRemainingSemester: null,
+      maxPossibleCgpa: null,
+      marginForError: null,
+      confidence: null,
+      explanation: "Add semesters in Academic History to see your CGPA projection.",
+    })),
   ]);
 
   const courseNameById = new Map(courseHealth.map((c) => [c.courseId, c.name]));
@@ -26,7 +39,7 @@ export default async function AcademicPage() {
   const sortedCourseHealth = [...courseHealth].sort((a, b) => a.healthScore - b.healthScore);
 
   const riskViews = assignmentRisk
-    .filter((r) => r.riskLevel === "high" || r.riskLevel === "critical")
+    .filter((r) => r.riskLevel === "medium" || r.riskLevel === "high" || r.riskLevel === "critical")
     .map((r) => ({
       assignmentId: r.assignmentId,
       courseId: r.courseId,
@@ -55,7 +68,16 @@ export default async function AcademicPage() {
       helping: gpa.helping,
       hurting: gpa.hurting,
     },
+    cgpa: {
+      currentCgpa: graduationProjection.currentCgpa,
+      projectedGraduationCgpa: graduationProjection.projectedGraduationCgpa,
+      targetCgpa: graduationProjection.targetCgpa,
+      requiredGpaPerRemainingSemester: graduationProjection.requiredGpaPerRemainingSemester,
+      remainingSemesters: graduationProjection.remainingSemesters,
+      explanation: graduationProjection.explanation,
+    },
     actions,
+    insights,
     weeklyReview: {
       assignmentsCompleted,
       assignmentsMissed,

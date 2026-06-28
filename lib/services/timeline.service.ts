@@ -136,18 +136,114 @@ export class TimelineService extends BaseService {
       case EVENT_TYPES.AuthLogout:
         text = "Signed out";
         break;
+
+      // Project OS
+      case EVENT_TYPES.ProjectCreated:
+        text = title ? `Created project "${title}"` : "Created a project";
+        href = e.entity_id ? `/projects/${e.entity_id}` : "/projects";
+        break;
+      case EVENT_TYPES.ProjectUpdated:
+        text = title ? `Updated project "${title}"` : "Updated a project";
+        href = e.entity_id ? `/projects/${e.entity_id}` : "/projects";
+        break;
+      case EVENT_TYPES.ProjectArchived:
+        text = title ? `Archived project "${title}"` : "Archived a project";
+        href = "/projects";
+        break;
+      case EVENT_TYPES.ProjectTaskCreated:
+        text = title ? `Added task "${title}"` : "Added a project task";
+        href = e.entity_id ? `/projects/${e.entity_id}` : "/projects";
+        break;
+      case EVENT_TYPES.ProjectTaskCompleted:
+        text = title ? `Completed task "${title}"` : "Completed a project task";
+        href = e.entity_id ? `/projects/${e.entity_id}` : "/projects";
+        break;
+      case EVENT_TYPES.ProjectMilestoneCompleted:
+        text = title ? `Reached milestone "${title}"` : "Completed a milestone";
+        href = e.entity_id ? `/projects/${e.entity_id}` : "/projects";
+        break;
+      case EVENT_TYPES.ProjectTimeLogged:
+        text = title ? `Logged time on "${title}"` : "Logged project time";
+        href = e.entity_id ? `/projects/${e.entity_id}` : "/projects";
+        break;
+
+      // Business OS — Clients
+      case EVENT_TYPES.ClientCreated:
+        text = title ? `Added client "${title}"` : "Added a new client";
+        href = e.entity_id ? `/clients/${e.entity_id}` : "/clients";
+        break;
+      case EVENT_TYPES.ClientUpdated:
+        text = title ? `Updated client "${title}"` : "Updated a client";
+        href = e.entity_id ? `/clients/${e.entity_id}` : "/clients";
+        break;
+      case EVENT_TYPES.ClientArchived:
+        text = title ? `Archived client "${title}"` : "Archived a client";
+        href = "/clients";
+        break;
+
+      // Business OS — Pipeline
+      case EVENT_TYPES.PipelineEntryCreated:
+        text = title ? `Added deal "${title}" to pipeline` : "Added a deal to pipeline";
+        href = "/pipeline";
+        break;
+      case EVENT_TYPES.PipelineStageChanged:
+        text = title ? `Advanced "${title}" in pipeline` : "Advanced a pipeline deal";
+        href = "/pipeline";
+        break;
+      case EVENT_TYPES.PipelineWon:
+        text = title ? `Won deal: "${title}"` : "Won a deal";
+        href = "/pipeline";
+        break;
+      case EVENT_TYPES.PipelineLost:
+        text = title ? `Lost deal: "${title}"` : "Lost a deal";
+        href = "/pipeline";
+        break;
+
+      // Business OS — Invoices & Finance
+      case EVENT_TYPES.InvoiceCreated:
+        text = title ? `Created invoice "${title}"` : "Created an invoice";
+        href = "/invoices";
+        break;
+      case EVENT_TYPES.InvoiceSent:
+        text = title ? `Sent invoice "${title}"` : "Sent an invoice";
+        href = "/invoices";
+        break;
+      case EVENT_TYPES.InvoicePaid:
+        text = title ? `Invoice "${title}" marked paid` : "Invoice marked paid";
+        href = "/invoices";
+        break;
+      case EVENT_TYPES.InvoiceOverdue:
+        text = title ? `Invoice "${title}" is overdue` : "An invoice is overdue";
+        href = "/invoices";
+        break;
+      case EVENT_TYPES.InvoiceCancelled:
+        text = title ? `Cancelled invoice "${title}"` : "Cancelled an invoice";
+        href = "/invoices";
+        break;
+      case EVENT_TYPES.QuoteConverted:
+        text = title ? `Converted quote "${title}" to invoice` : "Converted a quote to invoice";
+        href = "/invoices";
+        break;
+      case EVENT_TYPES.RevenueRecorded:
+        text = title ? `Revenue recorded from "${title}"` : "Revenue recorded";
+        href = "/finance";
+        break;
+
       default:
         text = e.event_type.replace(/[._]/g, " ");
     }
 
-    if (e.entity_type === "problem" && e.entity_id) {
-      href = `/problems/${e.entity_id}`;
-    } else if (e.entity_type === "concept" && e.entity_id) {
-      href = `/concepts/${e.entity_id}`;
-    } else if (e.entity_type === "knowledge") {
-      href = "/vault";
-    } else if (e.event_type === EVENT_TYPES.TaxonomyApproved) {
-      href = "/taxonomy";
+    // href fallback by entity type (for events that set text but not href above)
+    if (!href) {
+      if (e.entity_type === "problem" && e.entity_id) {
+        href = `/problems/${e.entity_id}`;
+      } else if (e.entity_type === "concept" && e.entity_id) {
+        href = `/concepts/${e.entity_id}`;
+      } else if (e.entity_type === "knowledge") {
+        href = "/vault";
+      } else if (e.event_type === EVENT_TYPES.TaxonomyApproved) {
+        href = "/taxonomy";
+      }
     }
 
     return {

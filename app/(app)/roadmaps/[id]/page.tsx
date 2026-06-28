@@ -40,6 +40,11 @@ export default async function RoadmapDetailPage({ params }: Props) {
             <Badge variant="secondary" className={cn("text-[10px]", CATEGORY_TINT[category])}>
               {ROADMAP_KIND_LABEL[tree.roadmap.kind as RoadmapKind] ?? tree.roadmap.kind}
             </Badge>
+            {tree.roadmap.tier && (
+              <Badge variant="outline" className="text-[10px] bg-background">
+                {tree.roadmap.tier}
+              </Badge>
+            )}
           </div>
           <h1 className="mt-1 text-xl font-bold tracking-tight">{tree.roadmap.title}</h1>
           {tree.roadmap.description && (
