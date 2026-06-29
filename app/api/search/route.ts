@@ -15,7 +15,12 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) return NextResponse.json([]);
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // proxy.ts already validates this request's session over the network and
+  // gates unauthenticated requests before this handler runs; getSession()
+  // reads the already-verified cookie with no extra round-trip, which matters
+  // here since this route fires on every keystroke.
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
   if (!user) return NextResponse.json([], { status: 401 });
 
   const services = createServices(supabase);

@@ -13,14 +13,20 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Returns the current authenticated user, or `null` if there is no session.
- * Always validated against the Supabase Auth server (not just the cookie).
+ *
+ * `proxy.ts` already calls `auth.getUser()` for this exact request (a network
+ * round-trip to Supabase Auth) before any Server Component/Action runs, and
+ * its matcher covers every route including Server Action POSTs. So the
+ * session cookie is already server-verified by the time this runs —
+ * `getSession()` reads it with no extra network call, instead of paying that
+ * round-trip a second time on every page load and every mutation.
  */
 export async function getUser(): Promise<User | null> {
   const supabase = await createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user ?? null;
 }
 
 /**

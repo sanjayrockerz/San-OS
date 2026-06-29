@@ -18,10 +18,17 @@ export async function getContext(): Promise<{
   services: Services;
 }> {
   const supabase = await createClient();
+  // `proxy.ts` already calls `auth.getUser()` for this exact request (network
+  // round-trip to Supabase Auth) and redirects unauthenticated visitors before
+  // any page renders — its matcher covers every route except static assets. So
+  // by the time a Server Component runs, the session cookie is already
+  // server-verified for this request; re-validating here would just pay the
+  // same network round-trip again on every single page load. `getSession()`
+  // reads the already-verified cookie with no network call.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { user, services: createServices(supabase) };
+    data: { session },
+  } = await supabase.auth.getSession();
+  return { user: session?.user ?? null, services: createServices(supabase) };
 }
 
 /**
