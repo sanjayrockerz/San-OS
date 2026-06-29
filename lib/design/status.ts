@@ -244,6 +244,19 @@ export const STUDENT_ACTION_SOURCE_META: Record<
   roadmap: { icon: Target, category: "consistency" },
 };
 
+/** Short human tag for a priority's domain — "DSA"/"Project"/"Academic" style chips. */
+export const STUDENT_ACTION_SOURCE_LABEL: Record<StudentAction["source"], string> = {
+  revision: "Revision",
+  memory: "Memory",
+  habit: "Habit",
+  iit: "Academic",
+  taxonomy: "Taxonomy",
+  knowledge: "Knowledge",
+  project: "Project",
+  business: "Business",
+  roadmap: "DSA",
+};
+
 export const RISK_LEVEL_META: Record<
   RiskLevel,
   { label: string; badgeVariant: "secondary" | "default" | "warning" | "danger" }

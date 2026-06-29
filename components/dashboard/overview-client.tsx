@@ -2,34 +2,38 @@
 
 import Link from "next/link";
 import {
-  Plus,
-  Play,
   Check,
   ArrowRight,
-  Flame,
   RefreshCw,
   Network,
   Library,
   Inbox,
   Sparkles,
-  CheckCircle2,
+  CalendarClock,
 } from "lucide-react";
 
 import { PageTransition, Section } from "@/components/layout/page-transition";
 import { SectionHeading } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Disclosure } from "@/components/ui/disclosure";
 import { ProgressRing } from "@/components/charts/progress-ring";
 import { DailyReflectionModal } from "@/components/dashboard/daily-reflection-modal";
+import { MissionHero } from "./mission-hero";
+import { TodaysMission } from "./todays-mission";
+import { InsightsPanel } from "./insights-panel";
+import { StatTiles } from "./stat-tiles";
+import { ContextCalendarPanel } from "./context-calendar-panel";
+import { FocusTimerWidget } from "./focus-timer-widget";
+import { DailyQuote } from "./daily-quote";
 import { DailySessionPanel } from "./daily-session-panel";
 import { RecommendationsPanel } from "./recommendations-panel";
 import { DailyDigestPanel } from "./daily-digest-panel";
 import { NotificationCenterPanel } from "./notification-center-panel";
-import { FocusModeSwitcher } from "./focus-mode-switcher";
 import { EveningReviewPanel } from "./evening-review-panel";
+import { MissedWorkPanel } from "./missed-work-panel";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
-import { MissionControlPanel } from "./mission-control-panel";
+import { MissionCenter, RiskAlerts } from "./mission-control-panel";
 import type {
   BattlePlanStep,
   DailyCoachBrief,
@@ -41,7 +45,7 @@ import type {
   StudentAction,
 } from "@/lib/services";
 import type { Tables } from "@/types/database";
-import { CATEGORY_TINT, CATEGORY_TEXT } from "@/lib/design/category";
+import { CATEGORY_TINT } from "@/lib/design/category";
 import {
   DIFFICULTY_BADGE_VARIANT,
   RESUME_ITEM_META,
@@ -165,6 +169,9 @@ export function OverviewClient({ data }: { data: OverviewData }) {
   const readiness = hero.totalProblems
     ? Math.min(99, Math.round((hero.uniqueSolved / hero.totalProblems) * 100))
     : 0;
+  const weeklyReadinessGain = hero.totalProblems
+    ? Math.round((hero.solvedThisWeek / hero.totalProblems) * 100)
+    : 0;
   const milestone = nextMilestone(hero.uniqueSolved);
   const toMilestone = milestone - hero.uniqueSolved;
 
@@ -172,129 +179,149 @@ export function OverviewClient({ data }: { data: OverviewData }) {
     <PageTransition>
       <DailyReflectionModal solvedToday={solvedToday} threshold={3} />
 
-      {/* ===================================================================
-          LEVEL 1 — MISSION: greeting/streak/readiness fused with the
-          Battle Plan. The single largest, most spacious surface on the page.
-          =================================================================== */}
-      <Section className="mb-6">
-        <div className="surface-card rounded-2xl border-category-mission/25 p-6 shadow-md sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-caption text-muted-foreground">{data.greeting}</p>
-              <h1 className="text-display mt-1">{data.name}.</h1>
-              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  <Flame className="size-4 text-danger" />
-                  <span className="font-semibold text-foreground">
-                    {hero.streak} day{hero.streak === 1 ? "" : "s"}
-                  </span>{" "}
-                  streak
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4 text-success" />
-                  <span className="font-semibold text-foreground">{readiness}%</span>{" "}
-                  placement readiness
-                </span>
-                {data.estimatedMinutes > 0 && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Sparkles className={cn("size-4", CATEGORY_TEXT.mission)} />
-                    <span className="font-semibold text-foreground">
-                      {data.estimatedMinutes}m
-                    </span>{" "}
-                    estimated today
-                  </span>
-                )}
-              </p>
-              {data.aiSummary && (
-                <p className="mt-3 max-w-xl text-body leading-relaxed text-muted-foreground border-l-2 border-category-mission/40 pl-3">
-                  {data.aiSummary}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <FocusModeSwitcher initialMode={data.focusMode} />
-              <Button onClick={() => openAddEntry(true)}>
-                <Plus className="size-4" /> Add Learning Entry
-              </Button>
-              <Button variant="secondary" asChild>
-                <Link href="/revision">
-                  <Play className="size-4" /> Start Revision
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* ===================================================================
-          LEVEL 2 — MISSION CONTROL: Today's Mission + Top Priorities + Risk
-          Center, the StudentIntelligenceCore outputs surfaced as one
-          coherent "what do I do right now and why" panel.
-          =================================================================== */}
-      <MissionControlPanel
-        brief={data.coachBrief}
-        recovery={data.recoveryPlan}
-        priorities={data.priorities}
-        missions={data.missions}
-        risks={data.risks}
-        memoryHealth={data.memoryHealth}
-        forgettingForecast={data.forgettingForecast}
-        missedWork={data.missedWork}
-        upcomingAssignments={data.upcomingAssignments}
-      />
-
-      {/* ===================================================================
-          LEVEL 3 — RECOMMENDED ACTION: "do this next" lists, visually
-          subordinate to Level 1/2.
-          =================================================================== */}
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <NotificationCenterPanel items={data.notifications} />
-          <DailySessionPanel items={data.dailyPlan} />
-          <ResumePriorityCards
-            items={data.resumeItems}
-            becauseText={
-              data.recentSolved[0]
-                ? `Because you recently solved "${data.recentSolved[0].title}"`
-                : data.activity[0]
-                  ? `Because you recently: ${data.activity[0].text}`
-                  : null
-            }
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px] lg:items-start">
+        {/* Center — Mission & Execution Workspace */}
+        <div className="min-w-0 space-y-5">
+          <MissionHero
+            name={data.name}
+            readiness={readiness}
+            weeklyReadinessGain={weeklyReadinessGain}
+            estimatedMinutes={data.estimatedMinutes}
+            streak={hero.streak}
           />
-        </div>
-        <div className="space-y-4">
-          <RecommendationsPanel items={data.recommendations} />
-          <RevisionQueue items={data.revisionQueue} due={hero.revisionDue} />
-        </div>
-      </div>
 
-      {/* ===================================================================
-          LEVEL 4 — PROGRESS: "how am I doing" — smaller visual weight.
-          =================================================================== */}
-      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-4 lg:items-start">
-        <DailyDigestPanel
-          data={data.dailyDigest}
-          milestone={milestone}
-          toMilestone={toMilestone}
-          className="lg:col-span-2"
-        />
-        <WeeklyRing pct={weeklyPct} solved={hero.solvedThisWeek} target={hero.weeklyTarget} />
-        <TaxonomyWaiting count={data.taxonomyProposalsCount} />
-        {data.eveningReview && (
-          <EveningReviewPanel review={data.eveningReview} />
-        )}
-      </div>
+          <TodaysMission
+            brief={data.coachBrief}
+            priorities={data.priorities}
+            onAddPriority={() => openAddEntry(true)}
+          />
 
-      {/* ===================================================================
-          LEVEL 5 — HISTORY: dense, compact, intentional-lookup territory.
-          =================================================================== */}
-      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-4">
-        <ActivityTimeline items={data.activity} />
-        <RecentSolved items={data.recentSolved} />
-        <RecentConcepts items={data.recentConcepts} />
-        <RecentKnowledge items={data.recentKnowledge} />
+          <StatTiles
+            solvedToday={solvedToday}
+            hero={hero}
+            dailyDigest={data.dailyDigest}
+            memoryHealth={data.memoryHealth}
+            forgettingForecast={data.forgettingForecast}
+          />
+
+          <InsightsPanel brief={data.coachBrief} risks={data.risks} />
+
+          {/* Everything else — collapsed by default. */}
+          <Disclosure
+            defaultOpen={false}
+            trigger={<span className="text-section">Show more</span>}
+            triggerClassName="surface-card rounded-2xl px-4 py-3"
+          >
+            <div className="space-y-5 pt-2">
+              {data.recoveryPlan.totalMissed > 0 && (
+                <RecoveryBlocks recovery={data.recoveryPlan} />
+              )}
+
+              <RiskAlerts
+                risks={data.risks}
+                memoryHealth={data.memoryHealth}
+                forgettingForecast={data.forgettingForecast}
+                missedWork={data.missedWork}
+                upcomingAssignments={data.upcomingAssignments}
+              />
+
+              <MissionCenter missions={data.missions} />
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="space-y-4 lg:col-span-2">
+                  <NotificationCenterPanel items={data.notifications} />
+                  <DailySessionPanel items={data.dailyPlan} />
+                  <ResumePriorityCards
+                    items={data.resumeItems}
+                    becauseText={
+                      data.recentSolved[0]
+                        ? `Because you recently solved "${data.recentSolved[0].title}"`
+                        : data.activity[0]
+                          ? `Because you recently: ${data.activity[0].text}`
+                          : null
+                    }
+                  />
+                </div>
+                <div className="space-y-4">
+                  <RecommendationsPanel items={data.recommendations} />
+                  <RevisionQueue items={data.revisionQueue} due={hero.revisionDue} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:items-start">
+                <DailyDigestPanel
+                  data={data.dailyDigest}
+                  milestone={milestone}
+                  toMilestone={toMilestone}
+                  className="lg:col-span-2"
+                />
+                <WeeklyRing pct={weeklyPct} solved={hero.solvedThisWeek} target={hero.weeklyTarget} />
+                <TaxonomyWaiting count={data.taxonomyProposalsCount} />
+                {data.eveningReview && <EveningReviewPanel review={data.eveningReview} />}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+                <ActivityTimeline items={data.activity} />
+                <RecentSolved items={data.recentSolved} />
+                <RecentConcepts items={data.recentConcepts} />
+                <RecentKnowledge items={data.recentKnowledge} />
+              </div>
+            </div>
+          </Disclosure>
+        </div>
+
+        {/* Right — Context Panel */}
+        <aside className="space-y-5 lg:sticky lg:top-[88px]">
+          <ContextCalendarPanel dailyPlan={data.dailyPlan} />
+          <FocusTimerWidget focusMode={data.focusMode} />
+          <DailyQuote />
+        </aside>
       </div>
     </PageTransition>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Recovery — collapsed inside "Show more", not a hero-level distraction      */
+/* -------------------------------------------------------------------------- */
+
+const RECOVERY_LABEL_OVERRIDES: Record<string, string> = {
+  learning: "DSA & Revision",
+  academic: "Academic",
+  project: "Projects",
+  personal: "Personal",
+  health: "Health",
+  general: "General",
+};
+
+function RecoveryBlocks({ recovery }: { recovery: OverviewData["recoveryPlan"] }) {
+  return (
+    <Section>
+      <div className="surface-card rounded-2xl border-warning/30 p-5">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="size-4.5 text-warning" />
+            <h2 className="text-section">Recovery Plan</h2>
+          </div>
+          <Badge variant="warning">~{recovery.totalMinutes} min total</Badge>
+        </div>
+        <p className="mb-4 text-xs text-muted-foreground">
+          You missed {recovery.totalMissed} item{recovery.totalMissed === 1 ? "" : "s"}. Here&apos;s an
+          achievable way to catch up, broken into short blocks.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {recovery.blocks.map((block) => (
+            <div key={block.label} className="rounded-xl border border-border p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-semibold">{RECOVERY_LABEL_OVERRIDES[block.label] ?? block.label}</p>
+                <span className="text-xs font-medium text-muted-foreground">{block.minutes} min</span>
+              </div>
+              <MissedWorkPanel items={block.items} bare />
+            </div>
+          ))}
+        </div>
+      </div>
+    </Section>
   );
 }
 
