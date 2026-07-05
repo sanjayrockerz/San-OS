@@ -72,6 +72,10 @@ export const EVENT_TYPES = {
   InvoiceCancelled: "invoice.cancelled",
   QuoteConverted: "quote.converted",
   RevenueRecorded: "revenue.recorded",
+  PlannerPlanGenerated: "planner.plan_generated",
+  PlannerReplanned: "planner.replanned",
+  PlannerDayReviewed: "planner.day_reviewed",
+  ResourceCreated: "resource.created",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];

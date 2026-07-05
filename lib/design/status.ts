@@ -289,3 +289,25 @@ export function scoreToRiskLevel(score: number): RiskLevel {
   if (score >= 30) return "medium";
   return "low";
 }
+
+/** One-click CTA label for a {@link StudentAction} kind. Shared with UI surfaces beyond recommendations. */
+export const ACTION_LABEL_BY_KIND: Partial<Record<StudentAction["kind"], string>> = {
+  revise_problem: "Start revision",
+  strengthen_problem: "Strengthen",
+  review_concept: "Review concept",
+  review_resource: "Open resource",
+  solve_new: "Solve a problem",
+  resume_problem: "Resume",
+  link_vault_item: "Open vault",
+  approve_taxonomy: "Review proposals",
+  complete_assignment: "Open assignment",
+  address_missed_work: "Resolve",
+  create_concept_note: "Write concept note",
+  link_pattern: "Link pattern",
+  review_course: "Review course",
+  complete_project_task: "Open task",
+  review_project_milestone: "Review milestone",
+  collect_invoice: "Open invoices",
+  advance_pipeline: "Open pipeline",
+  resume_roadmap: "Continue roadmap",
+};

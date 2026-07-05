@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { StudentAction } from "@/lib/services";
-import { ACTION_LABEL_BY_KIND } from "@/lib/services";
+import { ACTION_LABEL_BY_KIND } from "@/lib/design/status";
 import { CATEGORY_TINT } from "@/lib/design/category";
 import { STUDENT_ACTION_SOURCE_META } from "@/lib/design/status";
 

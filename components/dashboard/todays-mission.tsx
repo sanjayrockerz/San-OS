@@ -11,8 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import type { DailyCoachBrief, FocusStep, StudentAction } from "@/lib/services";
 import { CATEGORY_TEXT, CATEGORY_TINT } from "@/lib/design/category";
-import { ACTION_LABEL_BY_KIND } from "@/lib/services";
-import { STUDENT_ACTION_SOURCE_LABEL, scoreToRiskLevel } from "@/lib/design/status";
+import { ACTION_LABEL_BY_KIND, STUDENT_ACTION_SOURCE_LABEL, scoreToRiskLevel } from "@/lib/design/status";
 import { FocusSession } from "./focus-session";
 
 const IMPACT_DOT: Record<ReturnType<typeof scoreToRiskLevel>, string> = {

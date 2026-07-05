@@ -2361,6 +2361,67 @@ export type Database = {
           },
         ];
       };
+
+      time_blocks: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      focus_sessions: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      user_goals: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      capture_items: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      scratchpad_items: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      daily_plans: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      memory_edges: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      memory_nodes: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      resources: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+      resource_links: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
       expense_entries: {
         Row: {
           id: string;
@@ -2399,10 +2460,14 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      
     };
     Functions: {
-      [_ in never]: never;
+      match_semantic_items: {
+        Args: any;
+        Returns: any;
+      };
+      
     };
     Enums: {
       taxonomy_source: "seed" | "user" | "ai_proposed" | "ai_auto";
@@ -2551,7 +2616,7 @@ export type Database = {
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
     };
     CompositeTypes: {
-      [_ in never]: never;
+      
     };
   };
 };

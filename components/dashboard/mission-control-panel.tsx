@@ -14,7 +14,7 @@ import { ProgressRing } from "@/components/charts/progress-ring";
 import { MissedWorkPanel } from "./missed-work-panel";
 import { cn } from "@/lib/utils";
 import type { Mission, MissedWorkItem, RiskRegister, StudentAction } from "@/lib/services";
-import { ACTION_LABEL_BY_KIND } from "@/lib/services";
+import { ACTION_LABEL_BY_KIND } from "@/lib/design/status";
 import { CATEGORY_TEXT, CATEGORY_TINT } from "@/lib/design/category";
 import { RISK_LEVEL_META, STUDENT_ACTION_SOURCE_META, scoreToRiskLevel } from "@/lib/design/status";
 

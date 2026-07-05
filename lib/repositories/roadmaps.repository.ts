@@ -52,6 +52,17 @@ export class RoadmapItemsRepository extends BaseRepository<"roadmap_items"> {
     return (data ?? []) as Row<"roadmap_items">[];
   }
 
+  /** Bulk fetch items for multiple roadmaps in one query (avoids N+1). */
+  async findByRoadmaps(roadmapIds: string[]): Promise<Row<"roadmap_items">[]> {
+    if (roadmapIds.length === 0) return [];
+    const { data, error } = await this.query
+      .select("*")
+      .in("roadmap_id", roadmapIds)
+      .order("order_index", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Row<"roadmap_items">[];
+  }
+
   /** Items linked to a given problem — used to fan out solve updates. */
   async findByProblem(problemId: string): Promise<Row<"roadmap_items">[]> {
     const { data, error } = await this.query
@@ -76,6 +87,20 @@ export class RoadmapProgressRepository extends UserScopedRepository<"roadmap_pro
       .select("*")
       .eq("user_id", userId)
       .eq("roadmap_id", roadmapId);
+    if (error) throw error;
+    return (data ?? []) as Row<"roadmap_progress">[];
+  }
+
+  /** Bulk fetch progress for multiple roadmaps in one query (avoids N+1). */
+  async findByRoadmaps(
+    userId: string,
+    roadmapIds: string[],
+  ): Promise<Row<"roadmap_progress">[]> {
+    if (roadmapIds.length === 0) return [];
+    const { data, error } = await this.query
+      .select("*")
+      .eq("user_id", userId)
+      .in("roadmap_id", roadmapIds);
     if (error) throw error;
     return (data ?? []) as Row<"roadmap_progress">[];
   }

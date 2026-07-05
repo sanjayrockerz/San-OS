@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createServices } from "@/lib/services";
+import { createRepositories } from "@/lib/repositories";
+import { UniversalSearchService } from "@/lib/services/universal-search.service";
 
 export interface SearchResult {
   id: string;
@@ -15,58 +16,37 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) return NextResponse.json([]);
 
   const supabase = await createClient();
-  // proxy.ts already validates this request's session over the network and
-  // gates unauthenticated requests before this handler runs; getSession()
-  // reads the already-verified cookie with no extra round-trip, which matters
-  // here since this route fires on every keystroke.
   const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user ?? null;
   if (!user) return NextResponse.json([], { status: 401 });
 
-  const services = createServices(supabase);
-  const results: SearchResult[] = [];
+  const repos = createRepositories(supabase);
+  const searchService = new UniversalSearchService(repos);
+  
+  try {
+    const rawResults = await searchService.search(user.id, q);
+    
+    // Map to the existing SearchResult structure for the frontend
+    const results: SearchResult[] = rawResults.map(r => {
+      let group = "Other";
+      if (r.type === "problem") group = "Problems";
+      else if (r.type === "concept") group = "Concepts";
+      else if (r.type === "resource") group = "Resources";
+      else if (r.type === "project") group = "Projects";
+      else if (r.type === "memory") group = "Memory Graph";
+      
+      return {
+        id: r.id,
+        label: r.title,
+        sub: r.description || `${r.type} match`,
+        group,
+        href: r.url,
+      };
+    });
 
-  const [problems, concepts, vault] = await Promise.all([
-    services.repos.problems.listVisible(user.id).catch(() => []),
-    services.repos.concepts.findByUser(user.id).catch(() => []),
-    services.repos.knowledge.recent(user.id, 50).catch(() => []),
-  ]);
-
-  for (const p of problems) {
-    if (p.title.toLowerCase().includes(q)) {
-      results.push({
-        id: `problem-${p.id}`,
-        label: p.title,
-        sub: `${p.difficulty ?? "—"} · ${p.platform ?? ""}`,
-        group: "Problems",
-        href: `/problems/${p.id}`,
-      });
-    }
+    return NextResponse.json(results);
+  } catch (e) {
+    console.error("Universal Search Error", e);
+    return NextResponse.json([]);
   }
-
-  for (const c of concepts) {
-    if (c.title.toLowerCase().includes(q)) {
-      results.push({
-        id: `concept-${c.id}`,
-        label: c.title,
-        sub: `Concept · ${c.status}`,
-        group: "Concepts",
-        href: `/concepts/${c.id}`,
-      });
-    }
-  }
-
-  for (const k of vault) {
-    if (k.title.toLowerCase().includes(q)) {
-      results.push({
-        id: `vault-${k.id}`,
-        label: k.title,
-        sub: `Vault · ${k.type}`,
-        group: "Knowledge Vault",
-        href: "/vault",
-      });
-    }
-  }
-
-  return NextResponse.json(results.slice(0, 12));
 }

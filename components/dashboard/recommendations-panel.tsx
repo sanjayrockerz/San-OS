@@ -51,7 +51,7 @@ export function RecommendationsPanel({
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveItems(items.filter((item) => !dismissedMap[item.id]));
       } else {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         setActiveItems(items);
       }
     } catch {

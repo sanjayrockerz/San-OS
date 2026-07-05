@@ -229,6 +229,26 @@ export class TimelineService extends BaseService {
         href = "/finance";
         break;
 
+      // Execution OS — Daily Planner
+      case EVENT_TYPES.PlannerPlanGenerated:
+        text = title ? `Planned your day: ${title}` : "Generated a daily plan";
+        href = "/execution";
+        break;
+      case EVENT_TYPES.PlannerReplanned:
+        text = title ? `Replanned the day: ${title}` : "Replanned the rest of the day";
+        href = "/execution";
+        break;
+      case EVENT_TYPES.PlannerDayReviewed:
+        text = title ? `Reviewed your day: ${title}` : "Reviewed the day's execution";
+        href = "/execution";
+        break;
+
+      // Phase 7: Memory OS
+      case EVENT_TYPES.ResourceCreated:
+        text = title ? `Saved resource "${title}"` : "Saved a resource";
+        href = e.entity_id ? `/resources/${e.entity_id}` : "/resources";
+        break;
+
       default:
         text = e.event_type.replace(/[._]/g, " ");
     }

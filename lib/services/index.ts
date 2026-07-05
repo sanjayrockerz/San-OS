@@ -24,6 +24,7 @@ export * from "./knowledge.service";
 export * from "./context-engine.service";
 export * from "./habit-engine.service";
 export * from "./memory-intelligence.service";
+export * from "./memory-health.service";
 export * from "./memory-coach.service";
 export * from "./knowledge-health.service";
 export * from "./learning-gap-engine.service";
@@ -47,6 +48,20 @@ export * from "./client.service";
 export * from "./pipeline.service";
 export * from "./invoice.service";
 export * from "./finance.service";
+export * from "./execution-engine.service";
+export * from "./completion-inference.service";
+export * from "./execution-learning.service";
+export * from "./execution-coach.service";
+export * from "./alarm-engine.service";
+export * from "./reminder-engine.service";
+export * from "./goal.service";
+export * from "./daily-planner.service";
+export * from "./natural-language-planning.service";
+export * from "./semantic-memory.service";
+export * from "./resource.service";
+export * from "./memory-graph.service";
+export * from "./resource-pipeline.service";
+export * from "./universal-search.service";
 
 import { createRepositories, type DbClient } from "@/lib/repositories";
 
@@ -72,6 +87,7 @@ import { KnowledgeHealthService } from "./knowledge-health.service";
 import { LearningGapEngine } from "./learning-gap-engine.service";
 import { MemoryIntelligenceService } from "./memory-intelligence.service";
 import { MemoryCoachService } from "./memory-coach.service";
+import { MemoryHealthService } from "./memory-health.service";
 import { ProblemsService } from "./problems.service";
 import { ResourceEffectivenessService } from "./resource-effectiveness.service";
 import { RevisionService } from "./revision.service";
@@ -90,6 +106,20 @@ import { ClientService } from "./client.service";
 import { PipelineService } from "./pipeline.service";
 import { InvoiceService } from "./invoice.service";
 import { FinanceService } from "./finance.service";
+import { ExecutionEngineService } from "./execution-engine.service";
+import { CompletionInferenceService } from "./completion-inference.service";
+import { ExecutionLearningService } from "./execution-learning.service";
+import { ExecutionCoachService } from "./execution-coach.service";
+import { AlarmEngineService } from "./alarm-engine.service";
+import { ReminderEngineService } from "./reminder-engine.service";
+import { GoalService } from "./goal.service";
+import { DailyPlannerService } from "./daily-planner.service";
+import { NaturalLanguagePlanningService } from "./natural-language-planning.service";
+import { SemanticMemoryService } from "./semantic-memory.service";
+import { ResourceService } from "./resource.service";
+import { MemoryGraphService } from "./memory-graph.service";
+import { ResourcePipelineService } from "./resource-pipeline.service";
+import { UniversalSearchService } from "./universal-search.service";
 
 /**
  * Constructs every domain service bound to a single Supabase client. A request
@@ -98,6 +128,13 @@ import { FinanceService } from "./finance.service";
  */
 export function createServices(client: DbClient) {
   const repos = createRepositories(client);
+  const executionEngine = new ExecutionEngineService(repos);
+  const completionInference = new CompletionInferenceService(repos);
+  const executionLearning = new ExecutionLearningService(repos);
+  const executionCoach = new ExecutionCoachService(repos);
+  const alarmEngine = new AlarmEngineService(repos);
+  const reminderEngine = new ReminderEngineService(repos);
+  const dailyPlanner = new DailyPlannerService(repos);
   return {
     repos,
     events: new EventService(repos),
@@ -119,6 +156,7 @@ export function createServices(client: DbClient) {
     habitEngine: new HabitEngineService(repos),
     memoryIntelligence: new MemoryIntelligenceService(repos),
     memoryCoach: new MemoryCoachService(repos),
+    memoryHealth: new MemoryHealthService(repos),
     knowledgeHealth: new KnowledgeHealthService(repos),
     learningGapEngine: new LearningGapEngine(repos),
     resourceEffectiveness: new ResourceEffectivenessService(repos),
@@ -140,6 +178,27 @@ export function createServices(client: DbClient) {
     pipeline: new PipelineService(repos),
     invoice: new InvoiceService(repos),
     finance: new FinanceService(repos),
+    executionEngine,
+    completionInference,
+    executionLearning,
+    executionCoach,
+    alarmEngine,
+    reminderEngine,
+    goalService: new GoalService(repos),
+    dailyPlanner,
+    naturalLanguagePlanning: new NaturalLanguagePlanningService(
+      repos,
+      completionInference,
+      executionEngine,
+      dailyPlanner,
+      executionCoach,
+      executionLearning,
+    ),
+    semanticMemory: new SemanticMemoryService(repos),
+    resource: new ResourceService(repos),
+    memoryGraph: new MemoryGraphService(repos),
+    resourcePipeline: new ResourcePipelineService(repos),
+    universalSearch: new UniversalSearchService(repos),
   };
 }
 

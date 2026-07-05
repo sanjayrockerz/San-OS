@@ -129,7 +129,7 @@ export interface DashboardAggregate {
  * the route, and the TTL bounds staleness regardless. Personal-OS scale: a
  * handful of users, so a module Map is appropriate (no external cache infra).
  */
-const CACHE_TTL_MS = 30_000;
+const CACHE_TTL_MS = 60_000;
 const cache = new Map<string, { at: number; snapshot: DashboardAggregate }>();
 
 const EMPTY_MEMORY_HEALTH: MemoryHealthSnapshot = {
@@ -343,20 +343,39 @@ export class DashboardAggregationService extends BaseService {
   private async roadmapProgress(
     userId: string,
   ): Promise<RoadmapProgressItem[]> {
+    // Fetch all roadmaps first, then bulk-fetch items + progress in 2 queries
+    // instead of 2 queries × N roadmaps (eliminates the N+1).
     const roadmaps = await this.repos.roadmaps.listVisible(userId);
+    if (roadmaps.length === 0) return [];
+
+    const roadmapIds = roadmaps.map((r) => r.id);
+    const [allItems, allProgress] = await Promise.all([
+      this.repos.roadmapItems.findByRoadmaps(roadmapIds),
+      this.repos.roadmapProgress.findByRoadmaps(userId, roadmapIds),
+    ]);
+
+    // Group by roadmap ID in memory — O(items + progress) not O(N * items).
+    const itemsByRoadmap = new Map<string, typeof allItems>();
+    for (const item of allItems) {
+      const arr = itemsByRoadmap.get(item.roadmap_id) ?? [];
+      arr.push(item);
+      itemsByRoadmap.set(item.roadmap_id, arr);
+    }
+
+    const completedByRoadmap = new Map<string, Set<string>>();
+    for (const p of allProgress) {
+      if (p.status !== "completed") continue;
+      const s = completedByRoadmap.get(p.roadmap_id) ?? new Set<string>();
+      s.add(p.item_id);
+      completedByRoadmap.set(p.roadmap_id, s);
+    }
+
     const out: RoadmapProgressItem[] = [];
     for (const roadmap of roadmaps) {
-      const [items, progress] = await Promise.all([
-        this.repos.roadmapItems.findByRoadmap(roadmap.id),
-        this.repos.roadmapProgress.findByRoadmap(userId, roadmap.id),
-      ]);
-      const completedItems = new Set(
-        progress.filter((p) => p.status === "completed").map((p) => p.item_id),
-      );
+      const items = itemsByRoadmap.get(roadmap.id) ?? [];
+      const completedItems = completedByRoadmap.get(roadmap.id) ?? new Set<string>();
       const total = items.filter((i) => !i.is_section).length;
-      const completed = items.filter(
-        (i) => !i.is_section && completedItems.has(i.id),
-      ).length;
+      const completed = items.filter((i) => !i.is_section && completedItems.has(i.id)).length;
       if (total === 0) continue;
       out.push({ roadmapId: roadmap.id, title: roadmap.title, completed, total });
     }

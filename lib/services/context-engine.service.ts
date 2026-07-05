@@ -2,6 +2,7 @@ import type { Repositories } from "@/lib/repositories";
 import type { Tables } from "@/types/database";
 
 import { BaseService } from "./base.service";
+import { MemoryGraphService } from "./memory-graph.service";
 
 /** What the user was last working on. */
 export interface ContextPatch {
@@ -36,8 +37,11 @@ export interface DailyDigest {
  * All methods are fail-soft. The context engine must never block a user action.
  */
 export class ContextEngineService extends BaseService {
+  private memoryGraphService: MemoryGraphService;
+
   constructor(repos: Repositories) {
     super(repos);
+    this.memoryGraphService = new MemoryGraphService(repos);
   }
 
   /** Retrieve or initialize the context row for a user. */
@@ -71,6 +75,35 @@ export class ContextEngineService extends BaseService {
       });
     } catch {
       // intentionally silenced
+    }
+  }
+
+  /**
+   * Retrieves the surrounding context for a given entity, traversing the Memory Graph.
+   */
+  async getSurroundingContext(userId: string, entityType: string, entityId: string) {
+    try {
+      const graph = await this.memoryGraphService.traverseGraph(userId, entityType, entityId, 2);
+      
+      // We can group the nodes by type to return a clean contextual object
+      const context: Record<string, string[]> = {};
+      
+      for (const node of graph.nodes) {
+        if (!context[node.type]) {
+          context[node.type] = [];
+        }
+        if (node.id !== entityId) { // don't include self in the context list
+          context[node.type].push(node.id);
+        }
+      }
+
+      return {
+        graph,
+        groupedContext: context
+      };
+    } catch (e) {
+      console.error("Failed to fetch surrounding context", e);
+      return { graph: { nodes: [], edges: [] }, groupedContext: {} };
     }
   }
 

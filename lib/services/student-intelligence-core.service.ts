@@ -177,28 +177,6 @@ export const ACTION_KIND_TO_BATTLE_KIND: Partial<
   review_course: "academic",
 };
 
-/** One-click CTA label for a {@link StudentAction} kind. Shared with UI surfaces beyond recommendations. */
-export const ACTION_LABEL_BY_KIND: Partial<Record<StudentAction["kind"], string>> = {
-  revise_problem: "Start revision",
-  strengthen_problem: "Strengthen",
-  review_concept: "Review concept",
-  review_resource: "Open resource",
-  solve_new: "Solve a problem",
-  resume_problem: "Resume",
-  link_vault_item: "Open vault",
-  approve_taxonomy: "Review proposals",
-  complete_assignment: "Open assignment",
-  address_missed_work: "Resolve",
-  create_concept_note: "Write concept note",
-  link_pattern: "Link pattern",
-  review_course: "Review course",
-  complete_project_task: "Open task",
-  review_project_milestone: "Review milestone",
-  collect_invoice: "Open invoices",
-  advance_pipeline: "Open pipeline",
-  resume_roadmap: "Continue roadmap",
-};
-
 const CACHE_TTL_MS = 15_000;
 
 interface GatheredSignals {
@@ -854,7 +832,7 @@ export class StudentIntelligenceCoreService extends BaseService {
         title: action.title,
         body: action.detail,
         href: action.href,
-        actionLabel: ACTION_LABEL_BY_KIND[action.kind] ?? "Open",
+        actionLabel: "Open",
         priority: recs.length + 1,
       });
       if (recs.length >= 5) break;

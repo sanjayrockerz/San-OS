@@ -9,6 +9,7 @@
  */
 export * from "./base.repository";
 
+export * from "./execution.repository";
 export * from "./context.repository";
 export * from "./profile.repository";
 export * from "./taxonomy.repository";
@@ -31,6 +32,8 @@ export * from "./pipeline.repository";
 export * from "./invoices.repository";
 export * from "./finance.repository";
 export * from "./academic.repository";
+export * from "./resources.repository";
+export * from "./memory-graph.repository";
 
 import type { DbClient } from "./base.repository";
 import { UsersProfileRepository } from "./profile.repository";
@@ -102,6 +105,16 @@ import {
   AcademicSemestersRepository,
   AcademicGoalsRepository,
 } from "./academic.repository";
+import {
+  TimeBlocksRepository,
+  UserGoalsRepository,
+  FocusSessionsRepository,
+  CaptureItemsRepository,
+  ScratchpadItemsRepository,
+  DailyPlansRepository,
+} from "./execution.repository";
+import { ResourcesRepository, ResourceLinksRepository } from "./resources.repository";
+import { MemoryEdgesRepository, MemoryNodesRepository } from "./memory-graph.repository";
 
 /**
  * Constructs every repository bound to a single Supabase client. Services
@@ -109,6 +122,7 @@ import {
  */
 export function createRepositories(client: DbClient) {
   return {
+    rawClient: client,
     profile: new UsersProfileRepository(client),
     topics: new TopicsRepository(client),
     patterns: new PatternsRepository(client),
@@ -157,6 +171,16 @@ export function createRepositories(client: DbClient) {
     expenseEntries: new ExpenseEntriesRepository(client),
     academicSemesters: new AcademicSemestersRepository(client),
     academicGoals: new AcademicGoalsRepository(client),
+    timeBlocks: new TimeBlocksRepository(client),
+    userGoals: new UserGoalsRepository(client),
+    focusSessions: new FocusSessionsRepository(client),
+    captureItems: new CaptureItemsRepository(client),
+    scratchpadItems: new ScratchpadItemsRepository(client),
+    dailyPlans: new DailyPlansRepository(client),
+    resources: new ResourcesRepository(client),
+    resourceLinks: new ResourceLinksRepository(client),
+    memoryEdges: new MemoryEdgesRepository(client),
+    memoryNodes: new MemoryNodesRepository(client),
   };
 }
 

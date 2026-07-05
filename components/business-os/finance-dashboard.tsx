@@ -13,6 +13,16 @@ import { Label } from "@/components/ui/label";
 import { BarChart } from "@/components/charts/bar-chart";
 import { recordIncome, recordExpense } from "@/app/(app)/finance/actions";
 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
 function formatCurrency(amount: number, currency = "INR") {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(
     amount,
@@ -189,21 +199,65 @@ function MonthlyTrendChart({ monthlyTrend }: { monthlyTrend: MonthlyTrendPoint[]
   const hasData = monthlyTrend.some((m) => m.revenue > 0 || m.expenses > 0);
   if (!hasData) return null;
 
-  const revenueData = monthlyTrend.map((m) => ({ label: m.label, value: m.revenue }));
-  const expenseData = monthlyTrend.map((m) => ({ label: m.label, value: m.expenses }));
-
   return (
-    <Card className="p-4">
-      <h3 className="text-sm font-medium mb-4">6-Month Trend</h3>
-      <div className="space-y-4">
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Revenue</p>
-          <BarChart data={revenueData} color="var(--color-emerald-400, #34d399)" height={100} />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Expenses</p>
-          <BarChart data={expenseData} color="var(--color-red-400, #f87171)" height={100} />
-        </div>
+    <Card className="p-5 border-border/60 shadow-sm">
+      <h3 className="text-sm font-semibold mb-6 text-foreground">6-Month Trend</h3>
+      <div className="h-[300px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={monthlyTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#34d399" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#34d399" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f87171" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#f87171" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+            <XAxis 
+              dataKey="label" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} 
+              dy={10}
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} 
+              tickFormatter={(val) => `₹${val.toLocaleString("en-IN")}`}
+              width={65}
+            />
+            <Tooltip 
+              contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", backgroundColor: "hsl(var(--card))", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+              itemStyle={{ fontSize: "13px", fontWeight: 500 }}
+              formatter={(value: any) => [`₹${Number(value).toLocaleString("en-IN")}`, ""]}
+              labelStyle={{ color: "hsl(var(--muted-foreground))", fontWeight: 500, marginBottom: "4px", fontSize: "13px" }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="revenue" 
+              name="Revenue"
+              stroke="#34d399" 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorRev)" 
+              activeDot={{ r: 6, strokeWidth: 0, fill: "#34d399" }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="expenses" 
+              name="Expenses"
+              stroke="#f87171" 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorExp)" 
+              activeDot={{ r: 6, strokeWidth: 0, fill: "#f87171" }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </Card>
   );

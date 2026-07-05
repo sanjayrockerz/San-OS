@@ -241,7 +241,7 @@ export function CommandPalette() {
                   setActive(0);
                 }}
                 onKeyDown={onInputKey}
-                placeholder="Search problems, concepts, vault, pages…"
+                placeholder="Search resources, projects, problems, concepts…"
                 className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
               <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground sm:block">

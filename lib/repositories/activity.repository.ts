@@ -2,6 +2,7 @@ import {
   UserScopedRepository,
   type DbClient,
   type Row,
+  type Insert,
 } from "./base.repository";
 
 /** activity_logs — append-only event stream (timeline + heatmap source). */
@@ -90,5 +91,26 @@ export class DailyLogsRepository extends UserScopedRepository<"daily_logs"> {
       .order("log_date", { ascending: true });
     if (error) throw error;
     return (data ?? []) as Row<"daily_logs">[];
+  }
+
+  async upsertForDate(
+    userId: string,
+    logDate: string,
+    patch: Partial<Omit<Insert<"daily_logs">, "id" | "user_id" | "log_date" | "created_at">>,
+  ): Promise<Row<"daily_logs">> {
+    const { data, error } = await this.query
+      .upsert(
+        {
+          user_id: userId,
+          log_date: logDate,
+          updated_at: new Date().toISOString(),
+          ...patch,
+        },
+        { onConflict: "user_id,log_date", ignoreDuplicates: false },
+      )
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data as Row<"daily_logs">;
   }
 }

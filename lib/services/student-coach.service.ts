@@ -5,9 +5,9 @@ import { BaseService, isoDate } from "./base.service";
 import { CoachOutcomeService, EFFECTIVE_THRESHOLD, type Personalization } from "./coach-outcome.service";
 import { EVENT_TYPES, EventService } from "./event.service";
 import { HabitEngineService, type MissedWorkItem } from "./habit-engine.service";
+import { ACTION_LABEL_BY_KIND } from "@/lib/design/status";
 import {
   ACTION_KIND_TO_BATTLE_KIND,
-  ACTION_LABEL_BY_KIND,
   StudentIntelligenceCoreService,
   type RiskEntry,
   type StudentAction,

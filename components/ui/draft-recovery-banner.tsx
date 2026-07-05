@@ -41,7 +41,7 @@ export function DraftRecoveryBanner({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShow(true);
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setShow(false);
     }
   }, [draft, id]);

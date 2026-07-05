@@ -31,6 +31,13 @@ import { DailyDigestPanel } from "./daily-digest-panel";
 import { NotificationCenterPanel } from "./notification-center-panel";
 import { EveningReviewPanel } from "./evening-review-panel";
 import { MissedWorkPanel } from "./missed-work-panel";
+import { FinanceSnapshotWidget } from "./finance-snapshot-widget";
+import { GoalProgressPanel } from "./goal-progress-panel";
+import { QuickCaptureWidget } from "./quick-capture-widget";
+import { ScratchpadWidget } from "./scratchpad-widget";
+import { ExecutionPlanPanel } from "./execution-plan-panel";
+import { PerformanceEnginePanel } from "./performance-engine-panel";
+import { DailyPlannerPanel, type PlannerPanelState } from "./daily-planner-panel";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 import { MissionCenter, RiskAlerts } from "./mission-control-panel";
@@ -38,6 +45,9 @@ import type {
   BattlePlanStep,
   DailyCoachBrief,
   EveningReview,
+  ExecutionMetrics,
+  FinanceSnapshot,
+  GoalSummary,
   Mission,
   MissedWorkItem,
   RecoveryPlan,
@@ -150,6 +160,11 @@ export interface OverviewData {
   risks: RiskRegister;
   coachBrief: DailyCoachBrief;
   recoveryPlan: RecoveryPlan;
+  todayBlocks: Tables<"time_blocks">[];
+  goalSummaries: GoalSummary[];
+  executionMetrics: ExecutionMetrics;
+  financeSnapshot: FinanceSnapshot | null;
+  plannerState: PlannerPanelState;
 }
 
 /** Next round-number milestone above `count` (next multiple of 50, or 100 once past 200). */
@@ -203,6 +218,16 @@ export function OverviewClient({ data }: { data: OverviewData }) {
             memoryHealth={data.memoryHealth}
             forgettingForecast={data.forgettingForecast}
           />
+
+          <DailyPlannerPanel state={data.plannerState} />
+
+          {data.todayBlocks.length > 0 && (
+            <ExecutionPlanPanel blocks={data.todayBlocks} />
+          )}
+
+          {data.executionMetrics.totalBlocks > 0 && (
+            <PerformanceEnginePanel metrics={data.executionMetrics} streak={data.hero.streak} />
+          )}
 
           <InsightsPanel brief={data.coachBrief} risks={data.risks} />
 
@@ -274,6 +299,10 @@ export function OverviewClient({ data }: { data: OverviewData }) {
         <aside className="space-y-5 lg:sticky lg:top-[88px]">
           <ContextCalendarPanel dailyPlan={data.dailyPlan} />
           <FocusTimerWidget focusMode={data.focusMode} />
+          {data.financeSnapshot && <FinanceSnapshotWidget snapshot={data.financeSnapshot} />}
+          <GoalProgressPanel summaries={data.goalSummaries} />
+          <QuickCaptureWidget />
+          <ScratchpadWidget />
           <DailyQuote />
         </aside>
       </div>
