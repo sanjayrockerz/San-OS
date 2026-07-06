@@ -118,20 +118,14 @@ export function ProjectListClient({ projects }: { projects: ProjectView[] }) {
 
       {/* Project cards */}
       {visible.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-14 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <FolderKanban className="size-5" />
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/60 bg-muted/10 px-6 py-20 text-center shadow-sm">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-background border border-border/50 text-muted-foreground shadow-sm">
+            <FolderKanban className="size-6 text-primary/80" />
           </div>
-          <p className="mt-4 text-sm font-medium">No projects yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Start a new project to track your client work and engineering progress.
+          <p className="mt-6 text-base font-semibold">No projects yet.</p>
+          <p className="mt-2 text-sm text-muted-foreground max-w-sm leading-relaxed">
+            Press <kbd className="font-mono text-xs bg-background border border-border px-1.5 py-0.5 rounded">⌘K</kbd> and type <span className="italic">"Lalith wants CRM"</span> or record a voice note. We&apos;ll build the project automatically.
           </p>
-          <Link href="/projects/new" className="mt-4">
-            <Button size="sm" className="gap-1.5">
-              <Plus className="w-4 h-4" />
-              New Project
-            </Button>
-          </Link>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

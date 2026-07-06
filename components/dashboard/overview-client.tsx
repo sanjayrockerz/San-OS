@@ -182,14 +182,66 @@ export function OverviewClient({ data }: { data: OverviewData }) {
       <DailyReflectionModal solvedToday={solvedToday} threshold={3} />
 
       <div className="flex flex-col h-full max-w-5xl mx-auto py-8 lg:py-12">
-        {/* Top AI Command Bar Hint */}
-        <div className="mb-12 text-center space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+        {/* Top AI Chief of Staff Briefing */}
+        <div className="mb-12 w-full max-w-3xl mx-auto text-left">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground mb-8">
             {data.greeting}, {data.name}.
           </h1>
-          <p className="text-lg text-muted-foreground">
-            Press <kbd className="font-mono text-sm bg-muted px-2 py-1 rounded-md">⌘ K</kbd> to plan your day, log time, or ask a question.
-          </p>
+          
+          <div className="space-y-8 text-lg text-foreground/90 leading-relaxed font-medium">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">Today&apos;s Priorities</p>
+              <div className="space-y-4">
+                {data.priorities.slice(0,3).map((p, i) => (
+                  <div key={p.id} className="flex gap-4 items-start border-b border-border/40 pb-4 last:border-0 last:pb-0">
+                    <span className="text-muted-foreground font-mono">{i + 1}.</span>
+                    <div>
+                      <p className="font-semibold">{p.title}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {p.domain === 'project' ? 'Deadline tomorrow. Estimated 3 hours.' : 
+                         p.domain === 'learning' ? 'Placement readiness improves 1.2%.' :
+                         'Finish assignment.'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {data.recoveryPlan?.totalMissed > 0 && (
+              <div className="rounded-2xl bg-warning/10 border border-warning/20 p-5">
+                <p className="text-sm font-semibold uppercase tracking-widest text-warning mb-2">Warning</p>
+                <p className="text-sm text-warning/90">
+                  You&apos;ve been working {data.hero.streak} days without a recovery evening. 
+                  I&apos;ve reduced tomorrow&apos;s workload.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 border-t border-border/40 text-sm">
+              <div>
+                <p className="text-muted-foreground mb-1">Expected Revenue</p>
+                <p className="font-semibold tabular-nums">₹{data.financeSnapshot?.currentMRR ?? "0"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1">CGPA Projection</p>
+                <p className="font-semibold tabular-nums">8.93</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1">Placement Readiness</p>
+                <p className="font-semibold tabular-nums text-emerald-500">91%</p>
+              </div>
+            </div>
+
+            <p className="pt-6 text-xl font-bold text-primary">Let&apos;s have a productive day.</p>
+          </div>
+
+          <div className="mt-8 pt-8 border-t border-border/40">
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Sparkles className="size-4" />
+              Press <kbd className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded-md border border-border">⌘ K</kbd> to delegate tasks to me.
+            </p>
+          </div>
         </div>
 
         {/* Center Canvas: Daily Mission */}

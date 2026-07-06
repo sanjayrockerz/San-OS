@@ -86,108 +86,93 @@ export function UniversalIntake() {
         </div>
       </form>
 
-      {/* Result display */}
+      {/* AI Explains Result display */}
       {result && (
-        <div className="animate-in space-y-3 slide-in-from-bottom-2">
-          {/* Type + Domain badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium",
-              TYPE_BADGES[result.type]?.color ?? TYPE_BADGES.unknown.color,
-            )}>
-              <Target className="size-2.5" />
-              {TYPE_BADGES[result.type]?.label ?? "Note"}
-            </span>
-            <span className={cn(
-              "inline-flex items-center gap-1 text-[10px] font-medium",
-              DOMAIN_BADGES[result.domain] ?? "text-muted-foreground",
-            )}>
-              <Globe className="size-2.5" />
-              {result.domain}
-            </span>
-            {result.technologies.length > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 text-[10px] font-medium text-sky-400">
-                <Code2 className="size-2.5" />
-                {result.technologies.join(", ")}
-              </span>
-            )}
-          </div>
+        <div className="animate-in space-y-4 slide-in-from-bottom-2 mt-6">
+          <div className="rounded-3xl border border-primary/20 bg-primary/5 p-6 shadow-sm relative overflow-hidden">
+            <Sparkles className="absolute -right-4 -top-4 size-24 text-primary/10 rotate-12" />
+            
+            <div className="relative z-10 space-y-5">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">AI Explains</p>
+                <p className="text-sm font-semibold">I have automatically created the following based on your input:</p>
+              </div>
 
-          {/* Entity resolutions */}
-          {(result.resolvedProject || result.resolvedClient || result.resolvedConcepts.length > 0) && (
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-              <p className="mb-2 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                <Sparkles className="size-2.5" />
-                {entityCount} entit{entityCount === 1 ? "y" : "ies"} resolved
-              </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2.5">
                 {result.resolvedProject && (
-                  <a
-                    href={`/projects/${result.resolvedProject.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-medium text-blue-400 hover:bg-blue-500/20 transition-colors"
-                  >
-                    <FolderKanban className="size-3" />
-                    {result.resolvedProject.name}
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-medium">Linked Project</span>
+                    <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-md border border-border">
+                      {result.resolvedProject.name}
+                    </span>
+                  </div>
                 )}
                 {result.resolvedClient && (
-                  <a
-                    href={`/clients/${result.resolvedClient.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
-                  >
-                    <Users className="size-3" />
-                    {result.resolvedClient.name}
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-medium">Linked Client</span>
+                    <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-md border border-border">
+                      {result.resolvedClient.name}
+                    </span>
+                  </div>
                 )}
-                {result.resolvedConcepts.map((c: any) => (
-                  <span
-                    key={c.id}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400"
-                  >
-                    <BookOpen className="size-3" />
-                    {c.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Captured items preview */}
-          {result.capturedItems.length > 0 && (
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Captured items
-              </p>
-              <div className="space-y-1">
-                {result.capturedItems.map((item: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2 text-[11px]">
-                    <CheckCircle2 className="size-3 shrink-0 text-primary" />
-                    <span className="min-w-0 flex-1 truncate">{item.content}</span>
+                {result.resolvedConcepts?.map((c: any) => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-medium">Identified Concept</span>
+                    <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-md border border-border">
+                      {c.name}
+                    </span>
                   </div>
                 ))}
+                {result.capturedItems?.map((item: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-medium truncate">Captured</span>
+                    <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-md border border-border truncate max-w-[200px]">
+                      {item.content}
+                    </span>
+                  </div>
+                ))}
+                {result.knowledgeEntryCreated && (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-medium">Added to Knowledge Vault</span>
+                  </div>
+                )}
+                {result.timelineEventEmitted && (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-medium">Logged to Timeline</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="pt-4 border-t border-primary/10 flex items-center gap-4">
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Domain</p>
+                  <p className="text-xs font-semibold capitalize text-foreground">{result.domain}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Intent</p>
+                  <p className="text-xs font-semibold capitalize text-foreground">{result.type.replace('_', ' ')}</p>
+                </div>
+                {result.technologies?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Stack</p>
+                    <p className="text-xs font-semibold capitalize text-foreground">{result.technologies.join(', ')}</p>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-
-          {/* Action feedback */}
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-            {result.knowledgeEntryCreated && (
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="size-3 text-emerald-400" />
-                Saved to vault
-              </span>
-            )}
-            {result.timelineEventEmitted && (
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="size-3 text-blue-400" />
-                Logged to timeline
-              </span>
+            
+            {result.error && (
+              <div className="mt-4 p-3 bg-destructive/10 text-destructive text-xs rounded-xl border border-destructive/20 relative z-10">
+                {result.error}
+              </div>
             )}
           </div>
-
-          {result.error && (
-            <p className="text-xs text-destructive">{result.error}</p>
-          )}
         </div>
       )}
 
