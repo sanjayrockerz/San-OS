@@ -139,7 +139,7 @@ export function UniversalIntake() {
                     {result.resolvedClient.name}
                   </a>
                 )}
-                {result.resolvedConcepts.map((c) => (
+                {result.resolvedConcepts.map((c: any) => (
                   <span
                     key={c.id}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400"
@@ -159,7 +159,7 @@ export function UniversalIntake() {
                 Captured items
               </p>
               <div className="space-y-1">
-                {result.capturedItems.map((item, i) => (
+                {result.capturedItems.map((item: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-[11px]">
                     <CheckCircle2 className="size-3 shrink-0 text-primary" />
                     <span className="min-w-0 flex-1 truncate">{item.content}</span>
