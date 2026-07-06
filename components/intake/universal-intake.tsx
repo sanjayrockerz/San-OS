@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Brain, Sparkles, ArrowRight, BookOpen, FolderKanban, Users, Globe, CheckCircle2, Loader2, Target, Code2, Plus } from "lucide-react";
 import { submitIntake, quickProject, quickClient } from "@/app/(app)/actions/intake";
 import { cn } from "@/lib/utils";
@@ -26,22 +26,36 @@ const DOMAIN_BADGES: Record<string, string> = {
 };
 
 export function UniversalIntake() {
-  const [state, formAction, pending] = useActionState(submitIntake, null);
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<any>(null);
   const [text, setText] = useState("");
   const [showQuickActions, setShowQuickActions] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const result = state?.result;
-  const entityCount = (result?.resolvedProject ? 1 : 0) + (result?.resolvedClient ? 1 : 0) + result?.resolvedConcepts?.length;
+  const entityCount = (result?.resolvedProject ? 1 : 0) + (result?.resolvedClient ? 1 : 0) + (result?.resolvedConcepts?.length || 0);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!text.trim() || pending) return;
+
+    startTransition(async () => {
+      try {
+        const res = await submitIntake({ text });
+        if (res.success) {
+          setResult(res.result);
+          setText("");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <form
         ref={formRef}
-        action={formAction}
-        onSubmit={() => {
-          if (state?.success) setText("");
-        }}
+        onSubmit={handleSubmit}
         className="space-y-3"
       >
         <div className="relative">
