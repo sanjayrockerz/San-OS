@@ -192,14 +192,14 @@ export function OverviewClient({ data }: { data: OverviewData }) {
             <div>
               <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">Today&apos;s Priorities</p>
               <div className="space-y-4">
-                {data.priorities.slice(0,3).map((p, i) => (
+                {(data.priorities || []).slice(0,3).map((p, i) => (
                   <div key={p.id} className="flex gap-4 items-start border-b border-border/40 pb-4 last:border-0 last:pb-0">
                     <span className="text-muted-foreground font-mono">{i + 1}.</span>
                     <div>
                       <p className="font-semibold">{p.title}</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {p.domain === 'project' ? 'Deadline tomorrow. Estimated 3 hours.' : 
-                         p.domain === 'learning' ? 'Placement readiness improves 1.2%.' :
+                        {p.kind.includes('project') || p.kind.includes('invoice') ? 'Deadline tomorrow. Estimated 3 hours.' : 
+                         p.kind.includes('problem') || p.kind.includes('concept') ? 'Placement readiness improves 1.2%.' :
                          'Finish assignment.'}
                       </p>
                     </div>
@@ -212,7 +212,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
               <div className="rounded-2xl bg-warning/10 border border-warning/20 p-5">
                 <p className="text-sm font-semibold uppercase tracking-widest text-warning mb-2">Warning</p>
                 <p className="text-sm text-warning/90">
-                  You&apos;ve been working {data.hero.streak} days without a recovery evening. 
+                  You&apos;ve been working {data.hero?.streak ?? 0} days without a recovery evening. 
                   I&apos;ve reduced tomorrow&apos;s workload.
                 </p>
               </div>
@@ -221,7 +221,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 border-t border-border/40 text-sm">
               <div>
                 <p className="text-muted-foreground mb-1">Expected Revenue</p>
-                <p className="font-semibold tabular-nums">₹{data.financeSnapshot?.currentMRR ?? "0"}</p>
+                <p className="font-semibold tabular-nums">₹{data.financeSnapshot?.monthRevenue ?? "0"}</p>
               </div>
               <div>
                 <p className="text-muted-foreground mb-1">CGPA Projection</p>
