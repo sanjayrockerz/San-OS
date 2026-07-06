@@ -116,10 +116,13 @@ export class ExecutionEngineService extends BaseService {
 
     const results = await Promise.all(
       items.map(async (item) => {
+        const validDbTypes = ["idea", "task", "note", "link", "code", "meeting"];
+        const dbType = validDbTypes.includes(item.type) ? item.type : "note";
+        
         const created = await this.repos.captureItems.create({
           user_id: userId,
           content: item.content,
-          type: item.type as any, // Cast since DB type might not match immediately
+          type: dbType as any,
           suggested_destination: item.destination,
         });
 

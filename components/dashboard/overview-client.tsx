@@ -248,7 +248,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
         <div className="flex-1 space-y-8 max-w-3xl mx-auto w-full">
           <TodaysMission
             brief={data.coachBrief}
-            priorities={data.priorities}
+            priorities={data.priorities || []}
             onAddPriority={() => openAddEntry(true)}
           />
 
@@ -267,11 +267,11 @@ export function OverviewClient({ data }: { data: OverviewData }) {
             <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
               <InsightsPanel brief={data.coachBrief} risks={data.risks} />
               <div className="space-y-6">
-                {data.executionMetrics.totalBlocks > 0 && (
-                  <PerformanceEnginePanel metrics={data.executionMetrics} streak={data.hero.streak} />
+                {(data.executionMetrics?.totalBlocks ?? 0) > 0 && (
+                  <PerformanceEnginePanel metrics={data.executionMetrics} streak={data.hero?.streak ?? 0} />
                 )}
                 {data.financeSnapshot && <FinanceSnapshotWidget snapshot={data.financeSnapshot} />}
-                <GoalProgressPanel summaries={data.goalSummaries} />
+                <GoalProgressPanel summaries={data.goalSummaries || []} />
               </div>
             </div>
           </Disclosure>

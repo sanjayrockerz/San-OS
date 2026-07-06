@@ -114,10 +114,10 @@ export function VoiceCaptureWidget() {
             ref={formRef}
             action={formAction}
             onSubmit={() => {
+              autoSubmitRef.current = true;
               if (result?.ok) {
                 setTranscript("");
                 transcriptRef.current = "";
-                autoSubmitRef.current = false;
               }
             }}
             className="space-y-2"
