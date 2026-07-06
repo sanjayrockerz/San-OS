@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Bell, Plus } from "lucide-react";
+import { Search, Bell, Plus, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 import { useUIStore } from "@/store/ui-store";
 import { ThemeToggle } from "./theme-toggle";
@@ -9,6 +9,8 @@ import { ThemeToggle } from "./theme-toggle";
 export function TopHeader({ unreadCount = 0 }: { unreadCount?: number }) {
   const setOpen = useUIStore((s) => s.setCommandOpen);
   const setAddEntryOpen = useUIStore((s) => s.setAddEntryOpen);
+  const contextDrawerOpen = useUIStore((s) => s.contextDrawerOpen);
+  const toggleContextDrawer = useUIStore((s) => s.toggleContextDrawer);
 
   const today = new Date().toLocaleDateString("en-US", {
     day: "numeric",
@@ -40,6 +42,13 @@ export function TopHeader({ unreadCount = 0 }: { unreadCount?: number }) {
         </button>
         <span className="hidden text-xs font-medium text-muted-foreground xl:block">{today}</span>
         <ThemeToggle />
+        <button
+          onClick={toggleContextDrawer}
+          title={contextDrawerOpen ? "Close Context Drawer" : "Open Context Drawer"}
+          className="hidden xl:flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          {contextDrawerOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+        </button>
         <Link
           href="/notifications"
           aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}

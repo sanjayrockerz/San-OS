@@ -4,16 +4,21 @@ import { useUniversalContext } from "@/lib/context/universal-context";
 import { FolderKanban, Users, Calendar, AlertTriangle, FileText, BrainCircuit, Activity, Link as LinkIcon, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useUIStore } from "@/store/ui-store";
 
 export function ContextDrawer() {
   const { context } = useUniversalContext();
+  const open = useUIStore((s) => s.contextDrawerOpen);
 
   // If there's no active context, we could show a smart empty state
   const hasContext = context.currentProject || context.currentClient;
 
   return (
-    <aside className="hidden xl:flex w-[320px] flex-col border-l border-border bg-card/40 backdrop-blur-2xl h-screen sticky top-0 shrink-0 overflow-y-auto">
-      <div className="p-6">
+    <aside className={cn(
+      "hidden xl:flex flex-col bg-card/40 backdrop-blur-2xl h-screen sticky top-0 shrink-0 overflow-hidden transition-[width,opacity,padding,border] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+      open ? "w-[320px] border-l border-border opacity-100" : "w-0 border-l-0 opacity-0"
+    )}>
+      <div className="w-[320px] p-6 h-full overflow-y-auto">
         <div className="flex items-center gap-2 mb-8">
           <BrainCircuit className="size-4 text-primary" />
           <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Active Context</h3>

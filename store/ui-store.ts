@@ -38,6 +38,9 @@ interface UIState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
+  contextDrawerOpen: boolean;
+  toggleContextDrawer: () => void;
+
   postActionPrompt: PostActionState | null;
   setPostActionPrompt: (prompt: PostActionState | null) => void;
 
@@ -62,6 +65,9 @@ export const useUIStore = create<UIState>((set) => ({
 
   sidebarCollapsed: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+  contextDrawerOpen: false,
+  toggleContextDrawer: () => set((s) => ({ contextDrawerOpen: !s.contextDrawerOpen })),
 
   postActionPrompt: null,
   setPostActionPrompt: (postActionPrompt) => set({ postActionPrompt }),
