@@ -175,48 +175,29 @@ function nextMilestone(count: number): number {
 
 export function OverviewClient({ data }: { data: OverviewData }) {
   const openAddEntry = useUIStore((s) => s.setAddEntryOpen);
-  const { hero } = data;
-  const { solvedToday } = data;
-
-  const weeklyPct = hero.weeklyTarget
-    ? Math.min(100, Math.round((hero.solvedThisWeek / hero.weeklyTarget) * 100))
-    : 0;
-  const readiness = hero.totalProblems
-    ? Math.min(99, Math.round((hero.uniqueSolved / hero.totalProblems) * 100))
-    : 0;
-  const weeklyReadinessGain = hero.totalProblems
-    ? Math.round((hero.solvedThisWeek / hero.totalProblems) * 100)
-    : 0;
-  const milestone = nextMilestone(hero.uniqueSolved);
-  const toMilestone = milestone - hero.uniqueSolved;
+  const { hero, solvedToday } = data;
 
   return (
     <PageTransition>
       <DailyReflectionModal solvedToday={solvedToday} threshold={3} />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px] lg:items-start">
-        {/* Center — Mission & Execution Workspace */}
-        <div className="min-w-0 space-y-5">
-          <MissionHero
-            name={data.name}
-            readiness={readiness}
-            weeklyReadinessGain={weeklyReadinessGain}
-            estimatedMinutes={data.estimatedMinutes}
-            streak={hero.streak}
-          />
+      <div className="flex flex-col h-full max-w-5xl mx-auto py-8 lg:py-12">
+        {/* Top AI Command Bar Hint */}
+        <div className="mb-12 text-center space-y-4">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+            {data.greeting}, {data.name}.
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Press <kbd className="font-mono text-sm bg-muted px-2 py-1 rounded-md">⌘ K</kbd> to plan your day, log time, or ask a question.
+          </p>
+        </div>
 
+        {/* Center Canvas: Daily Mission */}
+        <div className="flex-1 space-y-8 max-w-3xl mx-auto w-full">
           <TodaysMission
             brief={data.coachBrief}
             priorities={data.priorities}
             onAddPriority={() => openAddEntry(true)}
-          />
-
-          <StatTiles
-            solvedToday={solvedToday}
-            hero={hero}
-            dailyDigest={data.dailyDigest}
-            memoryHealth={data.memoryHealth}
-            forgettingForecast={data.forgettingForecast}
           />
 
           <DailyPlannerPanel state={data.plannerState} />
@@ -225,86 +206,24 @@ export function OverviewClient({ data }: { data: OverviewData }) {
             <ExecutionPlanPanel blocks={data.todayBlocks} />
           )}
 
-          {data.executionMetrics.totalBlocks > 0 && (
-            <PerformanceEnginePanel metrics={data.executionMetrics} streak={data.hero.streak} />
-          )}
-
-          <InsightsPanel brief={data.coachBrief} risks={data.risks} />
-
-          {/* Everything else — collapsed by default. */}
+          {/* Progressive Disclosure Drawer / Accordion for Secondary Intel */}
           <Disclosure
             defaultOpen={false}
-            trigger={<span className="text-section">Show more</span>}
-            triggerClassName="surface-card rounded-2xl px-4 py-3"
+            trigger={<span className="text-sm font-medium">View Coach Brief & Analytics</span>}
+            triggerClassName="w-full mt-12 surface-card border-none bg-accent/50 hover:bg-accent text-accent-foreground rounded-2xl px-6 py-4 flex justify-center items-center gap-2 transition-colors"
           >
-            <div className="space-y-5 pt-2">
-              {data.recoveryPlan.totalMissed > 0 && (
-                <RecoveryBlocks recovery={data.recoveryPlan} />
-              )}
-
-              <RiskAlerts
-                risks={data.risks}
-                memoryHealth={data.memoryHealth}
-                forgettingForecast={data.forgettingForecast}
-                missedWork={data.missedWork}
-                upcomingAssignments={data.upcomingAssignments}
-              />
-
-              <MissionCenter missions={data.missions} />
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <div className="space-y-4 lg:col-span-2">
-                  <NotificationCenterPanel items={data.notifications} />
-                  <DailySessionPanel items={data.dailyPlan} />
-                  <ResumePriorityCards
-                    items={data.resumeItems}
-                    becauseText={
-                      data.recentSolved[0]
-                        ? `Because you recently solved "${data.recentSolved[0].title}"`
-                        : data.activity[0]
-                          ? `Because you recently: ${data.activity[0].text}`
-                          : null
-                    }
-                  />
-                </div>
-                <div className="space-y-4">
-                  <RecommendationsPanel items={data.recommendations} />
-                  <RevisionQueue items={data.revisionQueue} due={hero.revisionDue} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:items-start">
-                <DailyDigestPanel
-                  data={data.dailyDigest}
-                  milestone={milestone}
-                  toMilestone={toMilestone}
-                  className="lg:col-span-2"
-                />
-                <WeeklyRing pct={weeklyPct} solved={hero.solvedThisWeek} target={hero.weeklyTarget} />
-                <TaxonomyWaiting count={data.taxonomyProposalsCount} />
-                {data.eveningReview && <EveningReviewPanel review={data.eveningReview} />}
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-                <ActivityTimeline items={data.activity} />
-                <RecentSolved items={data.recentSolved} />
-                <RecentConcepts items={data.recentConcepts} />
-                <RecentKnowledge items={data.recentKnowledge} />
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <InsightsPanel brief={data.coachBrief} risks={data.risks} />
+              <div className="space-y-6">
+                {data.executionMetrics.totalBlocks > 0 && (
+                  <PerformanceEnginePanel metrics={data.executionMetrics} streak={data.hero.streak} />
+                )}
+                {data.financeSnapshot && <FinanceSnapshotWidget snapshot={data.financeSnapshot} />}
+                <GoalProgressPanel summaries={data.goalSummaries} />
               </div>
             </div>
           </Disclosure>
         </div>
-
-        {/* Right — Context Panel */}
-        <aside className="space-y-5 lg:sticky lg:top-[88px]">
-          <ContextCalendarPanel dailyPlan={data.dailyPlan} />
-          <FocusTimerWidget focusMode={data.focusMode} />
-          {data.financeSnapshot && <FinanceSnapshotWidget snapshot={data.financeSnapshot} />}
-          <GoalProgressPanel summaries={data.goalSummaries} />
-          <QuickCaptureWidget />
-          <ScratchpadWidget />
-          <DailyQuote />
-        </aside>
       </div>
     </PageTransition>
   );

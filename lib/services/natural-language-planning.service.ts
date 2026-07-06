@@ -1,4 +1,5 @@
 import type { Repositories } from "@/lib/repositories";
+import { EntityResolutionEngine } from "@/lib/entity-resolution";
 import { BaseService } from "./base.service";
 import { parseBrainDump } from "@/lib/execution/brain-dump";
 import type { CompletionInferenceService } from "./completion-inference.service";
@@ -16,9 +17,13 @@ export interface InboxProcessingResult {
     prompt: string;
     choices: number[];
   };
+  resolvedProject?: { id: string; name: string } | null;
+  resolvedClient?: { id: string; name: string } | null;
 }
 
 export class NaturalLanguagePlanningService extends BaseService {
+  private readonly entityResolver: EntityResolutionEngine;
+
   constructor(
     repos: Repositories,
     private readonly completionInference: CompletionInferenceService,
@@ -28,6 +33,7 @@ export class NaturalLanguagePlanningService extends BaseService {
     private readonly learning: ExecutionLearningService,
   ) {
     super(repos);
+    this.entityResolver = new EntityResolutionEngine(repos);
   }
 
   async processInboxEntry(
@@ -43,6 +49,22 @@ export class NaturalLanguagePlanningService extends BaseService {
       /\b(tomorrow|plan|schedule|available|morning|afternoon|evening|night)\b/i.test(raw);
     const now = options?.now ?? new Date();
 
+    const [entityResult] = await Promise.all([
+      this.entityResolver.resolve({ userId, text: raw }),
+    ]);
+    const resolvedProject = entityResult.matches.find(m => m.type === "project") ?? null;
+    const resolvedClient = entityResult.matches.find(m => m.type === "client") ?? null;
+
+    if (resolvedProject) {
+      await this.repos.events.create({
+        user_id: userId,
+        event_type: "planner.entity_resolved",
+        entity_type: "project",
+        entity_id: resolvedProject.id,
+        payload: { source: "inbox_entry", text: raw.slice(0, 300) },
+      }).catch(() => {});
+    }
+
     if (completion.completed && completion.confidence >= 0.5 && !hasPlanCues) {
       if (completion.durationMinutes == null && options?.minutes == null && completion.confidence < 0.75) {
         return {
@@ -54,28 +76,18 @@ export class NaturalLanguagePlanningService extends BaseService {
             prompt: "How long?",
             choices: [30, 60, 120],
           },
+          resolvedProject,
+          resolvedClient,
         };
       }
 
       const result = await this.completionInference.record(userId, raw, { minutes: options?.minutes, now });
       const metrics = await this.executionEngine.getTodayMetrics(userId).catch(() => ({
-        plannedMinutes: 0,
-        actualMinutes: 0,
-        deepWorkMinutes: 0,
-        completedBlocks: 0,
-        totalBlocks: 0,
-        completionRate: 0,
-        scheduleAccuracy: 0,
-        focusSessions: 0,
-        avgFocusScore: 0,
-        longestStreak: 0,
+        plannedMinutes: 0, actualMinutes: 0, deepWorkMinutes: 0, completedBlocks: 0, totalBlocks: 0,
+        completionRate: 0, scheduleAccuracy: 0, focusSessions: 0, avgFocusScore: 0, longestStreak: 0,
       }));
       const learning = await this.learning.summarize(userId, now).catch(() => ({
-        bestStudyDay: null,
-        averageStudyMinutes: 0,
-        averageExecutionRate: 0,
-        trend: "stable" as const,
-        topPattern: "No learning summary available yet.",
+        bestStudyDay: null, averageStudyMinutes: 0, averageExecutionRate: 0, trend: "stable" as const, topPattern: "No learning summary available yet.",
       }));
 
       return {
@@ -83,6 +95,8 @@ export class NaturalLanguagePlanningService extends BaseService {
         confidence: result.signal.confidence,
         detectedItems: parsedItems.length,
         message: this.coach.buildCoachMessage(metrics, learning, result.signal),
+        resolvedProject,
+        resolvedClient,
       };
     }
 
@@ -96,6 +110,8 @@ export class NaturalLanguagePlanningService extends BaseService {
           prompt: "What should I do with it?",
           choices: [30, 60, 120],
         },
+        resolvedProject,
+        resolvedClient,
       };
     }
 
@@ -110,6 +126,8 @@ export class NaturalLanguagePlanningService extends BaseService {
       confidence: 0.9,
       detectedItems: capture.created,
       message: plan.message,
+      resolvedProject,
+      resolvedClient,
     };
   }
 }

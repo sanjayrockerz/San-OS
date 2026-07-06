@@ -153,7 +153,7 @@ export class EventBus {
     return count;
   }
 
-  stats(): EventBusStats {
+  getStats(): EventBusStats {
     return { ...this.stats };
   }
 

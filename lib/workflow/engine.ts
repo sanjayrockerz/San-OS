@@ -2,11 +2,11 @@ import type { Repositories } from "@/lib/repositories";
 import { captureException, captureEvent } from "@/lib/observability/logger";
 import { EventBus } from "@/lib/event-bus";
 import { v4 as uuid } from "uuid";
+import type { Json } from "@/types/database";
 import type {
   WorkflowDefinition,
   WorkflowContext,
   WorkflowExecutionRecord,
-  WorkflowStatus,
   WorkflowStep,
   WorkflowTimelineEntry,
   WorkflowStats,
@@ -244,7 +244,7 @@ export class WorkflowEngine {
           workflowId: record.workflowId,
           status: record.status,
           duration: record.duration,
-        } as any,
+        } as Json,
       });
     } catch (error) {
       captureException(error, { context: "WorkflowEngine.persistRecord", workflowId: record.workflowId });

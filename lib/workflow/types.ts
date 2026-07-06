@@ -20,7 +20,7 @@ export interface WorkflowDefinition<I = unknown, O = unknown> {
   description?: string;
   version: string;
   trigger: WorkflowTrigger;
-  steps: WorkflowStep[];
+  steps: WorkflowStep<I, O>[];
   onComplete?: (output: O, ctx: WorkflowContext) => Promise<void>;
   onError?: (error: Error, ctx: WorkflowContext) => Promise<void>;
   options?: WorkflowOptions;

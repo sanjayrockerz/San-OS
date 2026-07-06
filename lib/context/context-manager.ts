@@ -1,6 +1,5 @@
 import type { Repositories } from "@/lib/repositories";
 import { EventBus } from "@/lib/event-bus";
-import type { Tables } from "@/types/database";
 
 export interface GlobalContext {
   userId: string;
@@ -89,19 +88,14 @@ export class ContextManager {
   private async load(userId: string): Promise<GlobalContext> {
     const ctx = await this.repos.userContext.findByUser(userId).catch(() => null);
 
-    const [projects, goals] = await Promise.all([
-      this.repos.projects.findByUser(userId).catch(() => []),
-      this.repos.userGoals.findByUser(userId).catch(() => []),
-    ]);
-
-    const activeProject = projects.find((p) => p.status === "active") ?? null;
-    const activeGoal = goals.find((g) => !g.is_completed) ?? null;
+    const projects = await this.repos.projects.findByUser(userId).catch(() => []);
+    const activeProject = projects.length > 0 ? projects[0] : null;
 
     return {
       userId,
       currentProject: activeProject ? { id: activeProject.id, title: activeProject.title } : null,
       currentClient: null,
-      currentGoal: activeGoal ? { id: activeGoal.id, title: activeGoal.title } : null,
+      currentGoal: null,
       currentMeeting: null,
       currentCourse: null,
       currentFocusSession: null,

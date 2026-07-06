@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  MessageSquarePlus,
   Puzzle,
   BookOpen,
   GraduationCap,
@@ -26,6 +27,14 @@ interface EntryOption {
 }
 
 const OPTIONS: EntryOption[] = [
+  {
+    id: "intake",
+    label: "Universal Intake",
+    description: "Natural text — auto-detects projects, clients, concepts.",
+    icon: MessageSquarePlus,
+    href: "/intake",
+    enabled: true,
+  },
   {
     id: "dsa",
     label: "DSA Problem",
@@ -63,7 +72,8 @@ const OPTIONS: EntryOption[] = [
     label: "Project Update",
     description: "Note progress on a build or side project.",
     icon: Rocket,
-    enabled: false,
+    href: "/intake",
+    enabled: true,
   },
   {
     id: "note",
@@ -75,11 +85,6 @@ const OPTIONS: EntryOption[] = [
   },
 ];
 
-/**
- * The Universal "Add Learning Entry" picker. Opens a command-palette-style modal
- * listing the entry types. Only "DSA Problem" is active this phase; the rest are
- * visible-but-disabled placeholders for future modules.
- */
 export function AddEntryModal() {
   const open = useUIStore((s) => s.addEntryOpen);
   const setOpen = useUIStore((s) => s.setAddEntryOpen);
@@ -125,7 +130,7 @@ export function AddEntryModal() {
                 What do you want to add?
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Capture a new learning entry into your engineering OS.
+                Capture into your engineering OS.
               </p>
             </div>
 

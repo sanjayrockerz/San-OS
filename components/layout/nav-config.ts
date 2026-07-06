@@ -21,6 +21,7 @@ import {
   Wallet,
   TrendingUp,
   Target,
+  MessageSquarePlus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,68 +39,56 @@ export interface NavGroup {
 
 export const NAV_GROUPS: NavGroup[] = [
   {
+    heading: "Mission Control",
     items: [
       { label: "Overview", shortLabel: "Home", href: "/overview", icon: LayoutDashboard },
+      { label: "Timeline", shortLabel: "Timeline", href: "/timeline", icon: Activity },
       { label: "Notifications", shortLabel: "Alerts", href: "/notifications", icon: Bell },
     ],
   },
   {
-    heading: "Learning",
+    heading: "Business Workspace",
     items: [
-      { label: "Problems", shortLabel: "Problems", href: "/problems", icon: Code2 },
-      { label: "Revision", shortLabel: "Revision", href: "/revision", icon: RefreshCw },
-      { label: "Roadmaps", shortLabel: "Roadmaps", href: "/roadmaps", icon: Map },
+      { label: "Business Hub", shortLabel: "Hub", href: "/business", icon: TrendingUp },
+      { label: "Clients", shortLabel: "Clients", href: "/clients", icon: Users },
+      { label: "Pipeline", shortLabel: "Pipeline", href: "/pipeline", icon: Target },
+      { label: "Finance & Invoices", shortLabel: "Finance", href: "/finance", icon: Wallet },
     ],
   },
   {
-    heading: "Knowledge",
+    heading: "Projects Workspace",
+    items: [
+      { label: "All Projects", shortLabel: "Projects", href: "/projects", icon: FolderKanban },
+    ],
+  },
+  {
+    heading: "Academic Workspace",
+    items: [
+      { label: "Command Center", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
+      { label: "IIT Degree", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
+    ],
+  },
+  {
+    heading: "Knowledge Base",
     items: [
       { label: "Knowledge OS", shortLabel: "Knowledge", href: "/knowledge", icon: Compass },
-      { label: "Concepts", shortLabel: "Concepts", href: "/concepts", icon: Brain },
-      { label: "Knowledge Vault", shortLabel: "Vault", href: "/vault", icon: Library },
-      { label: "Resource Center", shortLabel: "Resources", href: "/resources", icon: Database },
-      { label: "Taxonomy", shortLabel: "Taxonomy", href: "/taxonomy", icon: Network },
+      { label: "Concepts & Taxonomy", shortLabel: "Concepts", href: "/concepts", icon: Brain },
+      { label: "Vault", shortLabel: "Vault", href: "/vault", icon: Library },
+      { label: "Resources", shortLabel: "Resources", href: "/resources", icon: Database },
     ],
   },
   {
-    heading: "Growth",
+    heading: "Execution",
     items: [
-      { label: "Analytics", shortLabel: "Stats", href: "/analytics", icon: LineChart },
-      { label: "Timeline", shortLabel: "Timeline", href: "/timeline", icon: Activity },
+      { label: "Daily Planner", shortLabel: "Planner", href: "/execution", icon: Target },
+      { label: "Problem Solving", shortLabel: "Problems", href: "/problems", icon: Code2 },
+      { label: "Revision", shortLabel: "Revision", href: "/revision", icon: RefreshCw },
     ],
   },
   {
-    heading: "Projects",
+    heading: "Analytics",
     items: [
-      { label: "Project OS", shortLabel: "Projects", href: "/projects", icon: FolderKanban },
-    ],
-  },
-  {
-    heading: "Business",
-    items: [
-      { label: "Clients", shortLabel: "Clients", href: "/clients", icon: Users },
-      { label: "Pipeline", shortLabel: "Pipeline", href: "/pipeline", icon: TrendingUp },
-      { label: "Invoices", shortLabel: "Invoices", href: "/invoices", icon: Receipt },
-      { label: "Finance", shortLabel: "Finance", href: "/finance", icon: Wallet },
-    ],
-  },
-  {
-    heading: "Academic",
-    items: [
-      { label: "Academic Command Center", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
-      { label: "IIT Workspace", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
-      { label: "Academic History", shortLabel: "History", href: "/academic/history", icon: BookOpen },
-      { label: "GPA Planner", shortLabel: "Planner", href: "/academic/planner", icon: Target },
-    ],
-  },
-  {
-    heading: "Personal",
-    items: [
-      // Relationships/Family/Sleep/Exercise/Priorities are reminder
-      // categories with no dedicated page — this deep-links into
-      // Notifications pre-filtered to just those, since that's the only
-      // place they're actually manageable today.
-      { label: "Personal", shortLabel: "Personal", href: "/notifications?life=personal", icon: Heart },
+      { label: "Analytics OS", shortLabel: "Stats", href: "/analytics", icon: LineChart },
     ],
   },
   {

@@ -3,6 +3,7 @@ import type { Tables } from "@/types/database";
 
 import { BaseService } from "./base.service";
 import { EVENT_TYPES, EventService } from "./event.service";
+import { EntityResolutionEngine } from "@/lib/entity-resolution";
 import type { CreateClientInput, UpdateClientInput } from "@/lib/validators/business";
 
 export interface ClientWorkspace {
@@ -17,10 +18,12 @@ export interface ClientWorkspace {
 
 export class ClientService extends BaseService {
   private readonly events: EventService;
+  private readonly entityResolver: EntityResolutionEngine;
 
   constructor(repos: Repositories) {
     super(repos);
     this.events = new EventService(repos);
+    this.entityResolver = new EntityResolutionEngine(repos);
   }
 
   listForUser(userId: string): Promise<Tables<"clients">[]> {
@@ -66,6 +69,51 @@ export class ClientService extends BaseService {
       payload: {},
     });
     return client;
+  }
+
+  async createFromNaturalText(userId: string, text: string): Promise<{ client: Tables<"clients">; resolvedProjectId?: string }> {
+    const [entityResult] = await Promise.all([
+      this.entityResolver.resolve({ userId, text }),
+    ]);
+
+    const resolvedProject = entityResult.matches.find(m => m.type === "project");
+
+    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const phoneMatch = text.match(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+    const companyMatch = text.match(/(?:at|from|with|for)\s+([A-Z][A-Za-z0-9\s&]+?)(?:\.|,|\s+project|\s+regarding)/i);
+
+    const nameWords = text.split(/\s+/).slice(0, 3);
+    const name = companyMatch?.[1]?.trim() ?? nameWords.join(" ");
+    const notes = text.length > 500 ? text.slice(0, 497) + "..." : text;
+
+    const client = await this.repos.clients.create({
+      user_id: userId,
+      name: name.length > 255 ? name.slice(0, 252) + "..." : name,
+      email: emailMatch?.[0] ?? null,
+      phone: phoneMatch?.[0] ?? null,
+      notes,
+      status: "active",
+    });
+
+    await this.repos.events.create({
+      user_id: userId,
+      event_type: "client.from_text",
+      entity_type: "client",
+      entity_id: client.id,
+      payload: {
+        source_text: text.slice(0, 500),
+        resolved_entities: entityResult.matches.map(m => ({ type: m.type, id: m.id, name: m.name })),
+      },
+    }).catch(() => {});
+
+    this.events.emit(userId, {
+      eventType: EVENT_TYPES.ClientCreated,
+      entityType: "client",
+      entityId: client.id,
+      payload: { name: client.name, fromNaturalText: true },
+    });
+
+    return { client, resolvedProjectId: resolvedProject?.id };
   }
 
   /** Full client workspace: every entity the client touches, plus a revenue rollup. */

@@ -36,17 +36,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not transcribe audio" }, { status: 400 });
     }
 
-    // 2. Parse Brain Dump
+    // 2. Parse via Universal Intake for full Entity Resolution
     const services = createServices(await createClient());
-    const result = await services.executionEngine.captureBrainDump(
-      user.id,
-      transcription.text,
-    );
+    const result = await services.universalIntake.process(user.id, {
+      text: transcription.text
+    });
 
     return NextResponse.json({
       transcription: transcription.text,
-      created: result.created,
-      items: result.items,
+      created: result.knowledgeEntryCreated || result.capturedItems.length > 0,
+      items: result.capturedItems,
+      domain: result.domain,
+      type: result.type,
+      project: result.resolvedProject,
+      client: result.resolvedClient
     });
   } catch (error) {
     console.error("Voice upload error:", error);

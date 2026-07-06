@@ -22,10 +22,30 @@ export class ResourceService extends BaseService {
       metadata?: any;
     },
   ): Promise<Tables<"resources">> {
-    return this.repos.resources.create({
+    const resource = await this.repos.resources.create({
       user_id: userId,
       ...data,
     });
+
+    // Deep Interconnection: Auto-link to active context
+    try {
+      const { ContextEngineService } = await import("./context-engine.service");
+      const contextEngine = new ContextEngineService(this.repos);
+      const activeContext = await contextEngine.getOrCreate(userId);
+      
+      if (activeContext.active_entity_type && activeContext.active_entity_id) {
+        await this.linkResource(
+          resource.id,
+          activeContext.active_entity_type,
+          activeContext.active_entity_id,
+          "attached_to"
+        );
+      }
+    } catch (err) {
+      console.error("Failed to auto-link resource to context", err);
+    }
+
+    return resource;
   }
 
   async getResource(resourceId: string): Promise<Tables<"resources"> | null> {

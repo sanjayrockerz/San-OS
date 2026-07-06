@@ -62,8 +62,20 @@ export * from "./resource.service";
 export * from "./memory-graph.service";
 export * from "./resource-pipeline.service";
 export * from "./universal-search.service";
+export * from "./universal-intake.service";
 
 import { createRepositories, type DbClient } from "@/lib/repositories";
+import { initializePlatform } from "@/lib/platform";
+import { EventBus } from "@/lib/event-bus";
+import { WorkflowEngine } from "@/lib/workflow";
+import { LifeIntelligenceEngine } from "@/lib/intelligence";
+import { ContextManager } from "@/lib/context";
+import { RuleEngine } from "@/lib/rules";
+import { AutomationEngine } from "@/lib/automation";
+import { PredictionEngine } from "@/lib/prediction";
+import { BackgroundJobQueue } from "@/lib/background";
+import { CacheManager } from "@/lib/cache";
+import { PermissionGuard } from "@/lib/security";
 
 import { AcademicCoachService } from "./academic-coach.service";
 import { AcademicHealthService } from "./academic-health.service";
@@ -120,6 +132,7 @@ import { ResourceService } from "./resource.service";
 import { MemoryGraphService } from "./memory-graph.service";
 import { ResourcePipelineService } from "./resource-pipeline.service";
 import { UniversalSearchService } from "./universal-search.service";
+import { UniversalIntakeService } from "./universal-intake.service";
 
 /**
  * Constructs every domain service bound to a single Supabase client. A request
@@ -128,6 +141,7 @@ import { UniversalSearchService } from "./universal-search.service";
  */
 export function createServices(client: DbClient) {
   const repos = createRepositories(client);
+  const platform = initializePlatform(repos);
   const executionEngine = new ExecutionEngineService(repos);
   const completionInference = new CompletionInferenceService(repos);
   const executionLearning = new ExecutionLearningService(repos);
@@ -141,7 +155,7 @@ export function createServices(client: DbClient) {
     timeline: new TimelineService(repos),
     activity: new ActivityService(repos),
     revision: new RevisionService(repos),
-    problems: new ProblemsService(repos),
+    problems: new ProblemsService(repos, platform.eventBus),
     analytics: new AnalyticsService(repos),
     roadmaps: new RoadmapService(repos),
     roadmapCoach: new RoadmapCoachService(repos),
@@ -199,6 +213,20 @@ export function createServices(client: DbClient) {
     memoryGraph: new MemoryGraphService(repos),
     resourcePipeline: new ResourcePipelineService(repos),
     universalSearch: new UniversalSearchService(repos),
+    universalIntake: new UniversalIntakeService(repos),
+
+    // Phase 8 — Core Platform services
+    platform,
+    eventBus: platform.eventBus,
+    workflowEngine: platform.workflowEngine,
+    intelligenceEngine: platform.intelligenceEngine,
+    contextManager: platform.contextManager,
+    ruleEngine: platform.ruleEngine,
+    automationEngine: platform.automationEngine,
+    predictionEngine: platform.predictionEngine,
+    jobQueue: platform.jobQueue,
+    cacheManager: platform.cacheManager,
+    permissionGuard: platform.permissionGuard,
   };
 }
 

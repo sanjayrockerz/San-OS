@@ -1,5 +1,5 @@
 import { captureException, captureEvent } from "@/lib/observability/logger";
-import type { RuleActionHandler, RuleDefinition, RuleEvaluationContext, RuleEvaluationResult, RuleCondition } from "./types";
+import type { RuleAction, RuleActionHandler, RuleDefinition, RuleEvaluationContext, RuleEvaluationResult, RuleCondition } from "./types";
 
 export class RuleEngine {
   private readonly rules: RuleDefinition[] = [];

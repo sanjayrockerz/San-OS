@@ -1,10 +1,8 @@
 import type { Repositories } from "@/lib/repositories";
 import type { Tables, TablesInsert } from "@/types/database";
 
-import { ActivityService } from "./activity.service";
 import { BaseService } from "./base.service";
-import { EVENT_TYPES, EventService } from "./event.service";
-import { RevisionService } from "./revision.service";
+import { EventBus } from "@/lib/event-bus";
 
 type Attempt = Tables<"problem_attempts">;
 
@@ -43,26 +41,21 @@ export interface RecordSolveResult {
   attempt: Tables<"problem_attempts">;
   reflection: Tables<"problem_reflections"> | null;
   codeVersion: Tables<"problem_code_versions"> | null;
-  revision: Tables<"revision_queue">;
-  roadmapItemsUpdated: number;
 }
 
 /**
- * Orchestrates the highest-priority workflow: recording a solve attempt. One
- * call persists the attempt (+ optional reflection/code), schedules revision,
- * fans the result out to every linked roadmap, and logs activity — keeping the
- * cross-domain rules in a single place.
+ * Records a solve attempt. Persists the attempt (+ optional reflection/code),
+ * then emits a `problem.solved` domain event. Downstream side effects
+ * (revision scheduling, roadmap fan-out, activity logging) are handled by
+ * the WorkflowEngine via EventBus subscribers — this service no longer
+ * orchestrates them directly.
  */
 export class ProblemsService extends BaseService {
-  private readonly activity: ActivityService;
-  private readonly revision: RevisionService;
-  private readonly events: EventService;
+  private readonly eventBus: EventBus;
 
-  constructor(repos: Repositories) {
+  constructor(repos: Repositories, eventBus: EventBus) {
     super(repos);
-    this.activity = new ActivityService(repos);
-    this.revision = new RevisionService(repos);
-    this.events = new EventService(repos);
+    this.eventBus = eventBus;
   }
 
   /** Lists catalog + own problems for a user. */
@@ -79,27 +72,22 @@ export class ProblemsService extends BaseService {
       ...values,
       user_id: userId,
     });
-    await this.events.emit(userId, {
-      eventType: EVENT_TYPES.ProblemCreated,
-      entityType: "problem",
-      entityId: problem.id,
-      payload: { title: problem.title },
+    await this.eventBus.emit(userId, "problem.created", {
+      title: problem.title,
     });
     return problem;
   }
 
   /**
-   * Records a solve attempt and all of its side effects in one workflow.
+   * Records a solve attempt and emits a `problem.solved` event. Downstream side
+   * effects (revision, roadmaps, activity, notifications) are handled by the
+   * WorkflowEngine's `problem-solved-workflow` via EventBus subscription.
    */
   async recordSolve(
     userId: string,
     input: RecordSolveInput,
   ): Promise<RecordSolveResult> {
     const j = input.journey ?? {};
-
-    // Doesn't depend on the attempt — fetched in parallel with everything
-    // below so the title is ready by the time events need it.
-    const problemPromise = this.repos.problems.findById(input.problemId);
 
     const attempt = await this.repos.attempts.create({
       user_id: userId,
@@ -118,132 +106,43 @@ export class ProblemsService extends BaseService {
       logic_error: j.logicError ?? false,
     });
 
-    // Everything below only depends on `attempt.id`, not on each other —
-    // run them concurrently instead of one round trip at a time.
-    const [reflection, codeVersion, revision, roadmapItemsUpdated] =
-      await Promise.all([
-        input.reflection
-          ? this.repos.reflections.create({
-              user_id: userId,
-              problem_id: input.problemId,
-              attempt_id: attempt.id,
-              my_explanation: input.reflection.myExplanation ?? null,
-              algorithm_in_words: input.reflection.algorithmInWords ?? null,
-              bug_that_stopped_me: input.reflection.bugThatStoppedMe ?? null,
-              final_takeaway: input.reflection.finalTakeaway ?? null,
-            })
-          : Promise.resolve(null),
-        input.code
-          ? this.repos.codeVersions.create({
-              user_id: userId,
-              problem_id: input.problemId,
-              attempt_id: attempt.id,
-              language: input.code.language,
-              code: input.code.code,
-              is_final: input.code.isFinal ?? false,
-            })
-          : Promise.resolve(null),
-        this.revision.scheduleAfterSolve(
-          userId,
-          input.problemId,
-          input.editorialUsed ?? false,
-        ),
-        this.fanOutToRoadmaps(userId, input.problemId),
-        this.activity.log(userId, {
-          type: "problem_solved",
-          title: "Solved a problem",
-          entityType: "problem",
-          entityId: input.problemId,
-          metadata: { attemptId: attempt.id, solveStatus: attempt.solve_status },
-        }),
-        this.activity.bumpDailyCounters(userId, { problems_solved: 1 }),
-      ] as const);
+    // Reflection and code version are part of the primary attempt — they stay
+    // here rather than moving to a subscriber.
+    const [reflection, codeVersion] = await Promise.all([
+      input.reflection
+        ? this.repos.reflections.create({
+            user_id: userId,
+            problem_id: input.problemId,
+            attempt_id: attempt.id,
+            my_explanation: input.reflection.myExplanation ?? null,
+            algorithm_in_words: input.reflection.algorithmInWords ?? null,
+            bug_that_stopped_me: input.reflection.bugThatStoppedMe ?? null,
+            final_takeaway: input.reflection.finalTakeaway ?? null,
+          })
+        : Promise.resolve(null),
+      input.code
+        ? this.repos.codeVersions.create({
+            user_id: userId,
+            problem_id: input.problemId,
+            attempt_id: attempt.id,
+            language: input.code.language,
+            code: input.code.code,
+            is_final: input.code.isFinal ?? false,
+          })
+        : Promise.resolve(null),
+    ]);
 
-    // Emit the domain events that downstream engines (timeline, analytics, AI)
-    // consume. Title is looked up so the timeline reads naturally.
-    const solved = await problemPromise;
-    const title = solved?.title;
-    const base = { entityType: "problem", entityId: input.problemId };
+    // Emit the domain event. The EventBus both persists this event and
+    // synchronously dispatches it to all subscribers, including the
+    // WorkflowEngine's `problem-solved-workflow` which handles revision
+    // scheduling, roadmap fan-out, activity logging, notifications, etc.
+    await this.eventBus.emit(userId, "problem.solved", {
+      problemId: input.problemId,
+      attemptId: attempt.id,
+      editorialUsed: input.editorialUsed ?? false,
+      solveStatus: attempt.solve_status,
+    });
 
-    const events: Promise<unknown>[] = [
-      this.events.emit(userId, {
-        eventType: EVENT_TYPES.ProblemSolved,
-        ...base,
-        payload: { title, solveStatus: attempt.solve_status },
-      }),
-      this.events.emit(userId, {
-        eventType: EVENT_TYPES.RevisionScheduled,
-        ...base,
-        payload: { title, nextRevision: revision.next_revision },
-      }),
-    ];
-    if (reflection) {
-      events.push(
-        this.events.emit(userId, {
-          eventType: EVENT_TYPES.ReflectionCreated,
-          ...base,
-          payload: { title, reflectionId: reflection.id },
-        }),
-      );
-    }
-    if (codeVersion) {
-      events.push(
-        this.events.emit(userId, {
-          eventType: EVENT_TYPES.CodeVersionCreated,
-          ...base,
-          payload: { title, language: codeVersion.language },
-        }),
-      );
-    }
-    if (roadmapItemsUpdated > 0) {
-      events.push(
-        this.events.emit(userId, {
-          eventType: EVENT_TYPES.RoadmapProgressed,
-          ...base,
-          payload: { title, itemsUpdated: roadmapItemsUpdated },
-        }),
-      );
-    }
-    await Promise.all(events);
-
-    return { attempt, reflection, codeVersion, revision, roadmapItemsUpdated };
-  }
-
-  /**
-   * Marks every roadmap item linked to this problem as completed for the user.
-   * A problem solved once thus updates every linked roadmap.
-   */
-  private async fanOutToRoadmaps(
-    userId: string,
-    problemId: string,
-  ): Promise<number> {
-    const items = await this.repos.roadmapItems.findByProblem(problemId);
-    let updated = 0;
-    for (const item of items) {
-      const existing = await this.repos.roadmapProgress.findByItem(
-        userId,
-        item.id,
-      );
-      const now = new Date().toISOString();
-      if (existing) {
-        if (existing.status !== "completed") {
-          await this.repos.roadmapProgress.update(existing.id, {
-            status: "completed",
-            completed_at: now,
-          });
-          updated++;
-        }
-      } else {
-        await this.repos.roadmapProgress.create({
-          user_id: userId,
-          roadmap_id: item.roadmap_id,
-          item_id: item.id,
-          status: "completed",
-          completed_at: now,
-        });
-        updated++;
-      }
-    }
-    return updated;
+    return { attempt, reflection, codeVersion };
   }
 }

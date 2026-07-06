@@ -29,7 +29,7 @@ interface IndexEntry {
 export class InMemorySearchProvider implements SearchProvider {
   readonly id = "in-memory";
   readonly name = "In-Memory Search Provider";
-  private readonly index = new Map<string, IndexEntry>();
+  private readonly entries = new Map<string, IndexEntry>();
 
   isAvailable(): boolean {
     return true;
@@ -45,7 +45,7 @@ export class InMemorySearchProvider implements SearchProvider {
 
     const results: SearchResult[] = [];
 
-    for (const [, entry] of this.index) {
+    for (const [, entry] of this.entries) {
       if (options?.entityTypes && !options.entityTypes.includes(entry.entityType)) continue;
 
       const titleMatch = entry.content.toLowerCase().includes(lower);
@@ -69,7 +69,7 @@ export class InMemorySearchProvider implements SearchProvider {
   }
 
   async index(entityType: string, entityId: string, content: string): Promise<void> {
-    this.index.set(`${entityType}:${entityId}`, {
+    this.entries.set(`${entityType}:${entityId}`, {
       entityType,
       entityId,
       content,

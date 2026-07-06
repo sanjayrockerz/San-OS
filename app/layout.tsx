@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { UniversalContextProvider } from "@/lib/context/universal-context";
+import { CommandPalette } from "@/components/ui/command-palette";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -17,14 +19,13 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DSA OS — Personal Problem Solving System",
-  description:
-    "A premium personal operating system for mastering data structures and algorithms.",
-  applicationName: "DSA OS",
+  title: "SanOS — Personal Engine",
+  description: "A premium personal operating system.",
+  applicationName: "SanOS",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "DSA OS",
+    title: "SanOS",
   },
 };
 
@@ -54,7 +55,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <UniversalContextProvider>
+            {children}
+            <CommandPalette />
+          </UniversalContextProvider>
         </ThemeProvider>
       </body>
     </html>

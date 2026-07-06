@@ -3,6 +3,7 @@ import type { Tables } from "@/types/database";
 
 import { BaseService } from "./base.service";
 import { EVENT_TYPES, EventService } from "./event.service";
+import { EntityResolutionEngine } from "@/lib/entity-resolution";
 import type {
   CreateProjectInput,
   UpdateProjectInput,
@@ -36,10 +37,12 @@ export interface ProjectWithHealth {
 
 export class ProjectService extends BaseService {
   private readonly events: EventService;
+  private readonly entityResolver: EntityResolutionEngine;
 
   constructor(repos: Repositories) {
     super(repos);
     this.events = new EventService(repos);
+    this.entityResolver = new EntityResolutionEngine(repos);
   }
 
   // ---------------------------------------------------------------------------
@@ -271,6 +274,54 @@ export class ProjectService extends BaseService {
     input: Partial<CreateQuoteInput & { sent_at: string }>,
   ): Promise<Tables<"project_quotes">> {
     return this.repos.projectQuotes.update(id, input);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Entity-aware project creation
+  // ---------------------------------------------------------------------------
+
+  async createFromNaturalText(userId: string, text: string): Promise<{ project: Tables<"projects">; clientName?: string }> {
+    const [entityResult] = await Promise.all([
+      this.entityResolver.resolve({ userId, text }),
+    ]);
+
+    const resolvedClient = entityResult.matches.find(m => m.type === "client");
+    const technologyTags = ["react", "vue", "angular", "svelte", "next.js", "node", "python", "typescript", "javascript", "go", "rust", "postgresql", "supabase", "aws", "docker", "kubernetes"]
+      .filter(t => text.toLowerCase().includes(t));
+
+    const words = text.split(/\s+/);
+    const title = words.slice(0, 8).join(" ");
+    const description = text.length > 200 ? text.slice(0, 197) + "..." : text;
+
+    const project = await this.repos.projects.create({
+      user_id: userId,
+      title: title.length > 255 ? title.slice(0, 252) + "..." : title,
+      description,
+      client_id: resolvedClient?.id ?? null,
+      tags: technologyTags,
+      status: "active",
+    });
+
+    await this.repos.events.create({
+      user_id: userId,
+      event_type: "project.from_text",
+      entity_type: "project",
+      entity_id: project.id,
+      payload: {
+        source_text: text.slice(0, 500),
+        resolved_entities: entityResult.matches.map(m => ({ type: m.type, id: m.id, name: m.name })),
+        technologies: technologyTags,
+      },
+    }).catch(() => {});
+
+    this.events.emit(userId, {
+      eventType: EVENT_TYPES.ProjectCreated,
+      entityType: "project",
+      entityId: project.id,
+      payload: { title: project.title, fromNaturalText: true },
+    });
+
+    return { project, clientName: resolvedClient?.name };
   }
 
   // ---------------------------------------------------------------------------

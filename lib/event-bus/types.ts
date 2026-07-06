@@ -28,7 +28,7 @@ export interface Subscription<E extends DomainEvent = DomainEvent> {
 export interface SubscriptionOptions {
   idempotencyKey?: string;
   maxRetries?: number;
-  filter?: (event: E) => boolean;
+  filter?: (event: DomainEvent) => boolean;
   async?: boolean;
 }
 
