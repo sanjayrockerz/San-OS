@@ -33,6 +33,7 @@ export * from "./invoices.repository";
 export * from "./finance.repository";
 export * from "./academic.repository";
 export * from "./resources.repository";
+export * from "./calendar.repository";
 export * from "./memory-graph.repository";
 
 import type { DbClient } from "./base.repository";
@@ -114,6 +115,7 @@ import {
   DailyPlansRepository,
 } from "./execution.repository";
 import { ResourcesRepository, ResourceLinksRepository } from "./resources.repository";
+import { CalendarConnectionsRepository, CalendarSyncLogRepository } from "./calendar.repository";
 import { MemoryEdgesRepository, MemoryNodesRepository } from "./memory-graph.repository";
 
 /**
@@ -179,6 +181,8 @@ export function createRepositories(client: DbClient) {
     dailyPlans: new DailyPlansRepository(client),
     resources: new ResourcesRepository(client),
     resourceLinks: new ResourceLinksRepository(client),
+    calendarConnections: new CalendarConnectionsRepository(client),
+    calendarSyncLog: new CalendarSyncLogRepository(client),
     memoryEdges: new MemoryEdgesRepository(client),
     memoryNodes: new MemoryNodesRepository(client),
   };

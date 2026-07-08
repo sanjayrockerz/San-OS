@@ -76,6 +76,7 @@ export const EVENT_TYPES = {
   PlannerReplanned: "planner.replanned",
   PlannerDayReviewed: "planner.day_reviewed",
   ResourceCreated: "resource.created",
+  CalendarSynced: "calendar.synced",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];

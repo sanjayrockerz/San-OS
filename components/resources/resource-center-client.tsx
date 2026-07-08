@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { type Tables } from "@/types/database";
 import { ResourceInspector } from "./resource-inspector";
-import { FileIcon, ImageIcon, FileTextIcon, VideoIcon, AudioLinesIcon } from "lucide-react";
+import { FileIcon, ImageIcon, FileTextIcon, VideoIcon, AudioLinesIcon, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Resource = Tables<"resources">;
 
@@ -51,9 +52,12 @@ export function ResourceCenterClient({ initialResources }: { initialResources: R
           ))}
           
           {initialResources.length === 0 && (
-            <div className="col-span-full h-64 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-xl">
-              <FileIcon className="w-12 h-12 mb-4 opacity-50" />
-              <p>No resources found. Upload your first file to get started.</p>
+            <div className="col-span-full">
+              <EmptyState
+                icon={FolderOpen}
+                title="No resources yet"
+                description="Upload your first file to get started."
+              />
             </div>
           )}
         </div>
