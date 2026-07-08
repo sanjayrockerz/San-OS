@@ -10,6 +10,7 @@
 import type { Repositories } from "@/lib/repositories";
 import type {
   DayReviewResult,
+  DraftPlannerResult,
   PlannerResult,
   PlannerState,
 } from "@/lib/services/daily-planner.service";
@@ -18,6 +19,14 @@ export interface PlannerProvider {
   readonly id: string;
   getPlannerState(userId: string, now?: Date): Promise<PlannerState>;
   generateTomorrowPlan(userId: string, now?: Date): Promise<PlannerResult>;
+  draftMorningAdjustment(userId: string, now?: Date): Promise<DraftPlannerResult>;
+  commitSchedule(
+    userId: string,
+    date: string,
+    scheduled: any[],
+    opts: { phase: "evening_draft" | "morning_adjust" | "afternoon_replan"; status: "active" | "draft" | "reviewed"; eventType?: string },
+    unscheduledCount?: number,
+  ): Promise<PlannerResult>;
   applyMorningAdjustment(userId: string, now?: Date): Promise<PlannerResult>;
   replanRemainder(userId: string, now?: Date): Promise<PlannerResult>;
   generateEndOfDayReview(userId: string, now?: Date): Promise<DayReviewResult>;

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 export interface UniversalContextState {
@@ -37,7 +37,7 @@ export function UniversalContextProvider({ children }: { children: ReactNode }) 
   const pathname = usePathname();
   const [context, setContext] = useState<UniversalContextState>(defaultState);
 
-  const refreshContext = async () => {
+  const refreshContext = useCallback(async () => {
     setContext(prev => ({ ...prev, isLoading: true }));
     try {
       // Typically, you'd fetch from an API route like /api/context?path=${pathname}
@@ -51,11 +51,14 @@ export function UniversalContextProvider({ children }: { children: ReactNode }) 
     } catch (e) {
       setContext(prev => ({ ...prev, isLoading: false }));
     }
-  };
+  }, [pathname]);
 
   useEffect(() => {
-    refreshContext();
-  }, [pathname]);
+    const timeout = window.setTimeout(() => {
+      void refreshContext();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [refreshContext, pathname]);
 
   return (
     <UniversalContext.Provider value={{ context, refreshContext }}>

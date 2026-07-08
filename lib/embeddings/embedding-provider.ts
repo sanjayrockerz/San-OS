@@ -1,10 +1,5 @@
-import { pipeline, env } from "@xenova/transformers";
-
-// Disable local models if running in edge/browser without explicit models path
-// But in our case we want to use local models. We will download them to cache.
-env.allowLocalModels = true;
 // Optional: Disable remote models to force local only
-// env.allowRemoteModels = false;
+// process.env.allowRemoteModels = "false";
 
 export interface EmbeddingProvider {
   readonly id: string;
@@ -26,6 +21,9 @@ export class XenovaEmbeddingProvider implements EmbeddingProvider {
     if (!this.initializing) {
       this.initializing = (async () => {
         // Use a fast, small embedding model suitable for vectors
+        const { pipeline, env } = await import("@xenova/transformers");
+        env.allowLocalModels = true;
+        
         this.extractor = await pipeline("feature-extraction", "Xenova/bge-small-en-v1.5", {
           quantized: true, // Use int8 quantization for faster inference and lower memory
         });

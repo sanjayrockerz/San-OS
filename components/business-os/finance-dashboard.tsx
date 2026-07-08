@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart } from "@/components/charts/bar-chart";
-import { recordIncome, recordExpense } from "@/app/(app)/finance/actions";
+import { recordIncome, recordExpense, recordFinanceNote } from "@/app/(app)/finance/actions";
 
 import {
   AreaChart,
@@ -50,6 +50,8 @@ export function FinanceDashboard({ snapshot, income, expenses, clients, projects
 
   return (
     <div className="space-y-6">
+      <FinanceNoteForm />
+
       {/* KPI grid */}
       <div className="grid gap-3 sm:grid-cols-3">
         <Card className="p-4">
@@ -155,6 +157,41 @@ export function FinanceDashboard({ snapshot, income, expenses, clients, projects
         </Card>
       </div>
     </div>
+  );
+}
+
+function FinanceNoteForm() {
+  const [state, action, pending] = useActionState(recordFinanceNote, null);
+  const [raw, setRaw] = useState("");
+
+  return (
+    <Card className="p-4 border-border/60 shadow-sm">
+      <div className="mb-3">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Quick Entry</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Type the transaction the way you remember it. We&apos;ll split income and expenses for you.
+        </p>
+      </div>
+      <form action={action} className="space-y-3">
+        <textarea
+          name="raw"
+          value={raw}
+          onChange={(e) => setRaw(e.target.value)}
+          placeholder="I gave 300 to my friend and got 500 from my dad"
+          className="min-h-24 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20"
+        />
+        {state && !state.ok && <p className="text-xs text-destructive">{state.error}</p>}
+        {state?.ok && <p className="text-xs text-success">{state.message}</p>}
+        <div className="flex items-center gap-2">
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? "Saving…" : "Record from words"}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            No separate fields needed.
+          </span>
+        </div>
+      </form>
+    </Card>
   );
 }
 

@@ -17,6 +17,7 @@ import {
   timeToMinutes,
   type FixedInterval,
   type SchedulableTask,
+  type ScheduledTask,
   type SchedulerOptions,
   type TaskEnergy,
 } from "@/lib/execution/scheduler";
@@ -26,6 +27,13 @@ type DailyPlan = Tables<"daily_plans">;
 
 /** Which planner phase produced/updated a plan. */
 export type PlanPhase = "evening_draft" | "morning_adjust" | "afternoon_replan";
+
+export interface DraftPlannerResult {
+  date: string;
+  phase: PlanPhase;
+  scheduled: ScheduledTask[];
+  unscheduledCount: number;
+}
 
 export interface PlannerResult {
   date: string;
@@ -151,10 +159,13 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
   async generateTomorrowPlan(userId: string, now: Date = new Date()): Promise<PlannerResult> {
     const date = isoDate(new Date(now.getTime() + DAY_MS));
     const candidates = await this.gatherCandidates(userId);
-    const result = await this.materialise(userId, date, candidates, {
+    const draft = await this.draftSchedule(userId, date, candidates, {
       phase: "evening_draft",
-      status: "draft",
     });
+    const result = await this.commitSchedule(userId, draft.date, draft.scheduled, {
+      phase: draft.phase,
+      status: "draft",
+    }, draft.unscheduledCount);
 
     await this.notify(
       userId,
@@ -169,22 +180,19 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
   // ---------------------------------------------------------------------------
 
   async applyMorningAdjustment(userId: string, now: Date = new Date()): Promise<PlannerResult> {
-    const date = isoDate(now);
-    // Fresh signals already include yesterday's unfinished work (surfaced by the
-    // Habit Engine as missed work inside IntelligenceCore priorities), so a clean
-    // rebuild from current priorities carries the backlog forward automatically.
-    const candidates = await this.gatherCandidates(userId);
-    const result = await this.materialise(userId, date, candidates, {
-      phase: "morning_adjust",
+    const draft = await this.draftMorningAdjustment(userId, now);
+    return this.commitSchedule(userId, draft.date, draft.scheduled, {
+      phase: draft.phase,
       status: "active",
     });
+  }
 
-    await this.notify(
-      userId,
-      "Good morning — today's plan is set",
-      result.message,
-    );
-    return result;
+  async draftMorningAdjustment(userId: string, now: Date = new Date()): Promise<DraftPlannerResult> {
+    const date = isoDate(now);
+    const candidates = await this.gatherCandidates(userId);
+    return this.draftSchedule(userId, date, candidates, {
+      phase: "morning_adjust",
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -219,12 +227,16 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
       linkedEntityId: b.linked_entity_id,
     }));
 
-    const result = await this.materialise(userId, date, candidates, {
+    const draft = await this.draftSchedule(userId, date, candidates, {
       phase: "afternoon_replan",
-      status: "active",
       nowMinutes,
-      eventType: EVENT_TYPES.PlannerReplanned,
     });
+
+    const result = await this.commitSchedule(userId, draft.date, draft.scheduled, {
+      phase: draft.phase,
+      status: "active",
+      eventType: EVENT_TYPES.PlannerReplanned,
+    }, draft.unscheduledCount);
 
     const deferred = result.unscheduledCount;
     const message =
@@ -371,17 +383,15 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
   // Materialisation — schedule, persist blocks, upsert plan header, emit event.
   // ---------------------------------------------------------------------------
 
-  private async materialise(
+  private async draftSchedule(
     userId: string,
     date: string,
     candidates: SchedulableTask[],
     opts: {
       phase: PlanPhase;
-      status: DailyPlan["status"];
       nowMinutes?: number | null;
-      eventType?: string;
     },
-  ): Promise<PlannerResult> {
+  ): Promise<DraftPlannerResult> {
     const fixedBlocks = await safe(this.repos.timeBlocks.findFixedByDate(userId, date), []);
     const fixed: FixedInterval[] = fixedBlocks.map((b) => ({
       startMinutes: timeToMinutes(b.start_time),
@@ -393,6 +403,25 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
     };
     const { scheduled, unscheduled } = buildSchedule(candidates, fixed, schedulerOpts);
 
+    return {
+      date,
+      phase: opts.phase,
+      scheduled,
+      unscheduledCount: unscheduled.length,
+    };
+  }
+
+  async commitSchedule(
+    userId: string,
+    date: string,
+    scheduled: ScheduledTask[],
+    opts: {
+      phase: PlanPhase;
+      status: DailyPlan["status"];
+      eventType?: string;
+    },
+    unscheduledCount: number = 0,
+  ): Promise<PlannerResult> {
     // Replace the planner's previous blocks for the day, then insert the new set.
     await safe(this.repos.timeBlocks.clearAutoGenerated(userId, date), undefined);
 
@@ -416,7 +445,7 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
 
     const plannedMinutes = scheduled.reduce((s, t) => s + (t.endMinutes - t.startMinutes), 0);
     const focusTheme = dominantDomain(scheduled);
-    const message = buildPlanMessage(scheduled.length, plannedMinutes, focusTheme, unscheduled.length);
+    const message = buildPlanMessage(scheduled.length, plannedMinutes, focusTheme, unscheduledCount);
 
     const plan = await this.repos.dailyPlans.upsert(userId, date, {
       status: opts.status,
@@ -439,6 +468,13 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
         plannedMinutes,
       },
     });
+    
+    // Also send the notify that used to be in applyMorningAdjustment and generateTomorrowPlan
+    if (opts.phase === "morning_adjust") {
+      await this.notify(userId, "Good morning — today's plan is set", message);
+    } else if (opts.phase === "evening_draft") {
+      await this.notify(userId, "Tomorrow's plan is ready", message);
+    }
 
     return {
       date,
@@ -446,7 +482,7 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
       plan,
       blocks,
       scheduledCount: scheduled.length,
-      unscheduledCount: unscheduled.length,
+      unscheduledCount: unscheduledCount,
       message,
     };
   }

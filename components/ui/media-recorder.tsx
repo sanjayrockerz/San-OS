@@ -27,20 +27,27 @@ export function VoiceRecorder({ onSuccess, onError, autoSubmit = true }: MediaRe
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
 
+  function startTimer() {
+    timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+  }
+
+  function stopTimer() {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }
+
+  function cancelWaveform() {
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    if (audioContextRef.current) audioContextRef.current.close();
+    audioContextRef.current = null;
+    analyserRef.current = null;
+  }
+
   useEffect(() => {
     return () => {
       stopTimer();
       cancelWaveform();
     };
   }, []);
-
-  const startTimer = () => {
-    timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
-  };
-
-  const stopTimer = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-  };
 
   const drawWaveform = () => {
     if (!analyserRef.current) return;
@@ -53,13 +60,6 @@ export function VoiceRecorder({ onSuccess, onError, autoSubmit = true }: MediaRe
     setVolume(Math.min(100, (avg / 255) * 100 * 2)); // Boosted for visibility
     
     animationRef.current = requestAnimationFrame(drawWaveform);
-  };
-
-  const cancelWaveform = () => {
-    if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    if (audioContextRef.current) audioContextRef.current.close();
-    audioContextRef.current = null;
-    analyserRef.current = null;
   };
 
   const startRecording = async () => {

@@ -4,6 +4,7 @@ import { getSpeechProvider } from "@/lib/voice/speech-provider";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createServices } from "@/lib/services";
+import { waitUntil } from "@vercel/functions";
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     for (const item of result.items) {
       if (item.captureId) {
         // Background async embedding
-        services.semanticMemory.indexText(user.id, "capture", item.captureId, item.content).catch(console.error);
+        waitUntil(services.semanticMemory.indexText(user.id, "capture", item.captureId, item.content).catch(console.error));
       }
     }
 

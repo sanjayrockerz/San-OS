@@ -2467,7 +2467,6 @@ export type Database = {
         Args: any;
         Returns: any;
       };
-      
     };
     Enums: {
       taxonomy_source: "seed" | "user" | "ai_proposed" | "ai_auto";

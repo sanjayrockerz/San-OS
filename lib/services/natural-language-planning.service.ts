@@ -115,17 +115,16 @@ export class NaturalLanguagePlanningService extends BaseService {
       };
     }
 
-    const tomorrow = /\btomorrow\b/i.test(raw);
     const capture = await this.executionEngine.captureBrainDump(userId, raw);
-    const plan = tomorrow
-      ? await this.dailyPlanner.generateTomorrowPlan(userId, now)
-      : await this.dailyPlanner.applyMorningAdjustment(userId, now);
 
     return {
       kind: "planning",
       confidence: 0.9,
       detectedItems: capture.created,
-      message: plan.message,
+      message:
+        capture.created > 0
+          ? `I understood ${capture.created} item${capture.created === 1 ? "" : "s"} and saved them as captures. Open Daily Planner to preview and confirm the schedule.`
+          : "I saved that as a capture, but I couldn't extract anything schedule-ready. Try adding clearer tasks, times, or deadlines.",
       resolvedProject,
       resolvedClient,
     };

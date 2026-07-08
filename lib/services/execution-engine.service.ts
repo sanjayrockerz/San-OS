@@ -128,7 +128,7 @@ export class ExecutionEngineService extends BaseService {
 
         // Auto-create domain objects based on specific types
         if (item.type === "goal") {
-          // @ts-ignore
+          // @ts-expect-error legacy repository surface accepts goal rows here
           await this.repos.goals?.create({
             user_id: userId,
             title: item.content,
@@ -136,14 +136,12 @@ export class ExecutionEngineService extends BaseService {
             domain: item.domain as any,
           }).catch((e: any) => console.error("Failed to auto-create goal:", e));
         } else if (item.type === "project") {
-          // @ts-ignore
           await this.repos.projects?.create({
             user_id: userId,
             title: item.content,
             status: "active",
           }).catch((e: any) => console.error("Failed to auto-create project:", e));
         } else if (item.type === "event") {
-          // @ts-ignore
           await this.repos.events?.create({
             user_id: userId,
             event_type: "timeline_event_captured",

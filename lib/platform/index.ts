@@ -25,7 +25,8 @@ export interface CorePlatform {
   permissionGuard: PermissionGuard;
 }
 
-let platformInstance: CorePlatform | null = null;
+const globalForPlatform = globalThis as unknown as { platformInstance: CorePlatform | null };
+let platformInstance: CorePlatform | null = globalForPlatform.platformInstance || null;
 
 export function initializePlatform(repos: Repositories): CorePlatform {
   if (platformInstance) return platformInstance;
@@ -73,6 +74,7 @@ export function initializePlatform(repos: Repositories): CorePlatform {
     cacheManager,
     permissionGuard,
   };
+  globalForPlatform.platformInstance = platformInstance;
 
   jobQueue.start();
   automationEngine.start();

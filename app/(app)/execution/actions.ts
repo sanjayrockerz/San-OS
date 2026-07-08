@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createServices } from "@/lib/services";
-import type { PlannerProvider } from "@/lib/execution/planner-provider";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -41,7 +40,7 @@ export async function startFocusSession(
       title ?? "Focus Session",
       plannedMinutes,
     );
-    return { ok: true, sessionId: (session as any).id };
+    return { ok: true, sessionId: session.id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to start session" };
   }
@@ -133,31 +132,73 @@ export async function updateBlockStatus(
 
 export type PlannerPhase = "tomorrow" | "morning" | "replan" | "review";
 
-export async function runPlannerPhase(
-  _prev: (ActionResult & { message?: string }) | null,
+import type { DraftPlannerResult } from "@/lib/services/daily-planner.service";
+import { timeToMinutes } from "@/lib/execution/scheduler";
+
+type PlannerActionFailure = { ok: false; error: string };
+type PlannerDraftSuccess =
+  | {
+      ok: true;
+      draft: DraftPlannerResult;
+      conversationalMessage?: string;
+    }
+  | {
+      ok: true;
+      message: string;
+    };
+type PlannerDraftActionResult = PlannerDraftSuccess | PlannerActionFailure;
+type PlannerCommitActionResult = { ok: true; message: string } | PlannerActionFailure;
+
+export async function draftPlannerPhase(
+  _prev: PlannerDraftActionResult | null,
   formData: FormData,
-): Promise<ActionResult & { message?: string }> {
+): Promise<PlannerDraftActionResult> {
   const user = await requireUser("/overview");
   const phase = formData.get("phase") as PlannerPhase;
+  const context = (formData.get("context") as string | null)?.trim();
 
   const services = createServices(await createClient());
-  // Depend on the PlannerProvider contract, not the concrete engine (§ provider-based).
-  const planner: PlannerProvider = services.dailyPlanner;
+  
+  if (context) {
+    await services.executionEngine.captureBrainDump(user.id, context);
+  }
+
+  const planner = services.dailyPlanner;
   try {
+    if (phase === "morning") {
+      const draft = await planner.draftMorningAdjustment(user.id);
+      
+      let conversationalMessage = "I've organized this for you. How does this look?";
+      if (draft.scheduled.length > 0) {
+        const first = draft.scheduled[0];
+        const second = draft.scheduled.length > 1 ? draft.scheduled[1] : null;
+        
+        const formatTime = (mins: number) => {
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          const hr12 = h % 12 || 12;
+          return `${hr12}:${m.toString().padStart(2, '0')} ${ampm}`;
+        };
+        
+        conversationalMessage = `I've organized this for you. Can we plan '${first.title}' by ${formatTime(first.startMinutes)}${second ? ` and '${second.title}' by ${formatTime(second.startMinutes)}` : ''}?`;
+      }
+      
+      return { ok: true, draft, conversationalMessage };
+    }
+    
+    // Fallbacks for the other phases (they just execute immediately for now)
     let message: string;
     switch (phase) {
       case "tomorrow":
         message = (await planner.generateTomorrowPlan(user.id)).message;
-        break;
-      case "morning":
-        message = (await planner.applyMorningAdjustment(user.id)).message;
         break;
       case "replan":
         message = (await planner.replanRemainder(user.id)).message;
         break;
       case "review": {
         const { review, tomorrow } = await planner.generateEndOfDayReview(user.id);
-        message = `${(review as any).review_notes ?? "Day reviewed."} Tomorrow: ${(tomorrow as any).plan.focus_theme ?? "open"}.`;
+        message = `${review.review_notes ?? "Day reviewed."} Tomorrow: ${tomorrow.plan.focus_theme ?? "open"}.`;
         break;
       }
       default:
@@ -168,6 +209,48 @@ export async function runPlannerPhase(
     return { ok: true, message };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Planner failed" };
+  }
+}
+
+export async function commitPlannerPhase(
+  _prev: PlannerCommitActionResult | null,
+  formData: FormData,
+): Promise<PlannerCommitActionResult> {
+  const user = await requireUser("/overview");
+  const draftJson = formData.get("draft") as string;
+  if (!draftJson) return { ok: false, error: "Missing draft plan data" };
+  
+  try {
+    const draft = JSON.parse(draftJson) as DraftPlannerResult;
+    
+    // We need to apply any modified timings from formData
+    const scheduled = draft.scheduled.map((task, i) => {
+      const startStr = formData.get(`start_${i}`) as string;
+      const endStr = formData.get(`end_${i}`) as string;
+      if (startStr && endStr) {
+        return {
+          ...task,
+          startMinutes: timeToMinutes(startStr + ":00"),
+          endMinutes: timeToMinutes(endStr + ":00"),
+        };
+      }
+      return task;
+    });
+
+    const services = createServices(await createClient());
+    const result = await services.dailyPlanner.commitSchedule(
+      user.id,
+      draft.date,
+      scheduled,
+      { phase: draft.phase, status: "active" },
+      draft.unscheduledCount
+    );
+
+    revalidatePath("/execution");
+    revalidatePath("/overview");
+    return { ok: true, message: result.message };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to commit plan" };
   }
 }
 

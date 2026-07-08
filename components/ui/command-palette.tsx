@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState, useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Search, Loader2, Sparkles, Command, CheckCircle2 } from "lucide-react";
 import { useUniversalContext } from "@/lib/context/universal-context";
 import { submitIntake } from "@/app/(app)/actions/intake";
+
+type IntakeResult = Awaited<ReturnType<typeof submitIntake>>["result"];
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<IntakeResult | null>(null);
   const { context } = useUniversalContext();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -17,7 +19,7 @@ export function CommandPalette() {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((current) => !current);
       }
     };
     document.addEventListener("keydown", down);
@@ -25,20 +27,23 @@ export function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    } else {
-      setInput("");
-      setResult(null);
-    }
+    if (!open) return;
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 100);
+    return () => window.clearTimeout(timer);
   }, [open]);
+
+  const closePalette = () => {
+    setInput("");
+    setResult(null);
+    setOpen(false);
+  };
 
   if (!open) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    
+
     startTransition(async () => {
       try {
         const res = await submitIntake({
@@ -47,7 +52,7 @@ export function CommandPalette() {
           currentClientId: context.currentClient?.id,
         });
         setResult(res.result);
-        setTimeout(() => setOpen(false), 2000);
+        window.setTimeout(closePalette, 2000);
       } catch (err) {
         console.error(err);
       }
@@ -56,10 +61,7 @@ export function CommandPalette() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
-      <div 
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={() => setOpen(false)}
-      />
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={closePalette} />
       <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <form onSubmit={handleSubmit} className="flex items-center gap-3 border-b border-border px-4 py-4">
           <Command className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -74,16 +76,16 @@ export function CommandPalette() {
           />
           {isPending && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
         </form>
-        
+
         {result ? (
           <div className="bg-emerald-500/10 px-4 py-4">
             <div className="flex items-center gap-2 text-emerald-400">
               <CheckCircle2 className="h-5 w-5" />
               <span className="font-medium">Action processed successfully</span>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground ml-7">
-              Identified as: {result.type.replace('_', ' ')}.
-              {result.resolvedProject ? ` Linked to ${result.resolvedProject.name}.` : ''}
+            <p className="ml-7 mt-1 text-sm text-muted-foreground">
+              Identified as: {result.type.replace("_", " ")}.
+              {result.resolvedProject ? ` Linked to ${result.resolvedProject.name}.` : ""}
             </p>
           </div>
         ) : (
