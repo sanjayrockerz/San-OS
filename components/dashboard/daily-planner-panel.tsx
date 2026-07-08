@@ -191,17 +191,19 @@ export function DailyPlannerPanel({ state }: { state: PlannerPanelState }) {
         ) : (
           <>
             <p className="mb-3 text-xs text-muted-foreground">
-              Your Chief of Staff plans, adapts and reviews your day deterministically, from your live priorities.
+              Your Chief of Staff plans from live intelligence plus anything you type here. Mention sequence, rough timing, and what matters most, then confirm the draft below.
             </p>
 
             <form action={draftAction} className="mb-3 space-y-2">
-              <input
-                type="text"
+              <textarea
                 name="context"
-                placeholder="Add context... (e.g. &apos;Must finish React course today&apos;)"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20"
+                placeholder="Example: I will do workout in the morning, eat breakfast, work on the Shawarma project, talk to my gf, then study PDS."
+                className="min-h-[96px] w-full resize-none rounded-xl border border-border bg-background px-3 py-3 text-xs leading-5 placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20"
                 disabled={drafting}
               />
+              <p className="text-[11px] text-muted-foreground">
+                Use natural language. I will infer morning/evening hints, order, and likely duration, then ask you to confirm timings.
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {PHASES.map(({ phase, label, icon: Icon, hint }) => (
                   <button

@@ -23,7 +23,23 @@ const INCOME_HINTS = /\b(got|received|earned|collected|credited|refund(?:ed)?|de
 const EXPENSE_HINTS = /\b(gave|paid|spent|bought|sent|transferred|lent|purchase(?:d)?|reimbursed|to)\b/i;
 
 function normaliseAmount(amountText: string): number {
-  return Number(amountText.replace(/[,₹\s]/g, ""));
+  const compact = amountText.toLowerCase().replace(/[,\s₹]/g, "");
+  const match = compact.match(/^(\d+(?:\.\d+)?)(k|m|l|lac|lakh|cr|crore)?$/i);
+  if (!match) return Number(compact);
+
+  const base = Number(match[1] ?? 0);
+  const suffix = (match[2] ?? "").toLowerCase();
+  const multiplier =
+    suffix === "k"
+      ? 1_000
+      : suffix === "m"
+        ? 1_000_000
+        : suffix === "l" || suffix === "lac" || suffix === "lakh"
+          ? 100_000
+          : suffix === "cr" || suffix === "crore"
+            ? 10_000_000
+            : 1;
+  return base * multiplier;
 }
 
 function splitFinanceClauses(raw: string): string[] {
@@ -36,7 +52,7 @@ function splitFinanceClauses(raw: string): string[] {
 }
 
 function parseFinanceClause(clause: string): { kind: "income" | "expense"; amount: number; description: string; category: string } | null {
-  const amountMatch = clause.match(/(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)/i);
+  const amountMatch = clause.match(/(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.[0-9]+)?(?:\s*(?:k|m|l|lac|lakh|cr|crore))?)/i);
   if (!amountMatch) return null;
 
   const amount = normaliseAmount(amountMatch[1] ?? "");

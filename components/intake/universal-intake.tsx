@@ -188,8 +188,8 @@ export function UniversalIntake() {
         </button>
         {showQuickActions && (
           <div className="mt-2 flex gap-2">
-            <QuickActionButton label="New Project" action={quickProject} />
-            <QuickActionButton label="New Client" action={quickClient} />
+            <QuickActionButton label="New Project" action={quickProject} text={text} />
+            <QuickActionButton label="New Client" action={quickClient} text={text} />
           </div>
         )}
       </div>
@@ -197,18 +197,25 @@ export function UniversalIntake() {
   );
 }
 
-function QuickActionButton({ label, action }: { label: string; action: (text: string) => Promise<any> }) {
+function QuickActionButton({
+  label,
+  action,
+  text,
+}: {
+  label: string;
+  action: (text: string) => Promise<any>;
+  text: string;
+}) {
   const [pending, setPending] = useState(false);
-  const text = "";
 
   return (
     <button
       type="button"
-      disabled={pending}
+      disabled={pending || !text.trim()}
       onClick={async () => {
         setPending(true);
         try {
-          await action(text || label);
+          await action(text.trim());
         } finally {
           setPending(false);
         }

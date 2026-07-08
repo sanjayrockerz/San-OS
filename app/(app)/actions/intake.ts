@@ -41,15 +41,27 @@ export async function quickProject(text: string) {
   if (authError || !user) throw new Error("Unauthorized");
 
   const services = createServices(supabase);
-  const { project, clientName } = await services.project.createFromNaturalText(
+  const { project, clientName, pipelineEntryId, milestonesCount, tasksCount, createdClient } = await services.project.createFromNaturalText(
     user.id,
     text,
   );
 
   revalidatePath("/projects");
   revalidatePath("/clients");
+  revalidatePath("/pipeline");
+  revalidatePath("/business");
+  revalidatePath("/overview");
 
-  return { success: true, project, clientName };
+  return {
+    success: true,
+    project,
+    clientName,
+    projectId: project.id,
+    pipelineEntryId,
+    milestonesCount,
+    tasksCount,
+    createdClient,
+  };
 }
 
 export async function quickClient(text: string) {
