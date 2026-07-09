@@ -1,36 +1,25 @@
-import { Skeleton } from "@/components/ui/skeleton";
-import { SectionSkeleton } from "./streaming";
+import { HeroSkeleton } from "@/components/mission-control/mission-control-streaming";
 
 export default function OverviewLoading() {
   return (
-    <div className="mx-auto flex h-full max-w-6xl flex-col py-8 lg:py-12">
-      <div className="mb-8 w-full overflow-hidden rounded-[2rem] border border-border/60 bg-card/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
-        <div className="flex items-center justify-between gap-3">
-          <Skeleton className="h-6 w-32 rounded-full" />
-          <Skeleton className="h-6 w-20 rounded-full" />
-        </div>
-        <div className="mt-6 space-y-4">
-          <Skeleton className="h-12 w-72 rounded-2xl" />
-          <Skeleton className="h-4 w-full rounded-full" />
-          <Skeleton className="h-4 w-3/4 rounded-full" />
-        </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Skeleton className="h-20 rounded-[1.4rem]" />
-          <Skeleton className="h-20 rounded-[1.4rem]" />
-          <Skeleton className="h-20 rounded-[1.4rem]" />
-        </div>
-      </div>
-      <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Skeleton className="h-32 rounded-[1.6rem]" />
-          <Skeleton className="h-32 rounded-[1.6rem]" />
-          <Skeleton className="h-32 rounded-[1.6rem]" />
-          <Skeleton className="h-32 rounded-[1.6rem]" />
-        </div>
-        <SectionSkeleton />
-        <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
-          <SectionSkeleton />
-          <SectionSkeleton />
+    <div className="relative mx-auto h-full max-w-4xl">
+      <HeroSkeleton />
+      <div className="mb-6">
+        <div className="mb-3 h-4 w-24 animate-pulse rounded-full bg-muted" />
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:grid md:grid-cols-2 md:overflow-visible md:px-0 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-[260px] shrink-0 snap-start rounded-2xl bg-muted/30 p-4 md:w-auto"
+            >
+              <div className="flex items-center gap-2">
+                <div className="size-8 animate-pulse rounded-xl bg-muted" />
+                <div className="h-3 w-20 animate-pulse rounded-full bg-muted" />
+              </div>
+              <div className="mt-3 h-8 w-24 animate-pulse rounded-lg bg-muted" />
+              <div className="mt-1 h-3 w-32 animate-pulse rounded-full bg-muted" />
+            </div>
+          ))}
         </div>
       </div>
     </div>

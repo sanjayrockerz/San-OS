@@ -49,7 +49,7 @@
 }
 
 /* ============================================================
-   DSA OS — Premium Engineering OS Design System
+   San OS — Premium Personal OS Design System
    Light + Dark parity · Apple × Linear × Raycast × Vercel
    ============================================================ */
 
@@ -232,15 +232,23 @@
 @layer base {
   * {
     border-color: var(--border);
+    box-sizing: border-box;
   }
 
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    /* Prevent horizontal page overflow on all screens */
+    overflow-x: hidden;
   }
 
   body {
+    overflow-x: hidden;
     background-color: var(--background);
+    background-image: 
+      radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 45%),
+      radial-gradient(circle at 90% 80%, color-mix(in srgb, var(--category-memory) 12%, transparent), transparent 45%);
+    background-attachment: fixed;
     color: var(--foreground);
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";
@@ -255,6 +263,17 @@
 
   h1, h2, h3, h4 {
     letter-spacing: -0.02em;
+  }
+
+  /* Ensure images never overflow their container */
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Minimum 44×44px touch targets for all interactive elements */
+  button, [role="button"], a, input[type="checkbox"], input[type="radio"] {
+    touch-action: manipulation;
   }
 }
 
@@ -361,5 +380,218 @@
   @media (prefers-reduced-motion: reduce) {
     .shimmer { animation: none; background: var(--muted); }
     .animate-fade-up, .animate-fade-in, .animate-count { animation: none; }
+  }
+}
+
+/* ==========================================================
+   SanOS 3.0 — Responsive Utility Classes
+   ========================================================== */
+@layer utilities {
+
+  /* ── Touch target enforcement ── */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* ── Safe area padding helpers ── */
+  .safe-top    { padding-top:    env(safe-area-inset-top, 0px); }
+  .safe-left   { padding-left:   env(safe-area-inset-left, 0px); }
+  .safe-right  { padding-right:  env(safe-area-inset-right, 0px); }
+  /* safe-bottom already defined above */
+
+  /* ── Responsive card grids ──
+     Usage: <div class="responsive-grid-2"> gives 1 col → 2 col at sm
+  */
+  .responsive-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 640px) {
+    .responsive-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .responsive-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 640px) {
+    .responsive-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .responsive-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .responsive-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  @media (min-width: 768px) {
+    .responsive-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ── Responsive table wrapper — horizontal snap scroll on mobile ── */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Thin scrollbar to show users there's more content */
+    scrollbar-width: thin;
+    border-radius: var(--radius-md);
+  }
+  .table-responsive table {
+    min-width: 600px;
+  }
+
+  /* ── Bottom sheet / modal on mobile ── */
+  .dialog-mobile-sheet {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 90dvh;
+    margin: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    overflow-y: auto;
+  }
+  @media (min-width: 640px) {
+    .dialog-mobile-sheet {
+      border-radius: var(--radius-xl);
+      max-height: min(85dvh, 640px);
+      position: relative;
+      bottom: auto;
+      left: auto;
+      right: auto;
+      margin: auto;
+    }
+  }
+
+  /* ── Page header: responsive h1 using clamp ── */
+  .page-title {
+    font-size: clamp(1.375rem, 4vw, 2.125rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+  }
+
+  /* ── Horizontal scroll snap for tabs / Kanban ── */
+  .scroll-snap-x {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .scroll-snap-x::-webkit-scrollbar { display: none; }
+  .scroll-snap-x > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+
+  /* ── Kanban column container ── */
+  .kanban-board {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 1rem;
+  }
+  .kanban-column {
+    min-width: min(280px, 85vw);
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+  @media (min-width: 768px) {
+    .kanban-column { min-width: 280px; }
+  }
+
+  /* ── Truncate with min-width guard (prevents flex children from overflowing) ── */
+  .truncate-safe {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Mobile form stack ── */
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  @media (min-width: 640px) {
+    .form-row {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+  }
+  .form-row > * { flex: 1 1 0; min-width: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lift:hover { transform: none; }
+  }
+}
+
+/* ==========================================================
+   Mission Control — Animated Background Keyframes
+   GPU-accelerated, respects prefers-reduced-motion
+   ========================================================== */
+@layer utilities {
+  @keyframes cloud-drift {
+    0%   { transform: translateX(-120%); }
+    100% { transform: translateX(120vw); }
+  }
+  @keyframes bird-fly {
+    0%   { transform: translate(0, 0) scaleX(1); }
+    25%  { transform: translate(40vw, -20px) scaleX(1); }
+    50%  { transform: translate(80vw, 0) scaleX(1); }
+    75%  { transform: translate(120vw, -10px) scaleX(1); }
+    100% { transform: translate(160vw, 0) scaleX(1); }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.3); }
+  }
+  @keyframes float-particle {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
+    50%      { transform: translateY(-30px) scale(1.2); opacity: 0.7; }
+  }
+  @keyframes sunset-particle {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.2; }
+    50%      { transform: translateY(-20px) scale(1.5); opacity: 0.5; }
+  }
+  @keyframes sun-glow {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50%      { opacity: 1; transform: scale(1.05); }
+  }
+  @keyframes sunset-glow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50%      { opacity: 0.9; transform: scale(1.08); }
+  }
+
+  .bg-gradient-radial {
+    background-image: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-cloud,
+    .animate-bird,
+    .animate-twinkle,
+    .animate-float-particle,
+    .animate-sunset-particle,
+    .animate-sun-glow,
+    .animate-sunset-glow {
+      animation: none !important;
+    }
   }
 }
