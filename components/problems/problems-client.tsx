@@ -13,6 +13,7 @@ import {
   Loader2,
   ArrowRight,
   Pencil,
+  Code2,
 } from "lucide-react";
 
 import { PageTransition, Section } from "@/components/layout/page-transition";
@@ -28,6 +29,8 @@ import {
   updateProblem,
   type ActionResult,
 } from "@/app/(app)/problems/actions";
+import { CodeEditor } from "@/components/editor/code-editor";
+import { LANGUAGES, getTemplate } from "@/lib/code-templates";
 import { DIFFICULTY_BADGE_VARIANT, type Difficulty } from "@/lib/design/status";
 
 type Problem = Tables<"problems">;
@@ -401,6 +404,8 @@ function AddProblemForm({
     createProblem,
     null,
   );
+  const [codeLang, setCodeLang] = useState("Java");
+  const [showCode, setShowCode] = useState(false);
 
   useEffect(() => {
     if (state?.ok) onDone();
@@ -479,6 +484,46 @@ function AddProblemForm({
           ))}
         </Select>
       </div>
+
+      {/* Code section — collapsed by default */}
+      <div className="sm:col-span-2">
+        <button
+          type="button"
+          onClick={() => setShowCode(!showCode)}
+          className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Code2 className="size-3.5" />
+          {showCode ? "Hide code" : "Add solution code"}
+        </button>
+      </div>
+
+      {showCode && (
+        <>
+          <div>
+            <FieldLabel>Code language</FieldLabel>
+            <Select
+              name="code_language"
+              value={codeLang}
+              onChange={(e) => setCodeLang(e.target.value)}
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <CodeEditor
+              name="code"
+              language={codeLang}
+              defaultValue={getTemplate(codeLang)}
+              height="220px"
+              minHeight="220px"
+            />
+          </div>
+        </>
+      )}
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <Button type="submit" disabled={pending}>
