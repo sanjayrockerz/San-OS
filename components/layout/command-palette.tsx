@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -11,13 +11,16 @@ import {
   Sun,
   Moon,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
-import { NAV_ITEMS } from "./nav-config";
+import { COMMAND_NAV_ITEMS } from "./nav-config";
 import type { SearchResult } from "@/app/api/search/route";
+import { useUniversalContext } from "@/lib/context/universal-context";
+import { submitIntake } from "@/app/(app)/actions/intake";
 
 interface Command {
   id: string;
@@ -63,6 +66,8 @@ export function CommandPalette() {
   const setOpen = useUIStore((s) => s.setCommandOpen);
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
+  const { context } = useUniversalContext();
+  const [, startIntakeTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const { results: entityResults, loading } = useEntitySearch(query);
@@ -100,7 +105,7 @@ export function CommandPalette() {
   }, [setOpen]);
 
   const staticCommands = useMemo<Command[]>(() => {
-    const nav = NAV_ITEMS.map((item) => ({
+    const nav = COMMAND_NAV_ITEMS.map((item) => ({
       id: `nav-${item.href}`,
       label: `Go to ${item.label}`,
       group: "Navigation",
@@ -181,8 +186,24 @@ export function CommandPalette() {
     const matchedStatic = staticCommands.filter((c) =>
       c.label.toLowerCase().includes(q),
     );
-    return [...entityCommands, ...matchedStatic];
-  }, [staticCommands, entityCommands, query]);
+    const aiCommand: Command = {
+      id: "ai-intake",
+      label: `Ask SanOS: “${query.trim()}”`,
+      sub: "I’ll understand it, connect it, and act on it.",
+      group: "AI",
+      icon: Sparkles,
+      run: () => {
+        startIntakeTransition(async () => {
+          await submitIntake({
+            text: query.trim(),
+            currentProjectId: context.currentProject?.id,
+            currentClientId: context.currentClient?.id,
+          });
+        });
+      },
+    };
+    return [aiCommand, ...entityCommands, ...matchedStatic];
+  }, [staticCommands, entityCommands, query, context.currentProject?.id, context.currentClient?.id, startIntakeTransition]);
 
   const run = useCallback(
     (cmd?: Command) => {

@@ -2,12 +2,12 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Services } from "@/lib/services";
 import { getHeroTheme } from "@/lib/mission-control/hero-theme-engine";
-import { getCachedDashboardData } from "./dashboard-data-fetcher";
+import { getCachedDashboardData, getCriticalDashboardData } from "./dashboard-data-fetcher";
 import { getDevDashboardData } from "./dev-dashboard-data";
 import { MissionHeroV2 } from "./mission-hero-v2";
 import { KpiCarousel } from "./kpi-carousel";
-import { KpiCard } from "./kpi-card";
 import { WIDGET_CONFIG } from "@/lib/mission-control/dashboard-widgets";
+import { TodayMission } from "./today-mission";
 
 function getHour(): number {
   return new Date().getHours();
@@ -64,9 +64,7 @@ function KpiCarouselSkeleton() {
   );
 }
 
-const LIST_WIDGETS = WIDGET_CONFIG.filter(
-  (w) => w.id !== "planner" && w.id !== "readiness",
-);
+const SIGNAL_WIDGETS = WIDGET_CONFIG.filter((w) => ["readiness", "dsa", "projects", "finance"].includes(w.id));
 
 async function HeroSection({
   userId,
@@ -83,7 +81,7 @@ async function HeroSection({
   const formattedTime = getFormattedTime();
   const data = useDevData
     ? getDevDashboardData()
-    : await getCachedDashboardData(userId, services);
+    : await getCriticalDashboardData(userId, services);
   const theme = getHeroTheme(
     name,
     hour,
@@ -98,8 +96,15 @@ async function HeroSection({
       coachInsight={data.coachInsight}
       estimatedMinutes={data.estimatedMinutes}
       priorityCount={data.priorityCount}
+      mission={data.topPriorityTitle}
+      planner={data.planner}
     />
   );
+}
+
+async function MissionSection({ userId, services, useDevData }: Omit<StreamingProps, "name">) {
+  const data = useDevData ? getDevDashboardData() : await getCachedDashboardData(userId, services);
+  return <TodayMission data={data} />;
 }
 
 async function KpiGridSection({
@@ -120,47 +125,7 @@ async function KpiGridSection({
       <h2 className="mb-3 px-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
         Key Metrics
       </h2>
-      <KpiCarousel widgets={data.widgets} data={data.kpis} />
-    </section>
-  );
-}
-
-async function KpiListSection({
-  userId,
-  services,
-  useDevData,
-}: {
-  userId: string;
-  services: Services;
-  useDevData?: boolean;
-}) {
-  const data = useDevData
-    ? getDevDashboardData()
-    : await getCachedDashboardData(userId, services);
-
-  return (
-    <section className="space-y-3">
-      {LIST_WIDGETS.map((widget, i) => {
-        const kpi = data.kpis[widget.id];
-        if (!kpi) return null;
-        return (
-          <KpiCard
-            key={widget.id}
-            icon={widget.icon}
-            label={widget.title}
-            value={kpi.value}
-            subtitle={kpi.subtitle}
-            trend={kpi.trend}
-            sparklineData={kpi.sparklineData}
-            progress={kpi.progress}
-            insight={kpi.insight}
-            gradient={widget.gradient}
-            darkGradient={widget.darkGradient}
-            color={widget.color}
-            delay={i}
-          />
-        );
-      })}
+      <KpiCarousel widgets={SIGNAL_WIDGETS} data={data.kpis} />
     </section>
   );
 }
@@ -190,6 +155,10 @@ export function MissionControlStream({
       </Suspense>
 
       <Suspense fallback={<KpiCarouselSkeleton />}>
+        <MissionSection userId={userId} services={services} useDevData={useDevData} />
+      </Suspense>
+
+      <Suspense fallback={<KpiCarouselSkeleton />}>
         <KpiGridSection
           userId={userId}
           services={services}
@@ -197,13 +166,6 @@ export function MissionControlStream({
         />
       </Suspense>
 
-      <Suspense fallback={<KpiCarouselSkeleton />}>
-        <KpiListSection
-          userId={userId}
-          services={services}
-          useDevData={useDevData}
-        />
-      </Suspense>
     </>
   );
 }

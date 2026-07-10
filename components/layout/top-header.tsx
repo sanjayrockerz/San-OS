@@ -19,33 +19,34 @@ export function TopHeader({ unreadCount = 0 }: { unreadCount?: number }) {
   });
 
   return (
-    <header className="glass sticky top-0 z-30 hidden h-16 items-center gap-4 border-b border-border px-6 lg:flex">
+    <header className="glass sticky top-0 z-30 hidden h-16 items-center gap-3 border-b border-border px-4 lg:flex xl:px-6">
       {/* Search / command trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="group flex h-9 w-full max-w-md items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:border-border-strong"
+        className="group flex h-9 min-w-0 flex-1 max-w-sm items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:border-border-strong"
       >
-        <Search className="size-4" />
-        <span className="flex-1 text-left">Search problems, concepts, roadmaps…</span>
-        <kbd className="flex items-center gap-0.5 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium">
+        <Search className="size-4 shrink-0" />
+        <span className="flex-1 min-w-0 truncate text-left hidden sm:block">Search problems, concepts, roadmaps…</span>
+        <span className="flex-1 min-w-0 truncate text-left sm:hidden">Search…</span>
+        <kbd className="hidden items-center gap-0.5 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium xl:flex">
           ⌘K
         </kbd>
       </button>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2 shrink-0">
         <button
           onClick={() => setAddEntryOpen(true)}
           className="flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
         >
           <Plus className="size-4" />
-          <span className="hidden sm:inline">Add Learning Entry</span>
+          <span className="hidden xl:inline">Add Entry</span>
         </button>
-        <span className="hidden text-xs font-medium text-muted-foreground xl:block">{today}</span>
+        <span className="hidden xl:block text-xs font-medium text-muted-foreground">{today}</span>
         <ThemeToggle />
         <button
           onClick={toggleContextDrawer}
           title={contextDrawerOpen ? "Close Context Drawer" : "Open Context Drawer"}
-          className="hidden xl:flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="hidden lg:flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {contextDrawerOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
         </button>

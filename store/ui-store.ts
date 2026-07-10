@@ -63,8 +63,17 @@ export const useUIStore = create<UIState>((set) => ({
   mobileNavOpen: false,
   setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
 
-  sidebarCollapsed: false,
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  sidebarCollapsed: typeof window !== "undefined"
+    ? localStorage.getItem("san-os:sidebar-collapsed") === "true"
+    : false,
+  toggleSidebar: () =>
+    set((s) => {
+      const next = !s.sidebarCollapsed;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("san-os:sidebar-collapsed", String(next));
+      }
+      return { sidebarCollapsed: next };
+    }),
 
   contextDrawerOpen: false,
   toggleContextDrawer: () => set((s) => ({ contextDrawerOpen: !s.contextDrawerOpen })),

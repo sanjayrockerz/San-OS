@@ -14,7 +14,6 @@ export async function GET(req: NextRequest) {
     const segments = path.split("/").filter(Boolean);
     let currentClient = null;
     let currentProject = null;
-    let currentTask = null;
 
     if (segments[0] === "projects" && segments[1]) {
       currentProject = await services.repos.projects.findById(segments[1]).catch(() => null);
@@ -47,7 +46,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       currentClient,
       currentProject,
-      currentTask: null,
       nextDeadline,
       relatedResourcesCount: resources.length,
       openRisksCount: 0,

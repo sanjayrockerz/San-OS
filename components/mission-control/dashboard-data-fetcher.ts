@@ -20,6 +20,22 @@ export interface DashboardData {
   priorityCount: number;
   widgets: DashboardWidget[];
   kpis: Record<string, KpiSnapshot>;
+  planner: {
+    currentTitle: string | null;
+    currentWindow: string | null;
+    nextTitle: string | null;
+    completionRate: number;
+    totalBlocks: number;
+  };
+}
+
+export interface CriticalDashboardData {
+  yesterdayCompleted: number;
+  topPriorityTitle?: string;
+  coachInsight?: string;
+  estimatedMinutes: number;
+  priorityCount: number;
+  planner: DashboardData["planner"];
 }
 
 function formatPercent(value: number | null | undefined): string {
@@ -52,6 +68,7 @@ export async function getDashboardData(
     academicActions,
     businessActions,
     knowledgeHealthSnapshot,
+    plannerState,
   ] = await Promise.all([
     services.studentCoach.dailyBrief(userId, "none").catch(() => null),
     services.studentIntelligence.snapshot(userId).catch(() => null),
@@ -64,6 +81,7 @@ export async function getDashboardData(
     services.academicCoach.actions(userId).catch(() => []),
     services.businessCoach.actions(userId).catch(() => []),
     services.knowledgeHealth.snapshot(userId).catch(() => null),
+    services.dailyPlanner.getPlannerState(userId).catch(() => null),
   ]);
 
   const priorities = intelligence?.priorities ?? [];
@@ -95,6 +113,18 @@ export async function getDashboardData(
   ).length;
   const knowledgeConceptsCount = knowledgeHealthSnapshot?.entities?.length ?? 0;
   const overallCoverage = knowledgeHealthSnapshot?.overallCoveragePercent ?? 0;
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const activeBlock = plannerState?.todayBlocks.find((block) => {
+    const [startHour, startMinute] = block.start_time.split(":").map(Number);
+    const [endHour, endMinute] = block.end_time.split(":").map(Number);
+    return nowMinutes >= startHour * 60 + startMinute && nowMinutes < endHour * 60 + endMinute;
+  });
+  const nextBlock = plannerState?.todayBlocks
+    .filter((block) => block.status === "planned")
+    .find((block) => {
+      const [hour, minute] = block.start_time.split(":").map(Number);
+      return hour * 60 + minute >= nowMinutes;
+    });
 
   const kpis: Record<string, KpiSnapshot> = {
     readiness: {
@@ -207,10 +237,62 @@ export async function getDashboardData(
     priorityCount,
     widgets: sortedWidgets,
     kpis,
+    planner: {
+      currentTitle: activeBlock?.title ?? null,
+      currentWindow: activeBlock ? `${activeBlock.start_time.slice(0, 5)}–${activeBlock.end_time.slice(0, 5)}` : null,
+      nextTitle: nextBlock?.title ?? null,
+      completionRate: executionMetrics?.completionRate ?? 0,
+      totalBlocks: executionMetrics?.totalBlocks ?? 0,
+    },
   };
 }
 
 const dataPromiseCache = new Map<string, Promise<DashboardData>>();
+const criticalPromiseCache = new Map<string, Promise<CriticalDashboardData>>();
+
+/** Small first-paint payload. Heavy domain snapshots stay behind the streamed
+ * mission surface and KPI sections. */
+export function getCriticalDashboardData(
+  userId: string,
+  services: Services,
+): Promise<CriticalDashboardData> {
+  const key = `critical-${userId}`;
+  if (!criticalPromiseCache.has(key)) {
+    criticalPromiseCache.set(key, Promise.all([
+      services.studentCoach.dailyBrief(userId, "none").catch(() => null),
+      services.studentIntelligence.snapshot(userId).catch(() => null),
+      services.executionEngine.getTodayMetrics(userId).catch(() => null),
+      services.dailyPlanner.getPlannerState(userId).catch(() => null),
+    ]).then(([coachBrief, intelligence, executionMetrics, plannerState]) => {
+      const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+      const activeBlock = plannerState?.todayBlocks.find((block) => {
+        const [sh, sm] = block.start_time.split(":").map(Number);
+        const [eh, em] = block.end_time.split(":").map(Number);
+        return nowMinutes >= sh * 60 + sm && nowMinutes < eh * 60 + em;
+      });
+      const nextBlock = plannerState?.todayBlocks.find((block) => {
+        const [h, m] = block.start_time.split(":").map(Number);
+        return h * 60 + m >= nowMinutes && block.status === "planned";
+      });
+      return {
+        yesterdayCompleted: coachBrief?.yesterday?.completed ?? 0,
+        topPriorityTitle: intelligence?.priorities?.[0]?.title,
+        coachInsight: coachBrief?.today?.insight ?? undefined,
+        estimatedMinutes: coachBrief?.today?.estimatedMinutes ?? 0,
+        priorityCount: Math.min(3, intelligence?.priorities?.length ?? 0),
+        planner: {
+          currentTitle: activeBlock?.title ?? null,
+          currentWindow: activeBlock ? `${activeBlock.start_time.slice(0, 5)}–${activeBlock.end_time.slice(0, 5)}` : null,
+          nextTitle: nextBlock?.title ?? null,
+          completionRate: executionMetrics?.completionRate ?? 0,
+          totalBlocks: executionMetrics?.totalBlocks ?? 0,
+        },
+      };
+    }));
+    setTimeout(() => criticalPromiseCache.delete(key), 15000);
+  }
+  return criticalPromiseCache.get(key)!;
+}
 
 export function getCachedDashboardData(
   userId: string,

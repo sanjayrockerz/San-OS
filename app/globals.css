@@ -302,6 +302,23 @@
     box-shadow: var(--surface-highlight), var(--shadow-sm);
   }
 
+  .mission-surface {
+    background:
+      radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 46%),
+      linear-gradient(135deg, color-mix(in srgb, var(--card) 94%, var(--primary)), var(--card));
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
+    box-shadow: var(--surface-highlight), var(--shadow-md);
+  }
+
+  .eyebrow {
+    color: var(--muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
   /* Premium hover: surface rises slightly toward the light with a softer
      ambient shadow. Pair with .surface-card on interactive cards. */
   .lift {

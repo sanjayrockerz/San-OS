@@ -52,7 +52,7 @@ function Tab({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       href={item.href}
       className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors",
+        "flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors min-h-[44px]",
         active ? "text-primary" : "text-muted-foreground"
       )}
     >

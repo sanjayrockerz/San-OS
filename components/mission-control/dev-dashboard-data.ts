@@ -3,7 +3,7 @@ import { WIDGET_CONFIG, MISSION_CONTROL_ORDER } from "@/lib/mission-control/dash
 import type { DashboardWidget } from "@/lib/mission-control/dashboard-widgets";
 
 export function getDevDashboardData(): DashboardData {
-  const kpis: Record<string, any> = {
+  const kpis: Record<string, Omit<DashboardData["kpis"][string], "id">> = {
     readiness: {
       value: "89%",
       subtitle: "CGPA 7.8 — Top 8%",
@@ -96,6 +96,13 @@ export function getDevDashboardData(): DashboardData {
     estimatedMinutes: 180,
     priorityCount: 3,
     widgets: sortedWidgets,
-    kpis,
+    kpis: kpis as DashboardData["kpis"],
+    planner: {
+      currentTitle: "Complete Cenexa Authentication",
+      currentWindow: "10:30–12:00",
+      nextTitle: "Review Graphs patterns",
+      completionRate: 75,
+      totalBlocks: 5,
+    },
   };
 }

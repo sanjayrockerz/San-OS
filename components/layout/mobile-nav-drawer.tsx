@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Terminal } from "lucide-react";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
@@ -91,15 +91,15 @@ export function MobileNavDrawer({ user }: { user: MobileNavDrawerUser }) {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="surface-card absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col rounded-none border-y-0 border-l-0"
+            className="surface-card absolute inset-y-0 left-0 flex w-[min(280px,85vw)] max-w-[85vw] flex-col rounded-none border-y-0 border-l-0"
           >
             {/* Header */}
             <div className="flex h-16 items-center justify-between gap-3 border-b border-border px-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <Terminal className="size-4" />
+                <div className="flex size-7 overflow-hidden items-center justify-center rounded-md bg-white/10 shadow shadow-primary/20 border border-white/10">
+                  <img src="/logo.png" alt="San OS" className="size-full object-cover" />
                 </div>
-                <span className="text-sm font-semibold tracking-tight">DSA OS</span>
+                <span className="text-sm font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">San OS</span>
               </div>
               <button
                 ref={closeButtonRef}

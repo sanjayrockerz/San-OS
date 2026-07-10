@@ -190,7 +190,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
       <div className="flex flex-col h-full max-w-5xl mx-auto py-8 lg:py-12">
         {/* Top AI Chief of Staff Briefing */}
         <div className="mb-12 w-full max-w-3xl mx-auto text-left">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground mb-8">
+          <h1 className="page-title text-foreground mb-8">
             {data.greeting}, {data.name}.
           </h1>
           
@@ -229,7 +229,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 border-t border-border/40 text-sm">
+            <div className="responsive-grid-3 pt-4 border-t border-border/40 text-sm">
               <div>
                 <p className="text-muted-foreground mb-1">Expected Revenue</p>
                 <p className="font-semibold tabular-nums">{data.financeSnapshot ? `₹${data.financeSnapshot.monthRevenue}` : "—"}</p>
@@ -283,7 +283,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
           <Disclosure
             defaultOpen={false}
             trigger={<span className="text-sm font-medium">View Coach Brief & Analytics</span>}
-            triggerClassName="w-full mt-12 surface-card border-none bg-accent/50 hover:bg-accent text-accent-foreground rounded-2xl px-6 py-4 flex justify-center items-center gap-2 transition-colors"
+            triggerClassName="w-full mt-12 surface-card border-none bg-accent/50 hover:bg-accent text-accent-foreground rounded-2xl px-4 py-4 flex justify-center items-center gap-2 transition-colors min-w-0"
           >
             <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
               <InsightsPanel brief={data.coachBrief} risks={data.risks} />

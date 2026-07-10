@@ -9,8 +9,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@xenova/transformers", "onnxruntime-node", "onnxruntime-web"],
 
   experimental: {
-    // Tree-shake icon libraries and recharts so only used components end up
-    // in the client bundle — cuts 30-60 kB from the JS payload.
     optimizePackageImports: ["lucide-react", "recharts"],
   },
 };

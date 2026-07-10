@@ -44,6 +44,8 @@ export function MissionControlClient({
         coachInsight={data.coachInsight}
         estimatedMinutes={data.estimatedMinutes}
         priorityCount={data.priorityCount}
+        mission={data.topPriorityTitle}
+        planner={data.planner}
       />
 
       <section className="mb-6">

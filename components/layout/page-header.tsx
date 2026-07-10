@@ -8,23 +8,29 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <Section className="mb-7 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-[28px] font-bold leading-tight tracking-tight sm:text-[34px]">{title}</h1>
-        {description && (
-          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground text-balance">{description}</p>
+    <Section className="mb-7">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="page-title truncate">{title}</h1>
+          {description && (
+            <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground text-balance">
+              {description}
+            </p>
+          )}
+        </div>
+        {actions && (
+          <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </Section>
   );
 }
 
 export function SectionHeading({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      {action}
+    <div className="mb-3 flex items-center justify-between gap-2 min-w-0">
+      <h2 className="text-lg font-semibold tracking-tight truncate min-w-0">{title}</h2>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

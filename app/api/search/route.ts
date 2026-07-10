@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
     const rawResults = await searchService.search(user.id, q);
     
     // Attempt semantic search for better results as a fallback/enhancement
-    let seenIds = new Set(rawResults.map(r => r.id));
-    let additionalResults: SearchResult[] = [];
+    const seenIds = new Set(rawResults.map(r => r.id));
+    const additionalResults: SearchResult[] = [];
 
     const embeddingProvider = getEmbeddingProvider();
     if (embeddingProvider.isConfigured()) {

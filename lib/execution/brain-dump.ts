@@ -122,6 +122,8 @@ const ESTIMATE_OVERRIDE: Array<[RegExp, number]> = [
   [/\b(call|email|text)\b/i, 15],
 ];
 
+const EXPLICIT_DURATION_RE = /\b(?:for\s+)?(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b/i;
+
 /** Inserts soft separators into compact plan text without changing prose. */
 function normaliseCompactText(raw: string): string {
   return raw
@@ -131,6 +133,22 @@ function normaliseCompactText(raw: string): string {
     .replace(/[–—]/g, "-")
     .replace(/\b(?:and then|then after that|after that|followed by|next)\b/gi, "\n")
     .replace(/\s+\band\b\s+(?=(?:i\s+will\s+|i'll\s+|we\s+will\s+)?(?:do|eat|study|talk|call|meet|go|finish|start|review|prepare|exercise|walk|run|work)\b)/gi, "\n");
+}
+
+/** Strips conversational fillers (e.g. "I have to", "also I need to") to extract proper task keywords */
+function extractActionableKeywords(text: string): string {
+  let cleaned = text.trim();
+  // Regex to remove conversational prefixes
+  const fillerPrefixes = /^(?:also\s+|and\s+|then\s+|i\s+have\s+to\s+|i\s+gotta\s+|i\s+need\s+to\s+|i\s+must\s+|i\s+will\s+|i'll\s+|we\s+will\s+|we'll\s+|i\s+want\s+to\s+|i'm\s+going\s+to\s+|i\s+am\s+going\s+to\s+|remind\s+me\s+to\s+|make\s+sure\s+to\s+|don't\s+forget\s+to\s+|please\s+|just\s+|do\s+(?:this|the)\s+)+/i;
+
+  cleaned = cleaned.replace(fillerPrefixes, "").trim();
+
+  // Capitalize first letter for a cleaner task name
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  return cleaned || text.trim();
 }
 
 /** Base importance per domain (0–100) — career / money / grades weigh more. */
@@ -189,6 +207,12 @@ function detectTimeWindow(line: string): { startMinutes: number; endMinutes: num
 }
 
 function estimateMinutes(line: string, type: CaptureType): number {
+  const explicit = EXPLICIT_DURATION_RE.exec(line);
+  if (explicit) {
+    const value = Number(explicit[1]);
+    const minutes = explicit[2].toLowerCase().startsWith("h") ? value * 60 : value;
+    if (Number.isFinite(minutes)) return Math.max(5, Math.min(480, Math.round(minutes)));
+  }
   for (const [re, mins] of ESTIMATE_OVERRIDE) {
     if (re.test(line)) return mins;
   }
@@ -202,9 +226,10 @@ function splitLines(raw: string): string[] {
     .flatMap((line) => {
       const trimmed = line.replace(/^[\s•\-*\d.)]+/, "").trim();
       if (!trimmed) return [];
-      // Only split on commas when the line clearly isn't prose (short fragments).
-      if (trimmed.length <= 60 && /,/.test(trimmed) && !/\b(and|but|because)\b/i.test(trimmed)) {
-        return trimmed.split(/\s*,\s*/).filter(Boolean);
+      // Spoken plans are commonly one long sentence. Split list punctuation
+      // while keeping prose clauses intact, so order survives into scheduling.
+      if (/[;,]/.test(trimmed) && !/\b(because|although|however)\b/i.test(trimmed)) {
+        return trimmed.split(/\s*[;,]\s*/).filter(Boolean);
       }
       return [trimmed];
     })
@@ -217,7 +242,8 @@ function splitLines(raw: string): string[] {
  * Deterministic and side-effect free.
  */
 export function parseBrainDump(raw: string): ParsedCaptureItem[] {
-  return splitLines(raw).map((content) => {
+  return splitLines(raw).map((rawContent) => {
+    const content = extractActionableKeywords(rawContent);
     const domain = detectDomain(content);
     const type = detectType(content, domain);
     const scheduledTime = detectTime(content);

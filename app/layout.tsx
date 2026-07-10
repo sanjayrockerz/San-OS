@@ -3,16 +3,24 @@ import "./globals.css";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { UniversalContextProvider } from "@/lib/context/universal-context";
-import { CommandPalette } from "@/components/ui/command-palette";
 
 export const metadata: Metadata = {
-  title: "SanOS — Personal Engine",
-  description: "A premium personal operating system.",
-  applicationName: "SanOS",
+  title: "San OS — Personal Engine",
+  description: "A premium personal operating system for ambitious people.",
+  applicationName: "San OS",
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/logo.png", type: "image/png" },
+    ],
+    shortcut: "/logo.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SanOS",
+    title: "San OS",
   },
 };
 
@@ -44,7 +52,6 @@ export default function RootLayout({
         >
           <UniversalContextProvider>
             {children}
-            <CommandPalette />
           </UniversalContextProvider>
         </ThemeProvider>
       </body>

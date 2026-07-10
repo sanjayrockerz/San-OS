@@ -2,26 +2,23 @@ import {
   LayoutDashboard,
   Code2,
   Brain,
-  Map,
-  RefreshCw,
   LineChart,
   GraduationCap,
   BookOpen,
   Library,
   Database,
-  Network,
+  RefreshCw,
+  Map,
   Settings,
   Activity,
   Bell,
   Compass,
-  Heart,
   FolderKanban,
   Users,
   Receipt,
   Wallet,
   TrendingUp,
   Target,
-  MessageSquarePlus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,69 +36,60 @@ export interface NavGroup {
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    heading: "Mission Control",
+    heading: "Your OS",
     items: [
-      { label: "Overview", shortLabel: "Home", href: "/overview", icon: LayoutDashboard },
-      { label: "Timeline", shortLabel: "Timeline", href: "/timeline", icon: Activity },
-      { label: "Notifications", shortLabel: "Alerts", href: "/notifications", icon: Bell },
+      { label: "Home", shortLabel: "Home", href: "/overview", icon: LayoutDashboard },
+      { label: "Plan", shortLabel: "Plan", href: "/execution", icon: Target },
+      { label: "Review", shortLabel: "Review", href: "/timeline", icon: Activity },
     ],
   },
   {
-    heading: "Business Workspace",
+    heading: "Work",
     items: [
-      { label: "Business Hub", shortLabel: "Hub", href: "/business", icon: TrendingUp },
-      { label: "Clients", shortLabel: "Clients", href: "/clients", icon: Users },
-      { label: "Pipeline", shortLabel: "Pipeline", href: "/pipeline", icon: Target },
-      { label: "Finance & Invoices", shortLabel: "Finance", href: "/finance", icon: Wallet },
+      { label: "Projects", shortLabel: "Projects", href: "/projects", icon: FolderKanban },
+      { label: "Business", shortLabel: "Business", href: "/business", icon: TrendingUp },
+      { label: "Finance", shortLabel: "Finance", href: "/finance", icon: Wallet },
     ],
   },
   {
-    heading: "Projects Workspace",
+    heading: "Learn",
     items: [
-      { label: "All Projects", shortLabel: "Projects", href: "/projects", icon: FolderKanban },
+      { label: "Academic", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
+      { label: "DSA", shortLabel: "DSA", href: "/problems", icon: Code2 },
+      { label: "Knowledge", shortLabel: "Knowledge", href: "/knowledge", icon: Compass },
     ],
   },
   {
-    heading: "Academic Workspace",
+    heading: "System",
     items: [
-      { label: "Command Center", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
-      { label: "IIT Degree", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
+      { label: "Insights", shortLabel: "Insights", href: "/analytics", icon: LineChart },
+      { label: "Alerts", shortLabel: "Alerts", href: "/notifications", icon: Bell },
+      { label: "Settings", shortLabel: "Settings", href: "/settings", icon: Settings },
     ],
-  },
-  {
-    heading: "Knowledge Base",
-    items: [
-      { label: "Knowledge OS", shortLabel: "Knowledge", href: "/knowledge", icon: Compass },
-      { label: "Concepts & Taxonomy", shortLabel: "Concepts", href: "/concepts", icon: Brain },
-      { label: "Vault", shortLabel: "Vault", href: "/vault", icon: Library },
-      { label: "Resources", shortLabel: "Resources", href: "/resources", icon: Database },
-    ],
-  },
-  {
-    heading: "Execution",
-    items: [
-      { label: "Daily Planner", shortLabel: "Planner", href: "/execution", icon: Target },
-      { label: "Problem Solving", shortLabel: "Problems", href: "/problems", icon: Code2 },
-      { label: "Revision", shortLabel: "Revision", href: "/revision", icon: RefreshCw },
-    ],
-  },
-  {
-    heading: "Analytics",
-    items: [
-      { label: "Analytics OS", shortLabel: "Stats", href: "/analytics", icon: LineChart },
-    ],
-  },
-  {
-    items: [{ label: "Settings", shortLabel: "Settings", href: "/settings", icon: Settings }],
   },
 ];
 
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
+/** Secondary destinations remain discoverable through command search without
+ * turning the persistent rail into an admin-style catalogue. */
+export const COMMAND_NAV_ITEMS: NavItem[] = [
+  ...NAV_ITEMS,
+  { label: "Clients", shortLabel: "Clients", href: "/clients", icon: Users },
+  { label: "Pipeline", shortLabel: "Pipeline", href: "/pipeline", icon: Target },
+  { label: "Invoices", shortLabel: "Invoices", href: "/invoices", icon: Receipt },
+  { label: "IIT workspace", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
+  { label: "Concepts", shortLabel: "Concepts", href: "/concepts", icon: Brain },
+  { label: "Vault", shortLabel: "Vault", href: "/vault", icon: Library },
+  { label: "Resources", shortLabel: "Resources", href: "/resources", icon: Database },
+  { label: "Revision", shortLabel: "Revision", href: "/revision", icon: RefreshCw },
+  { label: "Roadmaps", shortLabel: "Roadmaps", href: "/roadmaps", icon: Map },
+];
+
 /** Reduced set for the mobile bottom navigation (4 + center FAB). Looked up by
  * href rather than position so inserting nav items elsewhere can't silently
  * shift this list onto the wrong pages. */
-const MOBILE_NAV_HREFS = ["/overview", "/problems", "/revision", "/analytics"];
+const MOBILE_NAV_HREFS = ["/overview", "/execution", "/projects", "/academic"];
 export const MOBILE_NAV: NavItem[] = MOBILE_NAV_HREFS.map(
   (href) => NAV_ITEMS.find((item) => item.href === href)!,
 );

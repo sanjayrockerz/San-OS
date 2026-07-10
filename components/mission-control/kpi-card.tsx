@@ -1,8 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
-import { useInView } from "framer-motion";
-import { useRef, useState, useEffect, type ElementType } from "react";
 import { cn } from "@/lib/utils";
 import { Sparkline } from "@/components/charts/sparkline";
 import {
@@ -53,36 +48,6 @@ interface KpiCardProps {
   delay?: number;
 }
 
-function CountUp({ value, duration = 1000 }: { value: string; duration?: number }) {
-  const num = parseFloat(value.replace(/[^0-9.]/g, ""));
-  const suffix = value.replace(/[0-9.]/g, "");
-  const [display, setDisplay] = useState(0);
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true });
-
-  useEffect(() => {
-    if (!inView || isNaN(num)) return;
-    const start = performance.now();
-    const animate = (now: number) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(num * eased);
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [inView, num, duration]);
-
-  if (isNaN(num)) return <>{value}</>;
-
-  return (
-    <span ref={ref}>
-      {display.toFixed(num % 1 === 0 ? 0 : 1)}
-      {suffix}
-    </span>
-  );
-}
-
 export function KpiCard({
   icon: iconName,
   label,
@@ -92,45 +57,31 @@ export function KpiCard({
   sparklineData,
   progress,
   insight,
-  gradient,
   color,
-  delay = 0,
 }: KpiCardProps) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
   const Icon = ICON_MAP[iconName];
 
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-      transition={{ duration: 0.4, delay: delay * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border border-white/10 p-4 backdrop-blur-sm",
-        "shadow-lg transition-shadow duration-300 hover:shadow-xl",
-      )}
-      style={{ background: gradient }}
+    <div
+      className="group relative min-h-[152px] overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
+      style={{ borderTopColor: `${color}55` }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/30" />
-      <div className="absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className="relative z-10 flex h-full flex-col justify-between gap-2">
+      <div className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: color }} />
+      <div className="relative z-10 flex h-full flex-col justify-between gap-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-              <Icon className="size-4 text-white" />
+            <div className="flex size-8 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}18` }}>
+              <Icon className="size-4" style={{ color }} />
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               {label}
             </span>
           </div>
           {trend !== undefined && (
             <span
               className={cn(
-                "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm",
-                trend >= 0 ? "bg-white/20 text-white" : "bg-red-400/30 text-red-200",
+                "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                trend >= 0 ? "bg-success/10 text-success" : "bg-danger/10 text-danger",
               )}
             >
               {trend >= 0 ? "↑" : "↓"} {Math.abs(trend)}%
@@ -140,35 +91,28 @@ export function KpiCard({
 
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-2xl font-bold tracking-tight text-white drop-shadow-sm tabular-nums">
-              <CountUp value={value} />
-            </p>
-            <p className="mt-0.5 text-xs text-white/60 line-clamp-1">{subtitle}</p>
+            <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{value}</p>
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{subtitle}</p>
           </div>
           {sparklineData && sparklineData.length > 1 && (
             <div className="shrink-0">
-              <Sparkline data={sparklineData} color="rgba(255,255,255,0.5)" width={60} height={28} fill={false} />
+              <Sparkline data={sparklineData} color={color} width={64} height={28} fill={false} />
             </div>
           )}
         </div>
 
         {progress !== undefined && (
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/20">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={inView ? { width: `${Math.min(progress, 100)}%` } : { width: 0 }}
-              transition={{ duration: 0.8, delay: delay * 0.04 + 0.2, ease: "easeOut" }}
-              className="h-full rounded-full bg-white/60"
-            />
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full" style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: color }} />
           </div>
         )}
 
         {insight && (
-          <p className="mt-1 text-[11px] leading-tight text-white/70 line-clamp-2">
+          <p className="mt-1 line-clamp-2 text-[11px] leading-tight text-muted-foreground">
             {insight}
           </p>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
