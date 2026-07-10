@@ -158,32 +158,34 @@ export async function draftPlannerPhase(
   const context = (formData.get("context") as string | null)?.trim();
 
   const services = createServices(await createClient());
-  
-  if (context) {
-    await services.executionEngine.captureBrainDump(user.id, context);
-  }
 
   const planner = services.dailyPlanner;
   try {
     if (phase === "morning") {
-      const draft = await planner.draftMorningAdjustment(user.id);
-      
-      let conversationalMessage = "I've organized this for you. How does this look?";
+      const draft = context
+        ? await planner.draftFromContext(user.id, context)
+        : await planner.draftMorningAdjustment(user.id);
+
+      let conversationalMessage = context
+        ? "I used your typed plan together with your live priorities. Review the timings below and confirm anything you want shifted."
+        : "I organized the day from your current priorities. Review the timings below and confirm anything you want shifted.";
       if (draft.scheduled.length > 0) {
         const first = draft.scheduled[0];
         const second = draft.scheduled.length > 1 ? draft.scheduled[1] : null;
-        
+
         const formatTime = (mins: number) => {
           const h = Math.floor(mins / 60);
           const m = mins % 60;
-          const ampm = h >= 12 ? 'PM' : 'AM';
+          const ampm = h >= 12 ? "PM" : "AM";
           const hr12 = h % 12 || 12;
-          return `${hr12}:${m.toString().padStart(2, '0')} ${ampm}`;
+          return `${hr12}:${m.toString().padStart(2, "0")} ${ampm}`;
         };
-        
-        conversationalMessage = `I've organized this for you. Can we plan '${first.title}' by ${formatTime(first.startMinutes)}${second ? ` and '${second.title}' by ${formatTime(second.startMinutes)}` : ''}?`;
+
+        conversationalMessage = context
+          ? `I mapped your plan into the day. I placed "${first.title}" around ${formatTime(first.startMinutes)}${second ? ` and "${second.title}" around ${formatTime(second.startMinutes)}` : ""}. Adjust anything below before you confirm.`
+          : `I organized this for you. Can we plan "${first.title}" by ${formatTime(first.startMinutes)}${second ? ` and "${second.title}" by ${formatTime(second.startMinutes)}` : ""}?`;
       }
-      
+
       return { ok: true, draft, conversationalMessage };
     }
     

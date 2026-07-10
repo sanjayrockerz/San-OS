@@ -1,6 +1,6 @@
 "use client";
 
-import { Terminal, Search, Menu } from "lucide-react";
+import { Search, Menu } from "lucide-react";
 
 import { useUIStore } from "@/store/ui-store";
 import { ThemeToggle } from "./theme-toggle";
@@ -16,15 +16,15 @@ export function TopBar() {
           type="button"
           aria-label="Open navigation menu"
           onClick={() => setMobileNavOpen(true)}
-          className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Menu className="size-[18px]" />
         </button>
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Terminal className="size-4" />
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex size-7 overflow-hidden shrink-0 items-center justify-center rounded-md bg-white/10 shadow shadow-primary/20 border border-white/10">
+            <img src="/logo.png" alt="San OS" className="size-full object-cover" />
           </div>
-          <span className="text-sm font-semibold tracking-tight">DSA OS</span>
+          <span className="text-sm font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent truncate">San OS</span>
         </div>
       </div>
       <div className="flex items-center gap-2">

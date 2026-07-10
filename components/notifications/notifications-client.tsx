@@ -54,6 +54,23 @@ function formatDue(dueAt: string | null) {
   });
 }
 
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  if (isNaN(diff)) return "";
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 const initialActionResult: ActionResult | null = null;
 
 function NotificationCard({ notification }: { notification: NotificationRow }) {
@@ -75,6 +92,9 @@ function NotificationCard({ notification }: { notification: NotificationRow }) {
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{notification.title}</p>
+          {notification.state === "unread" && (
+            <span className="size-2 rounded-full bg-primary shrink-0" title="Unread" />
+          )}
           {notification.state === "snoozed" && (
             <Badge variant="secondary">Snoozed</Badge>
           )}
@@ -87,6 +107,9 @@ function NotificationCard({ notification }: { notification: NotificationRow }) {
             <Badge variant="outline">{categoryLabel(notification.category)}</Badge>
           )}
           {formatDue(notification.due_at) && <span>Due {formatDue(notification.due_at)}</span>}
+          {relativeTime(notification.created_at) && (
+            <span className="ml-auto">{relativeTime(notification.created_at)}</span>
+          )}
         </div>
         {(completeResult && !completeResult.ok) && (
           <p className="text-xs text-danger">{completeResult.error}</p>

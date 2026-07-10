@@ -50,6 +50,7 @@ export function FinanceDashboard({ snapshot, income, expenses, clients, projects
 
   return (
     <div className="space-y-6">
+      <FinancePulse snapshot={snapshot} />
       <FinanceNoteForm />
 
       {/* KPI grid */}
@@ -157,6 +158,35 @@ export function FinanceDashboard({ snapshot, income, expenses, clients, projects
         </Card>
       </div>
     </div>
+  );
+}
+
+function FinancePulse({ snapshot }: { snapshot: FinanceSnapshot }) {
+  const isHealthy = snapshot.monthProfit >= 0;
+  return (
+    <section className="mission-surface rounded-3xl p-5 sm:p-6">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="eyebrow">Cash position</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{formatCurrency(snapshot.monthProfit)}</p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            {isHealthy
+              ? "This month is profitable. Protect the next collection and keep momentum in the pipeline."
+              : "Expenses are currently ahead of income. Prioritize collections and defer non-essential spend."}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:min-w-[240px]">
+          <div className="rounded-2xl bg-background/55 p-3">
+            <p className="text-[11px] font-medium text-muted-foreground">Outstanding</p>
+            <p className="mt-1 text-sm font-semibold">{formatCurrency(snapshot.outstandingAr)}</p>
+          </div>
+          <div className="rounded-2xl bg-background/55 p-3">
+            <p className="text-[11px] font-medium text-muted-foreground">Weighted pipeline</p>
+            <p className="mt-1 text-sm font-semibold">{formatCurrency(snapshot.pipelineWeighted)}</p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

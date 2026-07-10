@@ -35,6 +35,112 @@ export interface ProjectWithHealth {
   health: ProjectHealth;
 }
 
+function extractClientName(text: string): string | null {
+  const match = text.match(/\b(?:from|for|with)\s+([a-z][a-z]+(?:\s+[a-z][a-z]+){0,2})\b/i);
+  const raw = match?.[1]?.trim();
+  if (!raw) return null;
+  return raw.replace(/\b[a-z]/gi, (c) => c.toUpperCase());
+}
+
+function deriveProjectTitle(text: string, clientName: string | null): string {
+  const explicit = text.match(/\bproject(?: called| named)?\s+["']?([^"',.]+)["']?/i)?.[1]?.trim();
+  if (explicit) return explicit;
+
+  if (clientName) {
+    const descriptor = text.match(/\b(?:crm|dashboard|website|app|portal|automation|system|landing page|backend|frontend)\b/i)?.[0];
+    return descriptor
+      ? `${descriptor.replace(/^./, (c) => c.toUpperCase())} for ${clientName}`
+      : `Project for ${clientName}`;
+  }
+
+  const cleaned = text
+    .replace(/^\s*(?:i\s+got\s+|new\s+)?project\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = cleaned.split(" ").slice(0, 8).join(" ");
+  return words || "New Project";
+}
+
+function extractBudget(text: string): number | null {
+  const match = text.match(/(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.\d+)?)(?:\s*(k|m|l|lac|lakh|cr|crore))?/i);
+  if (!match) return null;
+
+  const base = Number((match[1] ?? "0").replace(/,/g, ""));
+  if (!Number.isFinite(base) || base <= 0) return null;
+
+  const suffix = (match[2] ?? "").toLowerCase();
+  const multiplier =
+    suffix === "k"
+      ? 1_000
+      : suffix === "m"
+        ? 1_000_000
+        : suffix === "l" || suffix === "lac" || suffix === "lakh"
+          ? 100_000
+          : suffix === "cr" || suffix === "crore"
+            ? 10_000_000
+            : 1;
+  return base * multiplier;
+}
+
+function extractDeadlineHint(text: string): string | null {
+  const weekMatch = text.match(/\b(\d+)\s+week(?:s)?\b/i);
+  if (weekMatch) {
+    const weeks = Number(weekMatch[1] ?? 0);
+    if (weeks > 0) {
+      const target = new Date();
+      target.setDate(target.getDate() + weeks * 7);
+      return target.toISOString().slice(0, 10);
+    }
+  }
+  return null;
+}
+
+function buildDefaultMilestones(projectTitle: string, deadline: string | null) {
+  return [
+    {
+      title: "Scope and discovery",
+      description: `Clarify outcomes, users, and success criteria for ${projectTitle}.`,
+      target_date: null,
+    },
+    {
+      title: "First working delivery",
+      description: "Ship the first testable version and collect feedback.",
+      target_date: deadline,
+    },
+    {
+      title: "Launch and handoff",
+      description: "Prepare deployment, QA, and regular review rhythm.",
+      target_date: deadline,
+    },
+  ];
+}
+
+function buildDefaultTasks(projectTitle: string) {
+  return [
+    {
+      title: "Write scope summary",
+      description: `Summarize the outcome, constraints, and next steps for ${projectTitle}.`,
+      status: "backlog" as const,
+      priority: "high" as const,
+      estimated_minutes: 45,
+    },
+    {
+      title: "Set up delivery pipeline",
+      description: "Prepare project tracking, follow-up rhythm, and key checkpoints.",
+      status: "backlog" as const,
+      priority: "high" as const,
+      estimated_minutes: 60,
+    },
+    {
+      title: "Plan first client check-in",
+      description: "Create the next communication and requirement-confirmation step.",
+      status: "backlog" as const,
+      priority: "medium" as const,
+      estimated_minutes: 30,
+    },
+  ];
+}
+
 export class ProjectService extends BaseService {
   private readonly events: EventService;
   private readonly entityResolver: EntityResolutionEngine;
@@ -280,27 +386,92 @@ export class ProjectService extends BaseService {
   // Entity-aware project creation
   // ---------------------------------------------------------------------------
 
-  async createFromNaturalText(userId: string, text: string): Promise<{ project: Tables<"projects">; clientName?: string }> {
+  async createFromNaturalText(
+    userId: string,
+    text: string,
+  ): Promise<{
+    project: Tables<"projects">;
+    clientName?: string;
+    createdClient: boolean;
+    pipelineEntryId: string | null;
+    milestonesCount: number;
+    tasksCount: number;
+  }> {
     const [entityResult] = await Promise.all([
       this.entityResolver.resolve({ userId, text }),
     ]);
 
     const resolvedClient = entityResult.matches.find(m => m.type === "client");
+    const parsedClientName = extractClientName(text);
     const technologyTags = ["react", "vue", "angular", "svelte", "next.js", "node", "python", "typescript", "javascript", "go", "rust", "postgresql", "supabase", "aws", "docker", "kubernetes"]
       .filter(t => text.toLowerCase().includes(t));
-
-    const words = text.split(/\s+/);
-    const title = words.slice(0, 8).join(" ");
+    const budget = extractBudget(text);
+    const deadline = extractDeadlineHint(text);
+    const title = deriveProjectTitle(text, parsedClientName);
     const description = text.length > 200 ? text.slice(0, 197) + "..." : text;
+    let clientId = resolvedClient?.id ?? null;
+    let clientName = resolvedClient?.name ?? parsedClientName;
+    let createdClient = false;
+
+    if (!clientId && parsedClientName) {
+      const created = await this.repos.clients.create({
+        user_id: userId,
+        name: parsedClientName,
+        company: null,
+        notes: `Auto-created from project intake: ${text.slice(0, 300)}`,
+        status: "prospect",
+      });
+      clientId = created.id;
+      clientName = created.name;
+      createdClient = true;
+    }
 
     const project = await this.repos.projects.create({
       user_id: userId,
       title: title.length > 255 ? title.slice(0, 252) + "..." : title,
       description,
-      client_id: resolvedClient?.id ?? null,
+      client_id: clientId,
+      client_name: clientName ?? null,
       tags: technologyTags,
-      status: "active",
+      type: clientId ? "client" : "internal",
+      status: "planning",
+      priority: budget && budget >= 50_000 ? "high" : "medium",
+      budget,
+      deadline,
+      start_date: new Date().toISOString().slice(0, 10),
     });
+
+    const pipeline = await this.repos.pipelineEntries.create({
+      user_id: userId,
+      client_id: clientId,
+      title: project.title,
+      value_estimate: budget,
+      stage: "discovery",
+      probability: budget ? 65 : 50,
+      expected_close_date: deadline,
+      notes: `Auto-created from project intake: ${text.slice(0, 500)}`,
+    });
+
+    const milestoneSeeds = buildDefaultMilestones(project.title, deadline);
+    const taskSeeds = buildDefaultTasks(project.title);
+
+    await Promise.all([
+      ...milestoneSeeds.map((milestone) =>
+        this.repos.projectMilestones.create({
+          user_id: userId,
+          project_id: project.id,
+          ...milestone,
+        }),
+      ),
+      ...taskSeeds.map((task, index) =>
+        this.repos.projectTasks.create({
+          user_id: userId,
+          project_id: project.id,
+          order_index: index,
+          ...task,
+        }),
+      ),
+    ]);
 
     await this.repos.events.create({
       user_id: userId,
@@ -321,7 +492,23 @@ export class ProjectService extends BaseService {
       payload: { title: project.title, fromNaturalText: true },
     });
 
-    return { project, clientName: resolvedClient?.name };
+    if (clientId) {
+      this.events.emit(userId, {
+        eventType: EVENT_TYPES.PipelineEntryCreated,
+        entityType: "pipeline_entry",
+        entityId: pipeline.id,
+        payload: { title: pipeline.title, stage: pipeline.stage, autoCreated: true },
+      });
+    }
+
+    return {
+      project,
+      clientName: clientName ?? undefined,
+      createdClient,
+      pipelineEntryId: pipeline.id,
+      milestonesCount: milestoneSeeds.length,
+      tasksCount: taskSeeds.length,
+    };
   }
 
   // ---------------------------------------------------------------------------

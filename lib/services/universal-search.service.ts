@@ -3,7 +3,7 @@ import type { Repositories } from "@/lib/repositories";
 
 export interface SearchResult {
   id: string;
-  type: "resource" | "problem" | "project" | "client" | "memory" | "concept";
+  type: "resource" | "problem" | "project" | "client" | "memory" | "concept" | "knowledge" | "course" | "assignment" | "invoice";
   title: string;
   description?: string;
   url: string;
@@ -17,18 +17,19 @@ export class UniversalSearchService extends BaseService {
 
   async search(userId: string, query: string, limit = 20): Promise<SearchResult[]> {
     const results: SearchResult[] = [];
-    
-    // 1. Natural Language / Heuristic parsing
+
     const q = query.toLowerCase();
     let targetType: string | null = null;
     if (q.includes("meeting")) targetType = "meeting";
     if (q.includes("invoice") || q.includes("money") || q.includes("paid")) targetType = "finance";
     if (q.includes("resource") || q.includes("pdf")) targetType = "resource";
-    
-    // In production, this would use Postgres full-text search vectors and pgvector embeddings.
+    if (q.includes("assignment") || q.includes("homework")) targetType = "assignment";
+    if (q.includes("course") || q.includes("class") || q.includes("lecture")) targetType = "course";
+    if (q.includes("client") || q.includes("customer")) targetType = "client";
+
     const searchPattern = `%${query}%`;
 
-    // 1. Resources (Boosted if targetType matches)
+    // 1. Resources
     const { data: resources } = await this.repos.rawClient
       .from("resources")
       .select("*")
@@ -54,7 +55,7 @@ export class UniversalSearchService extends BaseService {
       });
     }
 
-    // 2. Memory Nodes (Graph entities)
+    // 2. Memory Nodes
     const { data: nodes } = await this.repos.rawClient
       .from("memory_nodes")
       .select("*")
@@ -69,7 +70,7 @@ export class UniversalSearchService extends BaseService {
           type: "memory",
           title: `${n.node_type}: ${n.name}`,
           url: `/memory/${n.id}`,
-          metadata: { type: n.node_type, score: 3 } // nodes inherently have high relevance
+          metadata: { type: n.node_type, score: 3 }
         });
       });
     }
@@ -118,7 +119,7 @@ export class UniversalSearchService extends BaseService {
       .eq("user_id", userId)
       .ilike("title", searchPattern)
       .limit(limit);
-      
+
     if (concepts) {
       concepts.forEach(c => results.push({
         id: c.id,
@@ -129,7 +130,151 @@ export class UniversalSearchService extends BaseService {
       }));
     }
 
-    // Sort by computed relevance score (simulating semantic/graph ranking)
+    // 6. Knowledge Items
+    const { data: knowledge } = await this.repos.rawClient
+      .from("knowledge_items")
+      .select("*")
+      .eq("user_id", userId)
+      .or(`title.ilike.${searchPattern},content.ilike.${searchPattern}`)
+      .limit(limit);
+
+    if (knowledge) {
+      knowledge.forEach(k => results.push({
+        id: k.id,
+        type: "knowledge",
+        title: k.title,
+        description: k.content?.slice(0, 200) || undefined,
+        url: `/knowledge/${k.id}`,
+        metadata: { type: k.type, score: 2 }
+      }));
+    }
+
+    // 7. IIT Courses
+    let targetScore = targetType === "course" ? 5 : 1;
+    const { data: courses } = await this.repos.rawClient
+      .from("iit_courses")
+      .select("*")
+      .eq("user_id", userId)
+      .or(`name.ilike.${searchPattern},code.ilike.${searchPattern}`)
+      .limit(limit);
+
+    if (courses) {
+      courses.forEach(c => results.push({
+        id: c.id,
+        type: "course",
+        title: `${c.code ?? ""} ${c.name}`.trim(),
+        description: `${c.semester ?? ""} — ${c.credits ?? 0} credits` || undefined,
+        url: `/iit/courses/${c.id}`,
+        metadata: { score: targetScore }
+      }));
+    }
+
+    // 8. IIT Assignments
+    targetScore = targetType === "assignment" ? 5 : 1;
+    const { data: assignments } = await this.repos.rawClient
+      .from("iit_assignments")
+      .select("*")
+      .eq("user_id", userId)
+      .ilike("title", searchPattern)
+      .limit(limit);
+
+    if (assignments) {
+      assignments.forEach(a => results.push({
+        id: a.id,
+        type: "assignment",
+        title: a.title,
+        description: a.status ? `Status: ${a.status}` : undefined,
+        url: `/iit/assignments/${a.id}`,
+        metadata: { status: a.status, score: targetScore }
+      }));
+    }
+
+    // 9. Invoices
+    targetScore = targetType === "finance" ? 5 : 1;
+    const { data: invoices } = await this.repos.rawClient
+      .from("invoices")
+      .select("*")
+      .eq("user_id", userId)
+      .or(`invoice_number.ilike.${searchPattern},notes.ilike.${searchPattern}`)
+      .limit(limit);
+
+    if (invoices) {
+      invoices.forEach(inv => results.push({
+        id: inv.id,
+        type: "invoice",
+        title: `${inv.invoice_number} — ₹${inv.total_amount}`,
+        description: `Status: ${inv.status}, Due: ${inv.due_date ?? "N/A"}`,
+        url: `/invoices/${inv.id}`,
+        metadata: { status: inv.status, score: targetScore }
+      }));
+    }
+
+    // 10. Clients
+    targetScore = targetType === "client" ? 5 : 1;
+    const { data: clients } = await this.repos.rawClient
+      .from("clients")
+      .select("*")
+      .eq("user_id", userId)
+      .or(`name.ilike.${searchPattern},email.ilike.${searchPattern},company.ilike.${searchPattern}`)
+      .limit(limit);
+
+    if (clients) {
+      clients.forEach(c => results.push({
+        id: c.id,
+        type: "client",
+        title: c.name,
+        description: c.company || c.email || undefined,
+        url: `/clients/${c.id}`,
+        metadata: { score: targetScore }
+      }));
+    }
+
     return results.sort((a, b) => (b.metadata?.score || 0) - (a.metadata?.score || 0)).slice(0, limit);
+  }
+
+  async semanticSearch(userId: string, query: string, limit = 10): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+
+    try {
+      const { data: semanticResults, error } = await this.repos.rawClient.rpc(
+        "match_semantic_items",
+        { query_text: query, match_count: limit, p_user_id: userId },
+      );
+
+      if (!error && semanticResults) {
+        for (const item of semanticResults as any[]) {
+          results.push({
+            id: item.id,
+            type: item.entity_type ?? "knowledge",
+            title: item.title ?? "",
+            description: item.content ?? undefined,
+            url: `/${item.entity_type ?? "knowledge"}/${item.id}`,
+            metadata: { score: item.similarity ?? 0.5, semantic: true },
+          });
+        }
+      }
+    } catch {
+      // fallback: if pgvector/semantic rpc unavailable, skip silently
+    }
+
+    return results;
+  }
+
+  async searchAll(userId: string, query: string, limit = 20): Promise<SearchResult[]> {
+    const [lexical, semantic] = await Promise.all([
+      this.search(userId, query, limit),
+      this.semanticSearch(userId, query, limit),
+    ]);
+
+    const seen = new Set<string>();
+    const merged: SearchResult[] = [];
+
+    for (const r of [...semantic, ...lexical]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      merged.push(r);
+    }
+
+    return merged.slice(0, limit);
   }
 }

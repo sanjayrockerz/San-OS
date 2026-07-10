@@ -34,12 +34,12 @@ export function AppShell({
       <CommandPalette />
       <AddEntryModal />
 
-      <div className={cn("flex min-h-dvh transition-[padding] duration-200 ease-out", collapsed ? "lg:pl-[72px]" : "lg:pl-[248px]")}>
+      <div className={cn("flex min-h-dvh transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", collapsed ? "lg:pl-[72px]" : "lg:pl-[248px]")}>
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
           <TopHeader unreadCount={unreadCount} />
           <main className="flex-1">
-            <div className="mx-auto w-full max-w-[1600px] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
+            <div className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-10 lg:pt-7">
               {children}
             </div>
           </main>

@@ -6,6 +6,7 @@ import { Pencil, Plus, Loader2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { Input } from "@/components/ui/input";
+import { getTemplate } from "@/lib/code-templates";
 import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/problems/code-block";
 import { saveCodeVersion } from "@/app/(app)/problems/actions";
@@ -65,7 +66,7 @@ export function CodeVaultEditor({
         <CodeEditor
           name="code"
           language={latest?.language ?? "typescript"}
-          defaultValue={latest?.code ?? ""}
+          defaultValue={latest?.code ?? getTemplate(latest?.language ?? "typescript")}
           height="220px"
           minHeight="220px"
         />

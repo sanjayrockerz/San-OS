@@ -2458,6 +2458,107 @@ export type Database = {
         };
         Relationships: [];
       };
+      calendar_connections: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: string;
+          email: string | null;
+          access_token: string | null;
+          refresh_token: string | null;
+          token_expires_at: string | null;
+          calendar_id: string;
+          sync_enabled: boolean;
+          last_synced_at: string | null;
+          settings: any;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          provider?: string;
+          email?: string | null;
+          access_token?: string | null;
+          refresh_token?: string | null;
+          token_expires_at?: string | null;
+          calendar_id?: string;
+          sync_enabled?: boolean;
+          last_synced_at?: string | null;
+          settings?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: string;
+          email?: string | null;
+          access_token?: string | null;
+          refresh_token?: string | null;
+          token_expires_at?: string | null;
+          calendar_id?: string;
+          sync_enabled?: boolean;
+          last_synced_at?: string | null;
+          settings?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "calendar_connections_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      calendar_sync_log: {
+        Row: {
+          id: string;
+          user_id: string;
+          connection_id: string | null;
+          sync_type: string;
+          status: string;
+          events_created: number;
+          events_updated: number;
+          errors: any;
+          started_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          connection_id?: string | null;
+          sync_type?: string;
+          status?: string;
+          events_created?: number;
+          events_updated?: number;
+          errors?: any;
+          started_at?: string;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          connection_id?: string | null;
+          sync_type?: string;
+          status?: string;
+          events_created?: number;
+          events_updated?: number;
+          errors?: any;
+          started_at?: string;
+          completed_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "calendar_sync_log_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       

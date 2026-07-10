@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Terminal, Flame, PanelLeftClose, PanelLeft, Zap } from "lucide-react";
+import { useEffect } from "react";
+import { Flame, PanelLeftClose, PanelLeft, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
@@ -19,6 +20,18 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   const toggle = useUIStore((s) => s.toggleSidebar);
   const initial = user.displayName.charAt(0).toUpperCase() || "U";
 
+  // Auto-collapse on tablet screens (< 1024px) on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const stored = localStorage.getItem("san-os:sidebar-collapsed");
+    // Only auto-collapse if no user preference stored
+    if (stored === null && mq.matches) {
+      document.documentElement.style.setProperty("--sidebar-collapsed", "true");
+      useUIStore.getState().toggleSidebar();
+    }
+  }, []);
+
   return (
     <aside
       className={cn(
@@ -28,13 +41,13 @@ export function Sidebar({ user }: { user: SidebarUser }) {
     >
       {/* Brand */}
       <div className={cn("flex h-16 items-center gap-3 px-4", collapsed && "justify-center px-0")}>
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-          <Terminal className="size-5" />
+        <div className="flex size-9 shrink-0 overflow-hidden items-center justify-center rounded-xl bg-white/10 shadow-lg shadow-primary/20 border border-white/10">
+          <img src="/logo.png" alt="San OS Logo" className="size-full object-cover" />
         </div>
         {!collapsed && (
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold tracking-tight">DSA OS</p>
-            <p className="truncate text-[11px] text-muted-foreground">Engineering OS</p>
+            <p className="truncate text-sm font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">San OS</p>
+            <p className="truncate text-[11px] text-primary/80 font-medium">Personal Engine</p>
           </div>
         )}
       </div>

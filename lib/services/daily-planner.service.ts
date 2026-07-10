@@ -10,7 +10,7 @@ import {
   StudentIntelligenceCoreService,
   type StudentAction,
 } from "./student-intelligence-core.service";
-import { parseBrainDump } from "@/lib/execution/brain-dump";
+import { parseBrainDump, type ParsedCaptureItem } from "@/lib/execution/brain-dump";
 import {
   buildSchedule,
   minutesToTime,
@@ -191,6 +191,31 @@ export class DailyPlannerService extends BaseService implements PlannerProvider 
     const date = isoDate(now);
     const candidates = await this.gatherCandidates(userId);
     return this.draftSchedule(userId, date, candidates, {
+      phase: "morning_adjust",
+    });
+  }
+
+  async draftFromContext(userId: string, raw: string, now: Date = new Date()): Promise<DraftPlannerResult> {
+    const date = isoDate(now);
+    const [existingCandidates, contextItems] = await Promise.all([
+      this.gatherCandidates(userId),
+      Promise.resolve(parseBrainDump(raw)),
+    ]);
+
+    const contextual = buildContextTasks(contextItems);
+    if (contextual.length === 0) {
+      return this.draftSchedule(userId, date, existingCandidates, {
+        phase: "morning_adjust",
+      });
+    }
+
+    const seen = new Set(contextual.map((task) => normaliseTaskKey(task.title)));
+    const merged = [
+      ...contextual,
+      ...existingCandidates.filter((task) => !seen.has(normaliseTaskKey(task.title))),
+    ];
+
+    return this.draftSchedule(userId, date, merged, {
       phase: "morning_adjust",
     });
   }
@@ -554,6 +579,42 @@ function buildReviewNotes(metrics: ExecutionMetrics, wins: number, misses: numbe
   const verdict =
     rate >= 80 ? "Strong day." : rate >= 50 ? "Solid, with room to tighten." : "Tough day — reset tomorrow.";
   return `${verdict} ${metrics.completedBlocks}/${metrics.totalBlocks} blocks done, ${metrics.deepWorkMinutes}m deep work. ${wins} win(s), ${misses} carried over.`;
+}
+
+function buildContextTasks(items: ParsedCaptureItem[]): SchedulableTask[] {
+  return items
+    .filter((item) => item.type !== "note" && item.type !== "event" && item.type !== "notification")
+    .slice(0, 8)
+    .map((item, index) => ({
+      key: `context:${index}:${normaliseTaskKey(item.content)}`,
+      title: cleanTaskTitle(item.content),
+      domain: item.domain,
+      estimatedMinutes: item.estimatedMinutes,
+      priority: Math.max(105, 140 - index * 5),
+      energy: energyForContext(item),
+      preferredStartMinutes: item.scheduledTime ? timeToMinutes(`${item.scheduledTime}:00`) : null,
+      preferredWindowStartMinutes: item.timeWindow?.startMinutes ?? null,
+      preferredWindowEndMinutes: item.timeWindow?.endMinutes ?? null,
+    }));
+}
+
+function cleanTaskTitle(raw: string): string {
+  return raw
+    .replace(/^\s*(?:i\s+will|i'll|we\s+will|need to|have to)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+function energyForContext(item: ParsedCaptureItem): TaskEnergy {
+  if (item.domain === "academic" || item.domain === "learning" || item.domain === "project") return "high";
+  if (item.domain === "finance" || item.domain === "personal") return "low";
+  if (/\bbreakfast|lunch|dinner|talk|call\b/i.test(item.content)) return "low";
+  return item.domain === "health" ? "medium" : energyForDomain(item.domain);
+}
+
+function normaliseTaskKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function zeroMetrics(): ExecutionMetrics {

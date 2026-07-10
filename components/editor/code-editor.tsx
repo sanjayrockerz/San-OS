@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useTransition } from "react";
+import React, { useState, useRef, useTransition, useCallback } from "react";
 import Editor, { useMonaco, type Monaco } from "@monaco-editor/react";
 import { Loader2, Sparkles, Wand2, Bug, Code2, Check, X, PanelRightClose, PanelRightOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -8,13 +8,14 @@ import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { askCodeAssistant, type AiAssistantAction, type AiAssistantResponse } from "@/app/(app)/problems/ai-actions";
+import { registerCompletionProviders, getTemplate, toMonacoLanguage } from "@/lib/code-templates";
 
 export interface CodeEditorProps {
   /** Initial code value */
   defaultValue?: string;
   /** Current code value (if controlled) */
   value?: string;
-  /** Language identifier (e.g. "python", "typescript") */
+  /** Language identifier (e.g. "python", "typescript", or display label like "Python") */
   language?: string;
   /** Height of the editor container */
   height?: string | number;
@@ -28,6 +29,8 @@ export interface CodeEditorProps {
   name?: string;
   /** Additional CSS classes */
   className?: string;
+  /** If true, use the DSA template for the chosen language as default */
+  useTemplate?: boolean;
 }
 
 export function CodeEditor({
@@ -40,23 +43,26 @@ export function CodeEditor({
   onChange,
   name,
   className,
+  useTemplate = false,
 }: CodeEditorProps) {
   const monaco = useMonaco();
-  const [currentValue, setCurrentValue] = useState(value ?? defaultValue ?? "");
-  
+  const monacoLang = toMonacoLanguage(language);
+  const initialValue = value ?? defaultValue ?? (useTemplate ? getTemplate(language) : "");
+  const [currentValue, setCurrentValue] = useState(initialValue);
+
   // AI Assistant state
   const [panelOpen, setPanelOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [aiResponse, setAiResponse] = useState<AiAssistantResponse | null>(null);
 
-  // Monaco theme setup
+  // Monaco theme setup (runs once when monaco is ready)
   React.useEffect(() => {
     if (monaco) {
       monaco.editor.defineTheme("custom-dark", {
         base: "vs-dark",
         inherit: true,
         rules: [
-          { token: "", background: "09090b" }, // matches Tailwind bg-background roughly
+          { token: "", background: "09090b" },
         ],
         colors: {
           "editor.background": "#09090b",
@@ -68,6 +74,13 @@ export function CodeEditor({
       monaco.editor.setTheme("custom-dark");
     }
   }, [monaco]);
+
+  // Register completion providers whenever language or monaco changes
+  React.useEffect(() => {
+    if (monaco) {
+      registerCompletionProviders(monaco, language);
+    }
+  }, [monaco, language]);
 
   const handleEditorChange = (val: string | undefined) => {
     const newVal = val ?? "";
@@ -140,7 +153,7 @@ export function CodeEditor({
         <div className={cn("flex-1 overflow-hidden", panelOpen ? "hidden md:block w-full md:w-2/3 lg:w-3/4" : "w-full")}>
           <Editor
             height="100%"
-            language={language.toLowerCase()}
+            language={monacoLang}
             theme="custom-dark"
             value={currentValue}
             onChange={handleEditorChange}

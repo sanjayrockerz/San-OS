@@ -53,6 +53,8 @@ export interface ParsedCaptureItem {
   priority: number;
   /** Parsed clock time (HH:MM, 24h) when the line names one, else null. */
   scheduledTime: string | null;
+  /** Best-effort soft window inferred from words like "morning" or "breakfast". */
+  timeWindow: { startMinutes: number; endMinutes: number } | null;
 }
 
 const DOMAIN_DESTINATION: Record<CaptureDomain, CaptureDestination> = {
@@ -71,7 +73,7 @@ const DOMAIN_DESTINATION: Record<CaptureDomain, CaptureDestination> = {
  */
 const DOMAIN_SIGNALS: Array<[CaptureDomain, RegExp]> = [
   ["finance", /\b(invoice|payment|budget|expense|salary|tax|refund|revenue|pay(?:ing)?)\b/i],
-  ["academic", /\b(assignment|exam|lecture|gpa|semester|pdsa|homework|quiz|thesis|professor|submission)\b/i],
+  ["academic", /\b(assignment|exam|lecture|gpa|semester|pdsa?|homework|quiz|thesis|professor|submission)\b/i],
   ["learning", /\b(dsa|leetcode|machine learning|ml|study|studying|learn|revise|revision|course|read|reading|algorithms?|neetcode)\b/i],
   ["business", /\b(client|cold call|cold calling|sales|pitch|proposal|lead|outreach|deal|quote|contract|standup|stand-up)\b/i],
   ["health", /\b(gym|workout|run|running|jog|yoga|meditat|sleep|diet|walk|exercise)\b/i],
@@ -90,7 +92,7 @@ const TYPE_SIGNALS: Array<[CaptureType, RegExp]> = [
 ];
 
 /** Verbs that make a line an actionable task rather than a bare idea/note. */
-const ACTION_VERB = /\b(call|email|send|finish|complete|write|fix|review|prepare|book|schedule|buy|pay|submit|update|clean|plan|do|start)\b/i;
+const ACTION_VERB = /\b(call|email|send|finish|complete|write|fix|review|prepare|book|schedule|buy|pay|submit|update|clean|plan|do|start|eat|study|talk|work|workout|walk|run|exercise)\b/i;
 
 /** Time-of-day patterns like "4PM", "at 3", "@ 09:30", "3:30pm". */
 const TIME_RE = /\b(?:@\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\bat\s+(\d{1,2})(?::(\d{2}))?\b/i;
@@ -114,9 +116,13 @@ const ESTIMATE_BY_TYPE: Record<CaptureType, number> = {
 const ESTIMATE_OVERRIDE: Array<[RegExp, number]> = [
   [/\b(gym|workout|film|short film|movie)\b/i, 90],
   [/\b(dsa|leetcode|study|learn|course|machine learning|ml)\b/i, 90],
+  [/\b(breakfast|lunch|dinner|meal)\b/i, 30],
+  [/\b(talk|catch up|catch-up)\b/i, 30],
   [/\b(deploy|build|ship)\b/i, 45],
   [/\b(call|email|text)\b/i, 15],
 ];
+
+const EXPLICIT_DURATION_RE = /\b(?:for\s+)?(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b/i;
 
 /** Inserts soft separators into compact plan text without changing prose. */
 function normaliseCompactText(raw: string): string {
@@ -124,7 +130,25 @@ function normaliseCompactText(raw: string): string {
     .replace(/([a-z\d])([A-Z])/g, "$1\n$2")
     .replace(/([A-Za-z])([0-9])/g, "$1\n$2")
     .replace(/([0-9])([A-Za-z])/g, "$1\n$2")
-    .replace(/[–—]/g, "-");
+    .replace(/[–—]/g, "-")
+    .replace(/\b(?:and then|then after that|after that|followed by|next)\b/gi, "\n")
+    .replace(/\s+\band\b\s+(?=(?:i\s+will\s+|i'll\s+|we\s+will\s+)?(?:do|eat|study|talk|call|meet|go|finish|start|review|prepare|exercise|walk|run|work)\b)/gi, "\n");
+}
+
+/** Strips conversational fillers (e.g. "I have to", "also I need to") to extract proper task keywords */
+function extractActionableKeywords(text: string): string {
+  let cleaned = text.trim();
+  // Regex to remove conversational prefixes
+  const fillerPrefixes = /^(?:also\s+|and\s+|then\s+|i\s+have\s+to\s+|i\s+gotta\s+|i\s+need\s+to\s+|i\s+must\s+|i\s+will\s+|i'll\s+|we\s+will\s+|we'll\s+|i\s+want\s+to\s+|i'm\s+going\s+to\s+|i\s+am\s+going\s+to\s+|remind\s+me\s+to\s+|make\s+sure\s+to\s+|don't\s+forget\s+to\s+|please\s+|just\s+|do\s+(?:this|the)\s+)+/i;
+
+  cleaned = cleaned.replace(fillerPrefixes, "").trim();
+
+  // Capitalize first letter for a cleaner task name
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  return cleaned || text.trim();
 }
 
 /** Base importance per domain (0–100) — career / money / grades weigh more. */
@@ -170,7 +194,25 @@ function detectTime(line: string): string | null {
   return `${String(hour).padStart(2, "0")}:${minute.padStart(2, "0")}`;
 }
 
+function detectTimeWindow(line: string): { startMinutes: number; endMinutes: number } | null {
+  const lower = line.toLowerCase();
+  if (/\bbreakfast\b/.test(lower)) return { startMinutes: 7 * 60, endMinutes: 9 * 60 + 30 };
+  if (/\blunch\b/.test(lower)) return { startMinutes: 12 * 60, endMinutes: 14 * 60 };
+  if (/\bdinner\b/.test(lower)) return { startMinutes: 19 * 60, endMinutes: 21 * 60 };
+  if (/\bmorning\b/.test(lower)) return { startMinutes: 6 * 60, endMinutes: 11 * 60 };
+  if (/\bafternoon\b/.test(lower)) return { startMinutes: 13 * 60, endMinutes: 17 * 60 };
+  if (/\bevening\b/.test(lower)) return { startMinutes: 17 * 60, endMinutes: 20 * 60 };
+  if (/\bnight\b/.test(lower)) return { startMinutes: 20 * 60, endMinutes: 23 * 60 };
+  return null;
+}
+
 function estimateMinutes(line: string, type: CaptureType): number {
+  const explicit = EXPLICIT_DURATION_RE.exec(line);
+  if (explicit) {
+    const value = Number(explicit[1]);
+    const minutes = explicit[2].toLowerCase().startsWith("h") ? value * 60 : value;
+    if (Number.isFinite(minutes)) return Math.max(5, Math.min(480, Math.round(minutes)));
+  }
   for (const [re, mins] of ESTIMATE_OVERRIDE) {
     if (re.test(line)) return mins;
   }
@@ -184,9 +226,10 @@ function splitLines(raw: string): string[] {
     .flatMap((line) => {
       const trimmed = line.replace(/^[\s•\-*\d.)]+/, "").trim();
       if (!trimmed) return [];
-      // Only split on commas when the line clearly isn't prose (short fragments).
-      if (trimmed.length <= 60 && /,/.test(trimmed) && !/\b(and|but|because)\b/i.test(trimmed)) {
-        return trimmed.split(/\s*,\s*/).filter(Boolean);
+      // Spoken plans are commonly one long sentence. Split list punctuation
+      // while keeping prose clauses intact, so order survives into scheduling.
+      if (/[;,]/.test(trimmed) && !/\b(because|although|however)\b/i.test(trimmed)) {
+        return trimmed.split(/\s*[;,]\s*/).filter(Boolean);
       }
       return [trimmed];
     })
@@ -199,10 +242,12 @@ function splitLines(raw: string): string[] {
  * Deterministic and side-effect free.
  */
 export function parseBrainDump(raw: string): ParsedCaptureItem[] {
-  return splitLines(raw).map((content) => {
+  return splitLines(raw).map((rawContent) => {
+    const content = extractActionableKeywords(rawContent);
     const domain = detectDomain(content);
     const type = detectType(content, domain);
     const scheduledTime = detectTime(content);
+    const timeWindow = detectTimeWindow(content);
     const estimatedMinutes = estimateMinutes(content, type);
 
     const hasDeadline = URGENCY_RE.test(content);
@@ -230,6 +275,7 @@ export function parseBrainDump(raw: string): ParsedCaptureItem[] {
       importance,
       priority,
       scheduledTime,
+      timeWindow,
     };
   });
 }

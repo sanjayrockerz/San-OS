@@ -61,6 +61,7 @@ export * from "./semantic-memory.service";
 export * from "./resource.service";
 export * from "./memory-graph.service";
 export * from "./resource-pipeline.service";
+export * from "./calendar-sync.service";
 export * from "./universal-search.service";
 export * from "./universal-intake.service";
 
@@ -131,6 +132,7 @@ import { SemanticMemoryService } from "./semantic-memory.service";
 import { ResourceService } from "./resource.service";
 import { MemoryGraphService } from "./memory-graph.service";
 import { ResourcePipelineService } from "./resource-pipeline.service";
+import { CalendarSyncService } from "./calendar-sync.service";
 import { UniversalSearchService } from "./universal-search.service";
 import { UniversalIntakeService } from "./universal-intake.service";
 
@@ -224,6 +226,7 @@ export function createServices(client: DbClient) {
     get resource(): ResourceService { return cache.resource ??= new ResourceService(repos); },
     get memoryGraph(): MemoryGraphService { return cache.memoryGraph ??= new MemoryGraphService(repos); },
     get resourcePipeline(): ResourcePipelineService { return cache.resourcePipeline ??= new ResourcePipelineService(repos); },
+    get calendarSync(): CalendarSyncService { return cache.calendarSync ??= new CalendarSyncService(repos); },
     get universalSearch(): UniversalSearchService { return cache.universalSearch ??= new UniversalSearchService(repos); },
     get universalIntake(): UniversalIntakeService { return cache.universalIntake ??= new UniversalIntakeService(repos); },
   };

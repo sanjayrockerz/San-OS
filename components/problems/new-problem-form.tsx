@@ -21,6 +21,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { CheckboxField } from "@/components/ui/checkbox-field";
+import { LANGUAGES, getTemplate } from "@/lib/code-templates";
 import {
   createLearningEntry,
   type ActionResult,
@@ -41,8 +42,6 @@ const PLATFORMS: { value: string; label: string }[] = [
   { value: "interviewbit", label: "InterviewBit" },
   { value: "other", label: "Skillrack / Striver / Custom" },
 ];
-
-const LANGUAGES = ["Java", "Python", "C++", "JavaScript", "C", "Go", "Other"];
 
 const SOLVE_STATUS: { value: string; label: string }[] = [
   { value: "solved", label: "Solved independently" },
@@ -115,7 +114,7 @@ export function NewProblemForm({
   patterns: Option[];
 }) {
   const [step, setStep] = useState(0);
-  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(LANGUAGES[0]);
   const [state, formAction, pending] = useActionState<
     ActionResult | null,
     FormData
@@ -372,7 +371,7 @@ export function NewProblemForm({
               <CodeEditor
                 name="code"
                 language={selectedLanguage}
-                defaultValue={"// Paste your final solution here"}
+                defaultValue={getTemplate(selectedLanguage)}
                 height="300px"
               />
             </Field>

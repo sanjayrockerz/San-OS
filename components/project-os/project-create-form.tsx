@@ -70,8 +70,13 @@ export function ProjectCreateForm() {
             <Sparkles className="size-4" /> Workspace Generated!
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Created project and generated {result.milestonesCount || 3} milestones.
+            Created the project workspace with {result.milestonesCount || 3} milestones, {result.tasksCount || 3} starter tasks, and {result.pipelineEntryId ? "a pipeline entry" : "project tracking"}.
           </p>
+          {result.clientName && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Client linked: {result.clientName}{result.createdClient ? " (new CRM record created)" : ""}.
+            </p>
+          )}
           <Button
             className="mt-4 gap-1.5"
             variant="outline"

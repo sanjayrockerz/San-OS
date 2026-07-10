@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Clock, ChevronRight } from "lucide-react";
+import { Search, Clock, ChevronRight, BookOpen } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { CATEGORY_TINT, type Category } from "@/lib/design/category";
 
 export interface ConceptView {
@@ -88,7 +89,15 @@ export function ConceptsClient({ concepts }: Props) {
       </div>
 
       {visible.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">No concepts match.</p>
+        <EmptyState
+          icon={BookOpen}
+          title={concepts.length === 0 ? "No concepts yet" : "No matches"}
+          description={
+            concepts.length === 0
+              ? "Create your first concept note to track what you're learning."
+              : "Try a different search term or status filter."
+          }
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((c) => (

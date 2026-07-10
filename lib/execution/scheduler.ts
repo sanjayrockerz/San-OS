@@ -28,6 +28,9 @@ export interface SchedulableTask {
   energy: TaskEnergy;
   linkedEntityType?: string | null;
   linkedEntityId?: string | null;
+  preferredStartMinutes?: number | null;
+  preferredWindowStartMinutes?: number | null;
+  preferredWindowEndMinutes?: number | null;
 }
 
 /** A commitment the scheduler must not overlap (minutes from midnight). */
@@ -113,6 +116,42 @@ function pickGap(gaps: Gap[], needed: number, energy: TaskEnergy): number {
   return -1;
 }
 
+function findPreferredPlacement(
+  gaps: Gap[],
+  task: SchedulableTask,
+  duration: number,
+  needed: number,
+): { gapIndex: number; start: number } | null {
+  if (task.preferredStartMinutes != null) {
+    for (let i = 0; i < gaps.length; i++) {
+      const gap = gaps[i];
+      const start = Math.max(gap.start, task.preferredStartMinutes);
+      if (start === task.preferredStartMinutes && start + duration <= gap.end) {
+        return { gapIndex: i, start };
+      }
+    }
+  }
+
+  if (task.preferredWindowStartMinutes != null && task.preferredWindowEndMinutes != null) {
+    for (let i = 0; i < gaps.length; i++) {
+      const gap = gaps[i];
+      const windowStart = Math.max(gap.start, task.preferredWindowStartMinutes);
+      const windowEnd = Math.min(gap.end, task.preferredWindowEndMinutes);
+      if (windowEnd - windowStart < duration) continue;
+
+      const start =
+        task.energy === "low"
+          ? Math.max(windowStart, windowEnd - Math.min(needed, windowEnd - windowStart))
+          : windowStart;
+      if (start + duration <= windowEnd) {
+        return { gapIndex: i, start };
+      }
+    }
+  }
+
+  return null;
+}
+
 /**
  * Builds a schedule. Tasks are placed in priority order; within a task, energy
  * decides which fitting gap is chosen. Deterministic: identical inputs always
@@ -144,6 +183,24 @@ export function buildSchedule(
       Math.max(opts.minBlockMinutes, task.estimatedMinutes),
     );
     const needed = duration + opts.breakMinutes;
+
+    const preferred = findPreferredPlacement(gaps, task, duration, needed);
+    if (preferred) {
+      const gap = gaps[preferred.gapIndex];
+      const start = preferred.start;
+      const end = start + duration;
+
+      scheduled.push({ ...task, startMinutes: start, endMinutes: end });
+
+      const consumedEnd = Math.min(gap.end, end + opts.breakMinutes);
+      const remainingBefore = start > gap.start ? { start: gap.start, end: start } : null;
+      const remainingAfter = consumedEnd < gap.end ? { start: consumedEnd, end: gap.end } : null;
+      const replacement: Gap[] = [];
+      if (remainingBefore) replacement.push(remainingBefore);
+      if (remainingAfter) replacement.push(remainingAfter);
+      gaps.splice(preferred.gapIndex, 1, ...replacement);
+      continue;
+    }
 
     // High-energy tasks first try to land inside the morning peak window.
     let gapIndex = -1;

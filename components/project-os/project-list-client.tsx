@@ -76,13 +76,13 @@ export function ProjectListClient({ projects }: { projects: ProjectView[] }) {
   return (
     <div className="space-y-6">
       {/* Command bar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="scroll-snap-x flex items-center gap-2 pb-1">
           {filters.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+              className={`shrink-0 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 filter === f.value
                   ? "bg-white/10 border-white/20 text-white"
                   : "border-transparent text-muted-foreground hover:text-white hover:bg-white/5"
@@ -92,10 +92,11 @@ export function ProjectListClient({ projects }: { projects: ProjectView[] }) {
             </button>
           ))}
         </div>
-        <Link href="/projects/new">
+        <Link href="/projects/new" className="shrink-0">
           <Button size="sm" className="gap-1.5">
             <Plus className="w-4 h-4" />
-            New Project
+            <span className="hidden sm:inline">New Project</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </Link>
       </div>

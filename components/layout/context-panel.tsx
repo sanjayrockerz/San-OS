@@ -59,7 +59,7 @@ export function ContextPanel() {
         id="context-panel-toggle"
         onClick={() => setIsOpen(true)}
         aria-label="Open context panel"
-        className="fixed bottom-20 right-4 z-40 flex items-center justify-center rounded-full bg-primary p-3 text-primary-foreground shadow-lg transition-all hover:scale-105 hover:bg-primary/90 active:scale-95 lg:hidden"
+        className="fixed bottom-[84px] right-4 z-40 flex size-12 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg backdrop-blur transition-all hover:scale-105 hover:bg-primary active:scale-95 lg:hidden"
       >
         <Plus className="h-5 w-5" />
       </button>
@@ -76,7 +76,8 @@ export function ContextPanel() {
       <div
         id="context-panel"
         className={[
-          "fixed inset-y-0 right-0 z-50 flex w-80 flex-col border-l bg-card/95 shadow-2xl backdrop-blur-xl",
+          "fixed inset-y-0 right-0 z-50 flex flex-col border-l bg-card/95 shadow-2xl backdrop-blur-xl",
+          "w-[min(320px,100vw)]",
           "transition-transform duration-300 ease-out",
           isOpen ? "translate-x-0" : "translate-x-full",
           "lg:hidden",
@@ -160,9 +161,9 @@ export function ContextPanel() {
         </div>
 
         {/* Footer */}
-        <div className="border-t p-3">
+        <div className="border-t p-3 pb-safe">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">SanOS 3.0</span>
+            <span className="text-xs text-muted-foreground">San OS 3.0</span>
             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
         </div>

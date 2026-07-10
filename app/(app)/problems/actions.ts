@@ -30,9 +30,11 @@ const createProblemSchema = z.object({
   topic_id: z.string().uuid().optional().or(z.literal("")),
   pattern_id: z.string().uuid().optional().or(z.literal("")),
   estimated_minutes: z.coerce.number().int().positive().max(600).optional(),
+  code_language: z.string().trim().optional(),
+  code: z.string().optional(),
 });
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
 /** Creates a user-authored problem from the Add Problem form. */
 export async function createProblem(
@@ -49,6 +51,8 @@ export async function createProblem(
     topic_id: formData.get("topic_id") || "",
     pattern_id: formData.get("pattern_id") || "",
     estimated_minutes: formData.get("estimated_minutes") || undefined,
+    code_language: formData.get("code_language") || undefined,
+    code: formData.get("code") || undefined,
   });
 
   if (!parsed.success) {
@@ -59,8 +63,9 @@ export async function createProblem(
   const supabase = await createClient();
   const services = createServices(supabase);
 
+  let problem;
   try {
-    await services.problems.create(user.id, {
+    problem = await services.problems.create(user.id, {
       title: v.title,
       url: v.url ? v.url : null,
       platform: v.platform,
@@ -73,8 +78,24 @@ export async function createProblem(
     return { ok: false, error: e instanceof Error ? e.message : "Failed to save" };
   }
 
+  // Save code if provided
+  if (v.code && v.code.trim() && v.code_language) {
+    try {
+      await services.repos.codeVersions.create({
+        user_id: user.id,
+        problem_id: problem.id,
+        attempt_id: null,
+        language: v.code_language,
+        code: v.code,
+        is_final: false,
+      });
+    } catch {
+      // Non-fatal: problem saved, code saving is secondary
+    }
+  }
+
   revalidatePath("/problems");
-  return { ok: true };
+  return { ok: true, id: problem.id };
 }
 
 const updateProblemSchema = z.object({

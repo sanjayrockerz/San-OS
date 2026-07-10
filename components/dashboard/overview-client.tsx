@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Disclosure } from "@/components/ui/disclosure";
 import { ProgressRing } from "@/components/charts/progress-ring";
 import { DailyReflectionModal } from "@/components/dashboard/daily-reflection-modal";
+import { OnboardingHint } from "@/components/ui/onboarding-hint";
 import { MissionHero } from "./mission-hero";
 import { TodaysMission } from "./todays-mission";
 import { InsightsPanel } from "./insights-panel";
@@ -54,6 +55,8 @@ import type {
   RiskRegister,
   StudentAction,
 } from "@/lib/services";
+import type { GpaProjection } from "@/lib/services/gpa-projection.service";
+import type { PlacementReadiness } from "@/lib/services/placement-readiness.service";
 import type { Tables } from "@/types/database";
 import { CATEGORY_TINT } from "@/lib/design/category";
 import {
@@ -165,6 +168,8 @@ export interface OverviewData {
   executionMetrics: ExecutionMetrics;
   financeSnapshot: FinanceSnapshot | null;
   plannerState: PlannerPanelState;
+  gpaProjection: GpaProjection | null;
+  placementReadiness: PlacementReadiness | null;
 }
 
 /** Next round-number milestone above `count` (next multiple of 50, or 100 once past 200). */
@@ -180,11 +185,12 @@ export function OverviewClient({ data }: { data: OverviewData }) {
   return (
     <PageTransition>
       <DailyReflectionModal solvedToday={solvedToday} threshold={3} />
+      <OnboardingHint />
 
       <div className="flex flex-col h-full max-w-5xl mx-auto py-8 lg:py-12">
         {/* Top AI Chief of Staff Briefing */}
         <div className="mb-12 w-full max-w-3xl mx-auto text-left">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground mb-8">
+          <h1 className="page-title text-foreground mb-8">
             {data.greeting}, {data.name}.
           </h1>
           
@@ -208,28 +214,43 @@ export function OverviewClient({ data }: { data: OverviewData }) {
               </div>
             </div>
 
+            {data.estimatedMinutes > 0 && (
+              <p className="text-sm text-muted-foreground pt-2">
+                Today&apos;s estimated focus time: <span className="font-semibold tabular-nums">{data.estimatedMinutes} min</span>
+              </p>
+            )}
+
             {data.recoveryPlan?.totalMissed > 0 && (
               <div className="rounded-2xl bg-warning/10 border border-warning/20 p-5">
                 <p className="text-sm font-semibold uppercase tracking-widest text-warning mb-2">Warning</p>
                 <p className="text-sm text-warning/90">
-                  You&apos;ve been working {data.hero?.streak ?? 0} days without a recovery evening. 
-                  I&apos;ve reduced tomorrow&apos;s workload.
+                  {data.coachBrief?.today?.insight ?? `You've been working ${data.hero?.streak ?? 0} days without a recovery evening. Let's ease tomorrow's load.`}
                 </p>
               </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 border-t border-border/40 text-sm">
+            <div className="responsive-grid-3 pt-4 border-t border-border/40 text-sm">
               <div>
                 <p className="text-muted-foreground mb-1">Expected Revenue</p>
-                <p className="font-semibold tabular-nums">₹{data.financeSnapshot?.monthRevenue ?? "0"}</p>
+                <p className="font-semibold tabular-nums">{data.financeSnapshot ? `₹${data.financeSnapshot.monthRevenue}` : "—"}</p>
               </div>
               <div>
                 <p className="text-muted-foreground mb-1">CGPA Projection</p>
-                <p className="font-semibold tabular-nums">8.93</p>
+                <p className="font-semibold tabular-nums">
+                  {data.gpaProjection?.projectedGpa != null
+                    ? data.gpaProjection.projectedGpa.toFixed(2)
+                    : "—"}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground mb-1">Placement Readiness</p>
-                <p className="font-semibold tabular-nums text-emerald-500">91%</p>
+                <p className="font-semibold tabular-nums text-emerald-500">
+                  {data.placementReadiness?.gap != null &&
+                  data.placementReadiness.targetCgpa != null &&
+                  data.placementReadiness.projectedGraduationCgpa != null
+                    ? `${Math.min(Math.round((data.placementReadiness.projectedGraduationCgpa / data.placementReadiness.targetCgpa) * 100), 100)}%`
+                    : "—"}
+                </p>
               </div>
             </div>
 
@@ -262,7 +283,7 @@ export function OverviewClient({ data }: { data: OverviewData }) {
           <Disclosure
             defaultOpen={false}
             trigger={<span className="text-sm font-medium">View Coach Brief & Analytics</span>}
-            triggerClassName="w-full mt-12 surface-card border-none bg-accent/50 hover:bg-accent text-accent-foreground rounded-2xl px-6 py-4 flex justify-center items-center gap-2 transition-colors"
+            triggerClassName="w-full mt-12 surface-card border-none bg-accent/50 hover:bg-accent text-accent-foreground rounded-2xl px-4 py-4 flex justify-center items-center gap-2 transition-colors min-w-0"
           >
             <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
               <InsightsPanel brief={data.coachBrief} risks={data.risks} />

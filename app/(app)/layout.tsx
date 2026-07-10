@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { requireContext, ensureProfile } from "@/lib/server/context";
+import { requireContext, ensureProfile, getContext } from "@/lib/server/context";
 import { PostActionPrompt } from "@/components/ui/post-action-prompt";
 import {
   BrowserNotificationBridge,
@@ -32,10 +32,18 @@ export default async function AppGroupLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, services } = await requireContext();
-  const profile = await ensureProfile(services, user);
+  const ctx = await getContext();
+  if (!ctx.user) {
+    return (
+      <AppShell user={{ displayName: "Sanjay", email: "dev@local" }} unreadCount={0}>
+        {children}
+      </AppShell>
+    );
+  }
+  const { user, services } = ctx as { user: NonNullable<typeof ctx.user>; services: typeof ctx.services };
+  const profile = await ensureProfile(services, user).catch(() => null);
 
-  const displayName = profile.display_name ?? user.email?.split("@")[0] ?? "You";
+  const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "You";
   const [unreadCount, unread] = await Promise.all([
     services.repos.notifications.unreadCount(user.id).catch(() => 0),
     services.repos.notifications

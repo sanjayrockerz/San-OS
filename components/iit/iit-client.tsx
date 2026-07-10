@@ -11,7 +11,7 @@ import {
   BookOpen,
   Trophy,
 } from "lucide-react";
-
+ 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeading } from "@/components/layout/page-header";
 import { createCourse, type ActionResult } from "@/app/(app)/iit-workspace/actions";
 import type { CreditSummary } from "@/lib/services";
@@ -136,10 +137,12 @@ export function IITClient({ courses, deadlines, credits }: Props) {
         )}
 
         {courses.length === 0 && !showAddCourse ? (
-          <div className="surface-card rounded-2xl p-10 text-center">
-            <GraduationCap className="mx-auto mb-3 size-10 text-muted-foreground opacity-40" />
-            <p className="text-sm text-muted-foreground">No courses yet. Add your first course.</p>
-          </div>
+          <EmptyState
+            icon={GraduationCap}
+            title="No courses yet"
+            description="Add your first course to track lectures, assignments, and grades."
+            action={{ label: "Add Course", onClick: () => setShowAddCourse(true) }}
+          />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {courses.map((c) => {
@@ -232,9 +235,11 @@ export function IITClient({ courses, deadlines, credits }: Props) {
       <div>
         <SectionHeading title="Upcoming Deadlines" />
         {deadlines.length === 0 ? (
-          <div className="surface-card rounded-2xl p-6 text-center text-sm text-muted-foreground">
-            No upcoming deadlines.
-          </div>
+          <EmptyState
+            icon={CalendarCheck}
+            title="No upcoming deadlines"
+            description="Add assignments to your courses to see deadlines here."
+          />
         ) : (
           <div className="surface-card space-y-2.5 rounded-2xl p-4">
             {deadlines.map((d) => (

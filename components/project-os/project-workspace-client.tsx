@@ -1,14 +1,11 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   LayoutGrid,
   CheckSquare,
-  Clock,
   FileText,
-  GitBranch,
-  FileEdit,
   BarChart2,
   ArrowLeft,
   Pencil,
@@ -18,10 +15,7 @@ import type { Tables } from "@/types/database";
 import type { ProjectHealth } from "@/lib/services/project.service";
 import { ProjectOverviewTab } from "./project-overview-tab";
 import { ProjectTasksTab } from "./project-tasks-tab";
-import { ProjectTimeTab } from "./project-time-tab";
 import { ProjectDocsTab } from "./project-docs-tab";
-import { ProjectChangeRequestsTab } from "./project-change-requests-tab";
-import { ProjectQuoteTab } from "./project-quote-tab";
 import { ProjectAnalyticsTab } from "./project-analytics-tab";
 import { ProjectEditForm } from "./project-edit-form";
 
@@ -41,10 +35,7 @@ interface Props {
 const TABS = [
   { id: "overview", label: "Overview", icon: LayoutGrid },
   { id: "tasks", label: "Tasks", icon: CheckSquare },
-  { id: "time", label: "Time", icon: Clock },
   { id: "docs", label: "Docs", icon: FileText },
-  { id: "changes", label: "Changes", icon: GitBranch },
-  { id: "quote", label: "Quote", icon: FileEdit },
   { id: "analytics", label: "Analytics", icon: BarChart2 },
 ];
 
@@ -63,13 +54,13 @@ export function ProjectWorkspaceClient({
   milestones,
   timeEntries,
   documents,
-  changeRequests,
-  quotes,
   health,
   minutesByCategory,
+  initialTab,
 }: Props) {
   const router = useRouter();
   const [showEdit, setShowEdit] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => TABS.some((tab) => tab.id === initialTab) ? initialTab : "overview");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -77,81 +68,68 @@ export function ProjectWorkspaceClient({
         <ProjectEditForm project={project} onClose={() => setShowEdit(false)} />
       )}
 
-      {/* Notion-style Header */}
+      {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/40 pb-4 pt-10">
-        <div className="px-4 md:px-8 lg:px-12 max-w-4xl mx-auto space-y-4">
+        <div className="px-4 sm:px-8 lg:px-12 max-w-4xl mx-auto space-y-3">
           <button
             onClick={() => router.push("/projects")}
-            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 text-sm"
+            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 text-sm min-h-[44px] sm:min-h-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Workspace
           </button>
           
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight">{project.title}</h1>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="page-title truncate">{project.title}</h1>
               {project.client_name && (
-                <p className="mt-2 flex items-center gap-2 text-muted-foreground">
-                  <LayoutGrid className="w-4 h-4" /> Client: {project.client_name}
+                <p className="mt-2 flex items-center gap-2 text-muted-foreground text-sm">
+                  <LayoutGrid className="w-4 h-4 shrink-0" /> {project.client_name}
                 </p>
               )}
             </div>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <span className={`text-sm px-3 py-1 rounded-full bg-secondary ${STATUS_COLORS[project.status]} capitalize`}>
                 {project.status.replace("_", " ")}
               </span>
               <button
                 onClick={() => setShowEdit(true)}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-white/5"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5 rounded-md hover:bg-white/5 min-h-[36px]"
               >
-                <Pencil className="w-3 h-3" /> Edit properties
+                <Pencil className="w-3 h-3" /> Edit
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Notion-style Continuous Content */}
-      <div className="px-4 md:px-8 lg:px-12 max-w-4xl mx-auto py-12 space-y-16">
-        
-        {/* Overview Section */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold flex items-center gap-2 border-b border-border/40 pb-2">
-            <FileText className="w-5 h-5 text-muted-foreground" /> Overview
-          </h2>
-          <ProjectOverviewTab project={project} health={health} milestones={milestones} tasks={tasks} />
-        </section>
+      <div className="px-4 sm:px-8 lg:px-12 max-w-5xl mx-auto py-6 sm:py-8">
+        <div className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-border bg-card/70 p-1.5 scrollbar-none">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-colors ${activeTab === id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+            >
+              <Icon className="size-4" /> {label}
+            </button>
+          ))}
+        </div>
 
-        {/* Tasks & Milestones Section */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold flex items-center gap-2 border-b border-border/40 pb-2">
-            <CheckSquare className="w-5 h-5 text-muted-foreground" /> Tasks & Milestones
-          </h2>
-          <ProjectTasksTab project={project} tasks={tasks} />
-        </section>
-
-        {/* Analytics & Health Section */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold flex items-center gap-2 border-b border-border/40 pb-2">
-            <BarChart2 className="w-5 h-5 text-muted-foreground" /> Analytics & Health
-          </h2>
-          <ProjectAnalyticsTab
-            project={project}
-            tasks={tasks}
-            timeEntries={timeEntries}
-            minutesByCategory={minutesByCategory}
-            health={health}
-          />
-        </section>
-
-        {/* Resources & Docs Section */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold flex items-center gap-2 border-b border-border/40 pb-2">
-            <FileText className="w-5 h-5 text-muted-foreground" /> Resources & Documents
-          </h2>
-          <ProjectDocsTab project={project} documents={documents} />
-        </section>
-        
+        <div className="animate-fade-up">
+          {activeTab === "overview" && <ProjectOverviewTab project={project} health={health} milestones={milestones} tasks={tasks} />}
+          {activeTab === "tasks" && <ProjectTasksTab project={project} tasks={tasks} />}
+          {activeTab === "docs" && <ProjectDocsTab project={project} documents={documents} />}
+          {activeTab === "analytics" && (
+            <ProjectAnalyticsTab
+              project={project}
+              tasks={tasks}
+              timeEntries={timeEntries}
+              minutesByCategory={minutesByCategory}
+              health={health}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
