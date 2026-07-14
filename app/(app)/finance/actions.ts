@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createServices, StudentIntelligenceCoreService } from "@/lib/services";
 import { createExpenseEntrySchema, createIncomeEntrySchema } from "@/lib/validators/business";
+import { recordLifecycleChange } from "@/lib/lifecycle/manager";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type FinanceNoteResult =
@@ -161,6 +162,74 @@ export async function recordExpense(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to record expense" };
   }
+}
+
+export async function updateIncome(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const user = await requireUser("/finance");
+  const id = String(formData.get("id") ?? "");
+  const parsed = createIncomeEntrySchema.safeParse({
+    amount: Number(formData.get("amount") ?? 0),
+    category: formData.get("category") || "project_revenue",
+    description: formData.get("description") || null,
+    received_at: formData.get("received_at") || undefined,
+    client_id: formData.get("client_id") || null,
+    project_id: formData.get("project_id") || null,
+  });
+  if (!id || !parsed.success) return { ok: false, error: parsed.success ? "Missing income id" : parsed.error.issues[0]?.message ?? "Invalid input" };
+  const db = await createClient();
+  const services = createServices(db);
+  const before = await services.repos.incomeEntries.findById(id);
+  if (!before || before.user_id !== user.id) return { ok: false, error: "Income entry not found" };
+  try {
+    const after = await services.repos.incomeEntries.update(id, parsed.data);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "income_entry", entityId: id, operation: "update", beforeState: before, afterState: after });
+    StudentIntelligenceCoreService.invalidate(user.id);
+    revalidatePath("/finance"); revalidatePath("/overview");
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Failed to update income" }; }
+}
+
+export async function deleteIncome(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const user = await requireUser("/finance");
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing income id" };
+  const db = await createClient(); const services = createServices(db);
+  const before = await services.repos.incomeEntries.findById(id);
+  if (!before || before.user_id !== user.id) return { ok: false, error: "Income entry not found" };
+  try {
+    await services.repos.incomeEntries.delete(id);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "income_entry", entityId: id, operation: "delete", beforeState: before, afterState: null });
+    StudentIntelligenceCoreService.invalidate(user.id);
+    revalidatePath("/finance"); revalidatePath("/overview");
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Failed to delete income" }; }
+}
+
+export async function updateExpense(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const user = await requireUser("/finance");
+  const id = String(formData.get("id") ?? "");
+  const parsed = createExpenseEntrySchema.safeParse({ amount: Number(formData.get("amount") ?? 0), category: formData.get("category") || "other", description: formData.get("description") || null, occurred_at: formData.get("occurred_at") || undefined });
+  if (!id || !parsed.success) return { ok: false, error: parsed.success ? "Missing expense id" : parsed.error.issues[0]?.message ?? "Invalid input" };
+  const db = await createClient(); const services = createServices(db);
+  const before = await services.repos.expenseEntries.findById(id);
+  if (!before || before.user_id !== user.id) return { ok: false, error: "Expense entry not found" };
+  try {
+    const after = await services.repos.expenseEntries.update(id, parsed.data);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "expense_entry", entityId: id, operation: "update", beforeState: before, afterState: after });
+    StudentIntelligenceCoreService.invalidate(user.id); revalidatePath("/finance"); revalidatePath("/overview"); return { ok: true };
+  } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Failed to update expense" }; }
+}
+
+export async function deleteExpense(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const user = await requireUser("/finance"); const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, error: "Missing expense id" };
+  const db = await createClient(); const services = createServices(db); const before = await services.repos.expenseEntries.findById(id);
+  if (!before || before.user_id !== user.id) return { ok: false, error: "Expense entry not found" };
+  try {
+    await services.repos.expenseEntries.delete(id);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "expense_entry", entityId: id, operation: "delete", beforeState: before, afterState: null });
+    StudentIntelligenceCoreService.invalidate(user.id); revalidatePath("/finance"); revalidatePath("/overview"); return { ok: true };
+  } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Failed to delete expense" }; }
 }
 
 export async function recordFinanceNote(

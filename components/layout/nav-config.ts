@@ -20,6 +20,8 @@ import {
   TrendingUp,
   Target,
   Lightbulb,
+  Timer,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,6 +44,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Home", shortLabel: "Home", href: "/overview", icon: LayoutDashboard },
       { label: "Plan", shortLabel: "Plan", href: "/execution", icon: Target },
       { label: "Review", shortLabel: "Review", href: "/timeline", icon: Activity },
+      { label: "Focus Timer", shortLabel: "Focus", href: "/focus", icon: Timer },
+      { label: "Personal Coach", shortLabel: "Coach", href: "/coach", icon: Sparkles },
     ],
   },
   {
@@ -50,12 +54,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Projects", shortLabel: "Projects", href: "/projects", icon: FolderKanban },
       { label: "Business", shortLabel: "Business", href: "/business", icon: TrendingUp },
       { label: "Finance", shortLabel: "Finance", href: "/finance", icon: Wallet },
+      { label: "Invoices", shortLabel: "Invoices", href: "/invoices", icon: Receipt },
     ],
   },
   {
     heading: "Learn",
     items: [
       { label: "Academic", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
+      { label: "IIT Workspace", shortLabel: "IIT", href: "/iit-workspace", icon: BookOpen },
       { label: "DSA", shortLabel: "DSA", href: "/problems", icon: Code2 },
       { label: "Knowledge", shortLabel: "Knowledge", href: "/knowledge", icon: Compass },
       { label: "Interests", shortLabel: "Interests", href: "/interests", icon: Lightbulb },
@@ -86,6 +92,8 @@ export const COMMAND_NAV_ITEMS: NavItem[] = [
   { label: "Resources", shortLabel: "Resources", href: "/resources", icon: Database },
   { label: "Revision", shortLabel: "Revision", href: "/revision", icon: RefreshCw },
   { label: "Roadmaps", shortLabel: "Roadmaps", href: "/roadmaps", icon: Map },
+  { label: "Focus Timer", shortLabel: "Focus", href: "/focus", icon: Timer },
+  { label: "Personal Coach", shortLabel: "Coach", href: "/coach", icon: Sparkles },
 ];
 
 /** Reduced set for the mobile bottom navigation (4 + center FAB). Looked up by

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useActionState } from "react";
+import { uploadResource } from "@/app/(app)/resources/actions";
 import { type Tables } from "@/types/database";
 import { ResourceInspector } from "./resource-inspector";
-import { FileIcon, ImageIcon, FileTextIcon, VideoIcon, AudioLinesIcon, FolderOpen } from "lucide-react";
+import { FileIcon, ImageIcon, FileTextIcon, VideoIcon, AudioLinesIcon, FolderOpen, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -11,6 +13,7 @@ type Resource = Tables<"resources">;
 
 export function ResourceCenterClient({ initialResources }: { initialResources: Resource[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [state, action, pending] = useActionState(uploadResource, null);
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -30,6 +33,11 @@ export function ResourceCenterClient({ initialResources }: { initialResources: R
     <div className="flex h-full w-full overflow-hidden">
       {/* Main Grid Pane */}
       <div className={cn("flex-1 h-full overflow-y-auto p-6 transition-all duration-300 ease-in-out", selectedId ? "pr-0" : "")}>
+        <form action={action} className="mb-5 flex flex-col gap-2 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Store an important file</p><p className="mt-1 text-xs text-muted-foreground">Images and PDFs up to 25 MB. Links and notes remain supported in the other workspaces.</p><div className="mt-3 grid gap-2 sm:grid-cols-2"><input name="title" placeholder="Title (optional)" className="h-9 rounded-lg border bg-background px-3 text-sm" /><input name="description" placeholder="Note (optional)" className="h-9 rounded-lg border bg-background px-3 text-sm" /><input name="file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp,image/gif" required className="text-sm sm:col-span-2" /></div></div>
+          <button type="submit" disabled={pending} className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-60"><Upload className="size-4" />{pending ? "Saving…" : "Save file"}</button>
+        </form>
+        {state && <p className={cn("mb-3 text-sm", state.ok ? "text-emerald-500" : "text-destructive")}>{state.ok ? state.message : state.error}</p>}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {initialResources.map(resource => (
             <div

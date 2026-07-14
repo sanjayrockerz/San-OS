@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useActionState } from "react";
-import { Plus, X, TrendingUp, TrendingDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, X, TrendingUp, TrendingDown, Pencil, Trash2, Check } from "lucide-react";
 
 import type { Tables } from "@/types/database";
 import type { FinanceSnapshot } from "@/lib/services/finance.service";
@@ -11,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart } from "@/components/charts/bar-chart";
-import { recordIncome, recordExpense, recordFinanceNote, previewFinanceNote } from "@/app/(app)/finance/actions";
+import { recordIncome, recordExpense, recordFinanceNote, previewFinanceNote, updateIncome, deleteIncome, updateExpense, deleteExpense } from "@/app/(app)/finance/actions";
 
 import {
   AreaChart,
@@ -133,7 +134,7 @@ export function FinanceDashboard({ snapshot, income, expenses, clients, projects
                   <span className="text-muted-foreground">
                     {entry.description ?? entry.category} · {entry.received_at}
                   </span>
-                  <span className="text-emerald-400">{formatCurrency(entry.amount, entry.currency)}</span>
+                  <span className="flex items-center gap-2"><span className="text-emerald-400">{formatCurrency(entry.amount, entry.currency)}</span><FinanceEntryActions kind="income" entry={entry} /></span>
                 </div>
               ))}
             </div>
@@ -150,7 +151,7 @@ export function FinanceDashboard({ snapshot, income, expenses, clients, projects
                   <span className="text-muted-foreground">
                     {entry.description ?? entry.category} · {entry.occurred_at}
                   </span>
-                  <span className="text-red-400">{formatCurrency(entry.amount, entry.currency)}</span>
+                  <span className="flex items-center gap-2"><span className="text-red-400">{formatCurrency(entry.amount, entry.currency)}</span><FinanceEntryActions kind="expense" entry={entry} /></span>
                 </div>
               ))}
             </div>
@@ -159,6 +160,17 @@ export function FinanceDashboard({ snapshot, income, expenses, clients, projects
       </div>
     </div>
   );
+}
+
+function FinanceEntryActions({ kind, entry }: { kind: "income" | "expense"; entry: Tables<"income_entries"> | Tables<"expense_entries"> }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [deleteState, deleteAction, deleting] = useActionState(kind === "income" ? deleteIncome : deleteExpense, null);
+  useEffect(() => { if (deleteState?.ok) router.refresh(); }, [deleteState, router]);
+  const isIncome = kind === "income";
+  const updateAction = async (formData: FormData) => { await (isIncome ? updateIncome(null, formData) : updateExpense(null, formData)); setEditing(false); router.refresh(); };
+  if (editing) return <form action={updateAction} className="absolute right-2 z-10 grid w-64 gap-2 rounded-xl border bg-card p-3 shadow-xl"><input type="hidden" name="id" value={entry.id} /><Input name="amount" type="number" min="0.01" step="0.01" defaultValue={entry.amount} required aria-label="Amount" /><Input name="category" defaultValue={entry.category} aria-label="Category" /><Input name="description" defaultValue={entry.description ?? ""} placeholder="Description" aria-label="Description" /><Input name={isIncome ? "received_at" : "occurred_at"} type="date" defaultValue={isIncome ? (entry as Tables<"income_entries">).received_at : (entry as Tables<"expense_entries">).occurred_at} aria-label="Date" /><div className="flex gap-1"><Button type="submit" size="sm"><Check className="mr-1 size-3.5" />Save</Button><Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button></div></form>;
+  return <span className="relative flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Edit entry"><Pencil className="size-3.5" /></Button><form action={deleteAction} onSubmit={(event) => { if (!window.confirm(`Delete this ${kind}? This will update your totals.`)) event.preventDefault(); }}><input type="hidden" name="id" value={entry.id} /><Button type="submit" size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" disabled={deleting} aria-label="Delete entry"><Trash2 className="size-3.5" /></Button></form></span>;
 }
 
 function FinancePulse({ snapshot }: { snapshot: FinanceSnapshot }) {
