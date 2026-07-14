@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
@@ -13,7 +14,7 @@ import type { Tables } from "@/types/database";
  * Components and Server Actions call this instead of wiring the stack by hand,
  * keeping the UI → Server Action → Service → Repository → Supabase flow intact.
  */
-export async function getContext(): Promise<{
+export const getContext = cache(async function getContext(): Promise<{
   user: User | null;
   services: Services;
 }> {
@@ -29,7 +30,7 @@ export async function getContext(): Promise<{
     data: { session },
   } = await supabase.auth.getSession();
   return { user: session?.user ?? null, services: createServices(supabase) };
-}
+});
 
 /**
  * Like {@link getContext} but guarantees an authenticated user — redirects to

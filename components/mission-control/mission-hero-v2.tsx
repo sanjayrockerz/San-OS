@@ -29,16 +29,16 @@ export function MissionHeroV2({
 }: MissionHeroV2Props) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
-  const heroScale = useTransform(scrollY, [0, 300], [1, 0.85]);
-  const heroOpacity = useTransform(scrollY, [0, 200], [1, 0]);
-  const greetingY = useTransform(scrollY, [0, 150], [0, -20]);
-  const greetingOpacity = useTransform(scrollY, [0, 150], [1, 0]);
+  const heroScale = useTransform(scrollY, [0, 420], [1, 0.98]);
+  const heroOpacity = useTransform(scrollY, [0, 420], [1, 0.98]);
+  const greetingY = useTransform(scrollY, [0, 240], [0, -8]);
+  const greetingOpacity = useTransform(scrollY, [0, 240], [1, 0.98]);
 
   return (
     <motion.div
       ref={ref}
       style={{ scale: heroScale, opacity: heroOpacity }}
-      className="relative mx-auto mb-5 w-full overflow-hidden rounded-3xl sm:mb-6"
+      className="relative mx-auto mb-6 w-full overflow-hidden rounded-3xl shadow-lg shadow-black/5 sm:mb-7"
     >
       <div
         className="pointer-events-none absolute inset-0"

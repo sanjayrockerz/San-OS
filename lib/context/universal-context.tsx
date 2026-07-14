@@ -39,9 +39,12 @@ export function UniversalContextProvider({ children }: { children: ReactNode }) 
 
   const refreshContext = useCallback(async () => {
     setContext(prev => ({ ...prev, isLoading: true }));
+    const controller = new AbortController();
     try {
       // Typically, you'd fetch from an API route like /api/context?path=${pathname}
-      const res = await fetch(`/api/context?path=${encodeURIComponent(pathname || "")}`);
+      const res = await fetch(`/api/context?path=${encodeURIComponent(pathname || "")}`, {
+        signal: controller.signal,
+      });
       if (res.ok) {
         const data = await res.json();
         setContext({ ...data, isLoading: false });
@@ -49,15 +52,21 @@ export function UniversalContextProvider({ children }: { children: ReactNode }) 
         setContext(prev => ({ ...prev, isLoading: false }));
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setContext(prev => ({ ...prev, isLoading: false }));
     }
+    return () => controller.abort();
   }, [pathname]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      void refreshContext();
-    }, 0);
-    return () => window.clearTimeout(timeout);
+    let timeout: number | undefined;
+    const schedule = () => { timeout = window.setTimeout(() => void refreshContext(), 120); };
+    if ("requestIdleCallback" in window) {
+      const idle = window.requestIdleCallback(schedule, { timeout: 800 });
+      return () => { window.cancelIdleCallback(idle); if (timeout) window.clearTimeout(timeout); };
+    }
+    schedule();
+    return () => { if (timeout) window.clearTimeout(timeout); };
   }, [refreshContext, pathname]);
 
   return (

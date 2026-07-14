@@ -1,31 +1,14 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { ensureProfile, getContext } from "@/lib/server/context";
+import { getContext } from "@/lib/server/context";
 import { PostActionPrompt } from "@/components/ui/post-action-prompt";
-import {
-  BrowserNotificationBridge,
-  type BridgeNotification,
-} from "@/components/notifications/browser-notification-bridge";
 import { ContextPanel } from "@/components/layout/context-panel";
-import type { Tables } from "@/types/database";
-
-/** In-app landing page for a native-notification click, by its source. */
-function notificationHref(n: Tables<"notifications">): string {
-  switch (n.source_type) {
-    case "system":
-      return "/execution";
-    case "revision":
-      return "/revision";
-    case "iit_assignment":
-      return "/iit-workspace";
-    default:
-      return "/notifications";
-  }
-}
 
 /**
  * Protected layout for every in-app route. The proxy already bounces anonymous
  * visitors to `/login`; this guard is defence-in-depth and also guarantees the
- * user has a `users_profile` row before any page renders.
+ * user session is available before any page renders. Profile and notification
+ * data are intentionally not on this critical path; a slow side query should
+ * never hold the whole workspace hostage.
  */
 export default async function AppGroupLayout({
   children,
@@ -40,33 +23,17 @@ export default async function AppGroupLayout({
       </AppShell>
     );
   }
-  const { user, services } = ctx as { user: NonNullable<typeof ctx.user>; services: typeof ctx.services };
-  const profile = await ensureProfile(services, user).catch(() => null);
-
-  const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "You";
-  const [unreadCount, unread] = await Promise.all([
-    services.repos.notifications.unreadCount(user.id).catch(() => 0),
-    services.repos.notifications
-      .findByState(user.id, "unread")
-      .catch(() => [] as Tables<"notifications">[]),
-  ]);
-
-  const bridgeNotifications: BridgeNotification[] = unread.slice(0, 12).map((n) => ({
-    id: n.id,
-    title: n.title,
-    body: n.body,
-    href: notificationHref(n),
-  }));
+  const { user } = ctx;
+  const displayName = user.email?.split("@")[0] ?? "You";
 
   return (
     <AppShell
       user={{ displayName, email: user.email ?? null }}
-      unreadCount={unreadCount}
+      unreadCount={0}
     >
       {children}
       <ContextPanel />
       <PostActionPrompt />
-      <BrowserNotificationBridge notifications={bridgeNotifications} />
     </AppShell>
   );
 }

@@ -22,6 +22,11 @@ export default function OverviewLoading() {
           ))}
         </div>
       </div>
+      <div className="grid gap-3 lg:grid-cols-[1.25fr_0.75fr]">
+        <div className="h-48 animate-pulse rounded-3xl bg-muted/30" />
+        <div className="h-48 animate-pulse rounded-3xl bg-muted/30" />
+        <div className="h-28 animate-pulse rounded-3xl bg-muted/30 lg:col-span-2" />
+      </div>
     </div>
   );
 }
