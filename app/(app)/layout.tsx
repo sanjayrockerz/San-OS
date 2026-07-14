@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { requireContext, ensureProfile, getContext } from "@/lib/server/context";
+import { ensureProfile, getContext } from "@/lib/server/context";
 import { PostActionPrompt } from "@/components/ui/post-action-prompt";
 import {
   BrowserNotificationBridge,
