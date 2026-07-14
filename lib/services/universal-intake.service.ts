@@ -20,6 +20,7 @@ export interface IntakeResult {
   capturedItems: ParsedCaptureItem[];
   knowledgeEntryCreated: boolean;
   timelineEventEmitted: boolean;
+  recurringReminderCreated?: boolean;
   error?: string;
 }
 
@@ -47,6 +48,33 @@ export class UniversalIntakeService extends BaseService {
     const text = input.text.trim();
     if (!text) {
       return { text, type: "unknown", resolvedProject: null, resolvedClient: null, resolvedConcepts: [], technologies: [], domain: "personal", capturedItems: [], knowledgeEntryCreated: false, timelineEventEmitted: false, error: "Empty input" };
+    }
+
+    const reminder = parseRecurringReminder(text);
+    if (reminder) {
+      const created = await this.repos.reminders.create({
+        user_id: userId,
+        title: reminder.title,
+        description: reminder.reason,
+        category: reminder.category,
+        recurrence: "weekly",
+        interval_weeks: 1,
+        time_of_day: reminder.timeOfDay,
+        scheduled_at: reminder.scheduledAt,
+        next_occurrence_at: reminder.scheduledAt,
+        status: "active",
+      });
+      await this.repos.events.create({
+        user_id: userId,
+        event_type: "reminder.created_from_text",
+        entity_type: "reminder",
+        entity_id: created.id,
+        payload: { source_text: text.slice(0, 500), recurrence: "weekly" },
+      }).catch(() => {});
+      return {
+        text, type: "task", resolvedProject: null, resolvedClient: null, resolvedConcepts: [], technologies: [], domain: "personal",
+        capturedItems: [], knowledgeEntryCreated: false, timelineEventEmitted: true, recurringReminderCreated: true,
+      };
     }
 
     const ctx: ResolutionContext = {
@@ -169,4 +197,34 @@ export class UniversalIntakeService extends BaseService {
     };
     return map[domain] ?? "note";
   }
+}
+
+function parseRecurringReminder(text: string): {
+  title: string;
+  reason: string;
+  category: "academic_iit" | "personal_priorities";
+  timeOfDay: string;
+  scheduledAt: string;
+} | null {
+  if (!/\b(remind me|every (?:sun|mon|tue|wed|thu|fri|sat)|weekly)\b/i.test(text)) return null;
+  const isAcademic = /\b(iit|assignment|study|exam)\b/i.test(text);
+  const time = text.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  let hour = time ? Number(time[1]) : 19;
+  const minute = time?.[2] ? Number(time[2]) : 0;
+  const meridiem = time?.[3]?.toLowerCase();
+  if (meridiem === "pm" && hour < 12) hour += 12;
+  if (meridiem === "am" && hour === 12) hour = 0;
+  const now = new Date();
+  const daysUntilSunday = (7 - now.getDay()) % 7 || 7;
+  const next = new Date(now);
+  next.setDate(now.getDate() + daysUntilSunday);
+  next.setHours(hour, minute, 0, 0);
+  const title = text.replace(/^.*?remind me\s+(?:to\s+)?/i, "").replace(/\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i, "").trim() || "Weekly review";
+  return {
+    title: title.charAt(0).toUpperCase() + title.slice(1),
+    reason: isAcademic ? "Completing this keeps your weekly study goal on track and protects time for other commitments." : "A recurring review keeps this priority visible without relying on memory.",
+    category: isAcademic ? "academic_iit" : "personal_priorities",
+    timeOfDay: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`,
+    scheduledAt: next.toISOString(),
+  };
 }
