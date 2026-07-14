@@ -4,11 +4,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Search, Loader2, Sparkles, Command, CheckCircle2 } from "lucide-react";
 import { useUniversalContext } from "@/lib/context/universal-context";
 import { submitIntake } from "@/app/(app)/actions/intake";
+import { useUIStore } from "@/store/ui-store";
 
 type IntakeResult = Awaited<ReturnType<typeof submitIntake>>["result"];
 
 export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+  const open = useUIStore((state) => state.commandOpen);
+  const setOpen = useUIStore((state) => state.setCommandOpen);
   const [input, setInput] = useState("");
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<IntakeResult | null>(null);
@@ -19,12 +21,12 @@ export function CommandPalette() {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((current) => !current);
+        setOpen(!open);
       }
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, []);
+  }, [open, setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -102,12 +104,20 @@ export function CommandPalette() {
             {!input && (
               <div className="p-2">
                 <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Suggestions</div>
-                <div className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
-                  <Search className="h-4 w-4" /> Plan tomorrow
-                </div>
-                <div className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
-                  <Search className="h-4 w-4" /> Open DP roadmap
-                </div>
+                {[
+                  "Plan tomorrow around my top priorities",
+                  "Add filmmaking as a new interest",
+                  "Lalith paid ₹12,000",
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setInput(suggestion)}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Search className="h-4 w-4" /> {suggestion}
+                  </button>
+                ))}
               </div>
             )}
           </>
