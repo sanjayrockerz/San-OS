@@ -11,13 +11,27 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 export type FinanceNoteResult =
   | {
       ok: true;
+      mode: "saved";
       message: string;
       created: number;
       income: number;
       expense: number;
       net: number;
     }
+  | {
+      ok: true;
+      mode: "preview";
+      entries: FinancePreviewEntry[];
+      message: string;
+    }
   | { ok: false; error: string };
+
+export interface FinancePreviewEntry {
+  kind: "income" | "expense";
+  amount: number;
+  description: string;
+  category: string;
+}
 
 const INCOME_HINTS = /\b(got|received|earned|collected|credited|refund(?:ed)?|deposit(?:ed)?|sold|paid by|from)\b/i;
 const EXPENSE_HINTS = /\b(gave|paid|spent|bought|sent|transferred|lent|purchase(?:d)?|reimbursed|to)\b/i;
@@ -51,7 +65,7 @@ function splitFinanceClauses(raw: string): string[] {
     .filter(Boolean);
 }
 
-function parseFinanceClause(clause: string): { kind: "income" | "expense"; amount: number; description: string; category: string } | null {
+function parseFinanceClause(clause: string): FinancePreviewEntry | null {
   const amountMatch = clause.match(/(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.[0-9]+)?(?:\s*(?:k|m|l|lac|lakh|cr|crore))?)/i);
   if (!amountMatch) return null;
 
@@ -71,6 +85,24 @@ function parseFinanceClause(clause: string): { kind: "income" | "expense"; amoun
   const category = kind === "income" ? "other_income" : "other";
 
   return { kind, amount, description, category };
+}
+
+function parseFinanceText(raw: string): FinancePreviewEntry[] {
+  return splitFinanceClauses(raw)
+    .map(parseFinanceClause)
+    .filter((entry): entry is FinancePreviewEntry => Boolean(entry));
+}
+
+export async function previewFinanceNote(
+  _prev: FinanceNoteResult | null,
+  formData: FormData,
+): Promise<FinanceNoteResult> {
+  await requireUser("/finance");
+  const raw = (formData.get("raw") as string | null)?.trim();
+  if (!raw) return { ok: false, error: "Type a finance note first" };
+  const entries = parseFinanceText(raw);
+  if (entries.length === 0) return { ok: false, error: "I couldn't detect an income or expense amount" };
+  return { ok: true, mode: "preview", entries, message: `I found ${entries.length} transaction${entries.length === 1 ? "" : "s"}. Confirm before saving.` };
 }
 
 export async function recordIncome(
@@ -139,8 +171,7 @@ export async function recordFinanceNote(
   const raw = (formData.get("raw") as string | null)?.trim();
   if (!raw) return { ok: false, error: "Type a finance note first" };
 
-  const clauses = splitFinanceClauses(raw);
-  const parsed = clauses.map(parseFinanceClause).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  const parsed = parseFinanceText(raw);
   if (parsed.length === 0) return { ok: false, error: "I couldn't detect an income or expense amount" };
 
   const services = createServices(await createClient());
@@ -149,7 +180,12 @@ export async function recordFinanceNote(
 
   try {
     const today = new Date().toISOString().slice(0, 10);
+    const clients = await services.client.listForUser(user.id).catch(() => []);
     for (const entry of parsed) {
+      const client = clients.find((candidate) => {
+        const words = `${candidate.name} ${candidate.company ?? ""}`.toLowerCase().split(/\s+/);
+        return words.some((word) => word.length > 2 && entry.description.toLowerCase().includes(word));
+      });
       if (entry.kind === "income") {
         income += entry.amount;
         await services.finance.recordIncome(user.id, {
@@ -158,7 +194,7 @@ export async function recordFinanceNote(
           category: entry.category,
           description: entry.description,
           received_at: today,
-          client_id: null,
+          client_id: client?.id ?? null,
           project_id: null,
           invoice_id: null,
         });
@@ -172,6 +208,11 @@ export async function recordFinanceNote(
           occurred_at: today,
         });
       }
+      await services.events.emit(user.id, {
+        eventType: entry.kind === "income" ? "revenue.recorded" : "expense.recorded",
+        entityType: entry.kind === "income" ? "income_entry" : "expense_entry",
+        payload: { amount: entry.amount, description: entry.description, clientId: client?.id ?? null, source: "natural_language" },
+      });
     }
 
     StudentIntelligenceCoreService.invalidate(user.id);
@@ -181,6 +222,7 @@ export async function recordFinanceNote(
     const net = income - expense;
     return {
       ok: true,
+      mode: "saved",
       created: parsed.length,
       income,
       expense,

@@ -19,6 +19,7 @@ import {
   Wallet,
   TrendingUp,
   Target,
+  Lightbulb,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,6 +58,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Academic", shortLabel: "Academic", href: "/academic", icon: GraduationCap },
       { label: "DSA", shortLabel: "DSA", href: "/problems", icon: Code2 },
       { label: "Knowledge", shortLabel: "Knowledge", href: "/knowledge", icon: Compass },
+      { label: "Interests", shortLabel: "Interests", href: "/interests", icon: Lightbulb },
     ],
   },
   {

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServices, StudentIntelligenceCoreService } from "@/lib/services";
 import { createClientSchema, updateClientSchema } from "@/lib/validators/business";
 import { uuidSchema } from "@/lib/validators/common";
+import { recordLifecycleChange } from "@/lib/lifecycle/manager";
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -73,9 +74,13 @@ export async function updateClientRecord(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const services = createServices(await createClient());
+  const db = await createClient();
+  const services = createServices(db);
   try {
+    const before = await services.client.findById(clientId.data);
     await services.client.update(user.id, clientId.data, parsed.data);
+    const after = await services.client.findById(clientId.data);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "client", entityId: clientId.data, operation: "update", beforeState: before, afterState: after });
     StudentIntelligenceCoreService.invalidate(user.id);
     revalidate(clientId.data);
     return { ok: true, id: clientId.data };
@@ -93,9 +98,13 @@ export async function archiveClientRecord(
   const clientId = uuidSchema.safeParse(formData.get("clientId"));
   if (!clientId.success) return { ok: false, error: "Invalid client" };
 
-  const services = createServices(await createClient());
+  const db = await createClient();
+  const services = createServices(db);
   try {
+    const before = await services.client.findById(clientId.data);
     await services.client.archive(user.id, clientId.data);
+    const after = await services.client.findById(clientId.data);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "client", entityId: clientId.data, operation: "archive", beforeState: before, afterState: after });
     StudentIntelligenceCoreService.invalidate(user.id);
     revalidate();
     return { ok: true };

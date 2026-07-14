@@ -10,6 +10,7 @@ import {
   updateProjectSchema,
 } from "@/lib/validators/project";
 import { uuidSchema } from "@/lib/validators/common";
+import { recordLifecycleChange } from "@/lib/lifecycle/manager";
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -88,9 +89,13 @@ export async function updateProject(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const services = createServices(await createClient());
+  const db = await createClient();
+  const services = createServices(db);
   try {
+    const before = await services.project.findById(projectId.data);
     await services.project.update(user.id, projectId.data, parsed.data);
+    const after = await services.project.findById(projectId.data);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "project", entityId: projectId.data, operation: "update", beforeState: before, afterState: after });
     StudentIntelligenceCoreService.invalidate(user.id);
     revalidate(projectId.data);
     return { ok: true, id: projectId.data };
@@ -108,9 +113,12 @@ export async function deleteProject(
   const projectId = uuidSchema.safeParse(formData.get("projectId"));
   if (!projectId.success) return { ok: false, error: "Invalid project" };
 
-  const services = createServices(await createClient());
+  const db = await createClient();
+  const services = createServices(db);
   try {
+    const before = await services.project.findById(projectId.data);
     await services.project.delete(user.id, projectId.data);
+    await recordLifecycleChange(db, { userId: user.id, entityType: "project", entityId: projectId.data, operation: "archive", beforeState: before, afterState: null });
     StudentIntelligenceCoreService.invalidate(user.id);
     revalidate();
     return { ok: true };

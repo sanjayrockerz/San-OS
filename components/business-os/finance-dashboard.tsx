@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart } from "@/components/charts/bar-chart";
-import { recordIncome, recordExpense, recordFinanceNote } from "@/app/(app)/finance/actions";
+import { recordIncome, recordExpense, recordFinanceNote, previewFinanceNote } from "@/app/(app)/finance/actions";
 
 import {
   AreaChart,
@@ -191,8 +191,10 @@ function FinancePulse({ snapshot }: { snapshot: FinanceSnapshot }) {
 }
 
 function FinanceNoteForm() {
-  const [state, action, pending] = useActionState(recordFinanceNote, null);
+  const [state, action, pending] = useActionState(previewFinanceNote, null);
+  const [saveState, saveAction, savePending] = useActionState(recordFinanceNote, null);
   const [raw, setRaw] = useState("");
+  const preview = state?.ok && state.mode === "preview" ? state : null;
 
   return (
     <Card className="p-4 border-border/60 shadow-sm">
@@ -211,7 +213,8 @@ function FinanceNoteForm() {
           className="min-h-24 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20"
         />
         {state && !state.ok && <p className="text-xs text-destructive">{state.error}</p>}
-        {state?.ok && <p className="text-xs text-success">{state.message}</p>}
+        {saveState?.ok && saveState.mode === "saved" && <p className="text-xs text-success">{saveState.message}</p>}
+        {saveState && !saveState.ok && <p className="text-xs text-destructive">{saveState.error}</p>}
         <div className="flex items-center gap-2">
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Record from words"}
@@ -221,6 +224,25 @@ function FinanceNoteForm() {
           </span>
         </div>
       </form>
+      {preview && (
+        <div className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <p className="text-sm font-semibold">{preview.message}</p>
+          <div className="space-y-2">
+            {preview.entries.map((entry, index) => (
+              <div key={`${entry.description}-${index}`} className="flex items-center justify-between gap-3 rounded-xl bg-background/60 px-3 py-2 text-sm">
+                <span className="min-w-0 truncate">{entry.description}</span>
+                <span className={entry.kind === "income" ? "shrink-0 text-emerald-400" : "shrink-0 text-red-400"}>{entry.kind === "income" ? "+" : "-"}₹{entry.amount.toLocaleString("en-IN")}</span>
+              </div>
+            ))}
+          </div>
+          <form action={saveAction} className="flex items-center gap-2">
+            <input type="hidden" name="raw" value={raw} />
+            <input type="hidden" name="confirm" value="true" />
+            <Button type="submit" size="sm" disabled={savePending}>{savePending ? "Saving…" : "Confirm and save"}</Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setRaw("")}>Clear</Button>
+          </form>
+        </div>
+      )}
     </Card>
   );
 }
