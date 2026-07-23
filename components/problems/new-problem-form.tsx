@@ -244,7 +244,12 @@ export function NewProblemForm({
 
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Language" htmlFor="language">
-                <Select id="language" name="language" defaultValue="Java">
+                <Select
+                  id="language"
+                  name="language"
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                >
                   {LANGUAGES.map((l) => (
                     <option key={l} value={l}>
                       {l}

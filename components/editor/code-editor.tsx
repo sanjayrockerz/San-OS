@@ -60,6 +60,13 @@ export function CodeEditor({
   const initialValue = value ?? defaultValue ?? (useTemplate ? getTemplate(language) : "");
   const [currentValue, setCurrentValue] = useState(initialValue);
 
+  // Update editor value when language prop changes if controlled or templated
+  React.useEffect(() => {
+    const template = getTemplate(language);
+    setCurrentValue(template);
+    if (onChange) onChange(template);
+  }, [language]);
+
   // AI Assistant state
   const [panelOpen, setPanelOpen] = useState(false);
   const [pending, startTransition] = useTransition();

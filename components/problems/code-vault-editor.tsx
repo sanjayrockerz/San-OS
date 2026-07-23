@@ -52,6 +52,8 @@ export function CodeVaultEditor({
     });
   }
 
+  const [editingLang, setEditingLang] = useState(latest?.language ?? "C++");
+
   if (editing) {
     return (
       <form action={handleSubmit} className="space-y-3">
@@ -59,14 +61,15 @@ export function CodeVaultEditor({
         <Input
           name="language"
           required
-          defaultValue={latest?.language ?? ""}
-          placeholder="e.g. python, typescript"
+          value={editingLang}
+          onChange={(e) => setEditingLang(e.target.value)}
+          placeholder="e.g. C++, Python, Java"
           className="h-9 max-w-[200px]"
         />
         <CodeEditor
           name="code"
-          language={latest?.language ?? "typescript"}
-          defaultValue={latest?.code ?? getTemplate(latest?.language ?? "typescript")}
+          language={editingLang}
+          defaultValue={latest?.code ?? getTemplate(editingLang)}
           height="220px"
           minHeight="220px"
         />
