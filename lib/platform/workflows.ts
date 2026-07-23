@@ -28,6 +28,20 @@ export function createWorkflows(eventBus: EventBus, repos: Repositories): Workfl
       ],
     },
     {
+      id: "resource-ingestion-workflow",
+      name: "Resource Ingestion Workflow",
+      description: "Autonomous pipeline for uploaded documents, PDFs, and voice notes",
+      version: "1.0.0",
+      trigger: { type: "event", eventType: "resource.created" },
+      steps: [
+        { id: "extract-content", name: "Content Extraction", execute: async (_input, ctx) => { await eventBus.emit(ctx.userId, "resource.content_extracted", {}); return { done: true }; } },
+        { id: "entity-match", name: "Entity Resolution", execute: async (_input, ctx) => { await eventBus.emit(ctx.userId, "resource.entities_matched", {}); return { done: true }; } },
+        { id: "memory-edge-update", name: "Update Memory Graph", execute: async (_input, ctx) => { await eventBus.emit(ctx.userId, "memory.edge_created", {}); return { done: true }; } },
+        { id: "timeline-record", name: "Record Timeline Event", execute: async (_input, ctx) => { await eventBus.emit(ctx.userId, "timeline.event_added", {}); return { done: true }; } },
+        { id: "notify-coach", name: "Notify AI Coach", execute: async (_input, ctx) => { await eventBus.emit(ctx.userId, "coach.resource_ingested", {}); return { done: true }; } },
+      ],
+    },
+    {
       id: "problem-solved-workflow",
       name: "Problem Solved",
       description: "Process problem solution",

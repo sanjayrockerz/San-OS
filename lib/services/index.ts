@@ -65,6 +65,7 @@ export * from "./calendar-sync.service";
 export * from "./universal-search.service";
 export * from "./universal-intake.service";
 export * from "./voice-recording.service";
+export * from "./smart-suggestions.service";
 
 import { createRepositories, type DbClient } from "@/lib/repositories";
 import { initializePlatform } from "@/lib/platform";
@@ -137,6 +138,7 @@ import { CalendarSyncService } from "./calendar-sync.service";
 import { UniversalSearchService } from "./universal-search.service";
 import { UniversalIntakeService } from "./universal-intake.service";
 import { VoiceRecordingService } from "./voice-recording.service";
+import { SmartSuggestionsEngineService } from "./smart-suggestions.service";
 
 /**
  * Constructs every domain service bound to a single Supabase client. A request
@@ -232,6 +234,7 @@ export function createServices(client: DbClient) {
     get universalSearch(): UniversalSearchService { return cache.universalSearch ??= new UniversalSearchService(repos); },
     get universalIntake(): UniversalIntakeService { return cache.universalIntake ??= new UniversalIntakeService(repos); },
     get voiceRecording(): VoiceRecordingService { return cache.voiceRecording ??= new VoiceRecordingService(repos); },
+    get smartSuggestions(): SmartSuggestionsEngineService { return cache.smartSuggestions ??= new SmartSuggestionsEngineService(repos); },
   };
 }
 
