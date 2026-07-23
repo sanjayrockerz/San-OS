@@ -22,6 +22,7 @@ import {
   Lightbulb,
   Timer,
   Sparkles,
+  Mic,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     heading: "Your OS",
     items: [
       { label: "Home", shortLabel: "Home", href: "/overview", icon: LayoutDashboard },
+      { label: "Voice OS", shortLabel: "Voice", href: "/voice", icon: Mic },
       { label: "Plan", shortLabel: "Plan", href: "/execution", icon: Target },
       { label: "Review", shortLabel: "Review", href: "/timeline", icon: Activity },
       { label: "Focus Timer", shortLabel: "Focus", href: "/focus", icon: Timer },
@@ -79,8 +81,6 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
-/** Secondary destinations remain discoverable through command search without
- * turning the persistent rail into an admin-style catalogue. */
 export const COMMAND_NAV_ITEMS: NavItem[] = [
   ...NAV_ITEMS,
   { label: "Clients", shortLabel: "Clients", href: "/clients", icon: Users },
@@ -96,9 +96,6 @@ export const COMMAND_NAV_ITEMS: NavItem[] = [
   { label: "Personal Coach", shortLabel: "Coach", href: "/coach", icon: Sparkles },
 ];
 
-/** Reduced set for the mobile bottom navigation (4 + center FAB). Looked up by
- * href rather than position so inserting nav items elsewhere can't silently
- * shift this list onto the wrong pages. */
 const MOBILE_NAV_HREFS = ["/overview", "/execution", "/projects", "/academic"];
 export const MOBILE_NAV: NavItem[] = MOBILE_NAV_HREFS.map(
   (href) => NAV_ITEMS.find((item) => item.href === href)!,

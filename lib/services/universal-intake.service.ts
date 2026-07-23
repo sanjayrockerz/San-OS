@@ -11,7 +11,7 @@ export interface IntakeInput {
 
 export interface IntakeResult {
   text: string;
-  type: "problem_solve" | "project_work" | "learning" | "task" | "meeting" | "note" | "unknown";
+  type: "problem_solve" | "project_work" | "learning" | "task" | "meeting" | "note" | "payment" | "time_log" | "unknown";
   resolvedProject: { id: string; name: string } | null;
   resolvedClient: { id: string; name: string } | null;
   resolvedConcepts: { id: string; name: string }[];
@@ -21,6 +21,12 @@ export interface IntakeResult {
   knowledgeEntryCreated: boolean;
   timelineEventEmitted: boolean;
   recurringReminderCreated?: boolean;
+  paymentDetected?: { clientName: string; amount: number; description: string } | null;
+  timeLogDetected?: { projectName: string; minutes: number } | null;
+  projectCreationDetected?: { title: string } | null;
+  scheduleDetected?: { title: string; day: string; durationMinutes: number } | null;
+  requiresConfirmation?: boolean;
+  confirmationMessage?: string;
   error?: string;
 }
 
@@ -94,8 +100,29 @@ export class UniversalIntakeService extends BaseService {
     const resolvedConcepts = entityResult.matches.filter(m => m.type === "concept");
     const technologies = TECHNOLOGY_KEYWORDS.filter(t => text.toLowerCase().includes(t));
 
+    // NLU Entity & Command Detection
+    const paymentMatch = text.match(/(?:paid|received|payment of)\s*₹?\s*(\d+(?:,\d+)*)/i) || text.match(/₹\s*(\d+(?:,\d+)*)/i);
+    const timeMatch = text.match(/(?:worked on|spent|coding for|for)\s+([A-Z0-9a-z_\-\s]+?)\s+(?:for\s+)?(\d+)\s*(hour|hr|h|minute|min|m)/i);
+    const projectCreationMatch = text.match(/(?:create|new|add)\s+project\s+(?:for\s+)?(["']?[A-Z0-9a-z_\-\s]+?["']?)$/i);
+
+    const paymentDetected = paymentMatch ? {
+      clientName: resolvedClient?.name ?? "Client",
+      amount: parseInt(paymentMatch[1].replace(/,/g, ""), 10),
+      description: text,
+    } : null;
+
+    const timeLogDetected = timeMatch ? {
+      projectName: resolvedProject?.name ?? timeMatch[1].trim(),
+      minutes: timeMatch[3]?.toLowerCase().startsWith("h") ? parseInt(timeMatch[2], 10) * 60 : parseInt(timeMatch[2], 10),
+    } : null;
+
+    const projectCreationDetected = projectCreationMatch ? {
+      title: projectCreationMatch[1].trim(),
+    } : null;
+
     const domain = this.inferDomain(text, parsed);
-    const type = this.inferType(text, parsed, technologies);
+    const type = paymentDetected ? "payment" : timeLogDetected ? "time_log" : this.inferType(text, parsed, technologies);
+    const requiresConfirmation = Boolean(paymentDetected || projectCreationDetected);
 
     // Emit event instead of direct database mutations
     try {
@@ -112,13 +139,11 @@ export class UniversalIntakeService extends BaseService {
           projectId: resolvedProject?.id ?? null,
           clientId: resolvedClient?.id ?? null,
           concepts: resolvedConcepts.map(c => c.id),
+          paymentDetected,
+          timeLogDetected,
         },
       });
 
-      // Instead of coupling Knowledge and Timeline logic here,
-      // we emit an IntakeProcessed event to the Event Bus.
-      // Other domains (Timeline, Planner, Memory) will subscribe and react.
-      
       const { EventBus } = await import("@/lib/event-bus");
       const bus = new EventBus(this.repos);
       await bus.emit(userId, "intake.processed", {
@@ -129,6 +154,8 @@ export class UniversalIntakeService extends BaseService {
         projectId: resolvedProject?.id,
         clientId: resolvedClient?.id,
         parsedItems: parsed,
+        paymentDetected,
+        timeLogDetected,
       });
 
     } catch (e) {
@@ -144,8 +171,17 @@ export class UniversalIntakeService extends BaseService {
       technologies,
       domain,
       capturedItems: parsed.slice(0, 5),
-      knowledgeEntryCreated: true, // Handled asynchronously by EventBus
-      timelineEventEmitted: true, // Handled asynchronously by EventBus
+      knowledgeEntryCreated: true,
+      timelineEventEmitted: true,
+      paymentDetected,
+      timeLogDetected,
+      projectCreationDetected,
+      requiresConfirmation,
+      confirmationMessage: requiresConfirmation
+        ? paymentDetected
+          ? `Record payment of ₹${paymentDetected.amount} for ${paymentDetected.clientName}?`
+          : `Create new project "${projectCreationDetected?.title}"?`
+        : undefined,
     };
   }
 

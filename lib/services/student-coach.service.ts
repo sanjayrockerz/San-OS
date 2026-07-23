@@ -26,6 +26,8 @@ export interface CoachConfidence {
 
 export interface DailyCoachBrief {
   greeting: string;
+  reviewPhase: "morning" | "midday" | "evening" | "night";
+  rationale: string;
   yesterday: { completed: number; missed: number; learningWins: number };
   today: {
     biggestOpportunity: StudentAction | null;
@@ -124,8 +126,23 @@ export class StudentCoachService extends BaseService {
 
     const biggestOpportunity = visiblePriorities[0] ?? null;
 
+    const currentHour = new Date().getHours();
+    const reviewPhase: DailyCoachBrief["reviewPhase"] =
+      currentHour < 12 ? "morning" : currentHour < 17 ? "midday" : currentHour < 21 ? "evening" : "night";
+
+    const rationale =
+      reviewPhase === "morning"
+        ? "Morning Focus: Starting with your highest impact target builds momentum for the rest of the day."
+        : reviewPhase === "midday"
+        ? "Midday Calibration: Re-aligning your schedule now prevents afternoon drift."
+        : reviewPhase === "evening"
+        ? "Evening Review: Clearing unresolved tasks ensures a clean setup for tomorrow."
+        : "Night Reflection: Protecting recovery windows sustains high cognitive output.";
+
     const brief: DailyCoachBrief = {
-      greeting: greetingForHour(new Date().getHours()),
+      greeting: greetingForHour(currentHour),
+      reviewPhase,
+      rationale,
       yesterday,
       today: {
         biggestOpportunity,

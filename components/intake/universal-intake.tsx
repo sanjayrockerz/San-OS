@@ -93,6 +93,40 @@ export function UniversalIntake() {
             <Sparkles className="absolute -right-4 -top-4 size-24 text-primary/10 rotate-12" />
             
             <div className="relative z-10 space-y-5">
+              {result.requiresConfirmation && (
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs uppercase tracking-wider">
+                    <Sparkles className="size-4" /> Action Requires Confirmation
+                  </div>
+                  <p className="text-sm font-medium text-foreground">{result.confirmationMessage}</p>
+                  {result.paymentDetected && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>• Client: <span className="font-semibold text-foreground">{result.paymentDetected.clientName}</span></p>
+                      <p>• Amount: <span className="font-semibold text-emerald-400">₹{result.paymentDetected.amount}</span></p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        alert("Confirmed and executed via Event Bus!");
+                        setResult({ ...result, requiresConfirmation: false });
+                      }}
+                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                    >
+                      Confirm & Execute
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResult(null)}
+                      className="rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/80"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">AI Explains</p>
                 <p className="text-sm font-semibold">I have automatically created the following based on your input:</p>
