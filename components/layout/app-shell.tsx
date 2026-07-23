@@ -38,8 +38,8 @@ export function AppShell({
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
           <TopHeader unreadCount={unreadCount} />
-          <main className="flex-1">
-            <div className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-10 lg:pt-7">
+          <main className="flex-1 max-w-full overflow-x-hidden">
+            <div className="mx-auto w-full max-w-[1440px] px-3 pb-24 pt-4 sm:px-6 lg:px-8 lg:pb-10 lg:pt-7">
               {children}
             </div>
           </main>

@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Zap } from "lucide-react";
+import { Zap, ArrowRight, Play } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, Play } from "lucide-react";
 import { AnimatedBackground } from "./animated-background";
 import type { HeroTheme } from "@/lib/mission-control/hero-theme-engine";
 
@@ -28,6 +27,18 @@ export function MissionHeroV2({
   planner,
 }: MissionHeroV2Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const [mountedTime, setMountedTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMountedTime(
+      new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    );
+  }, []);
+
+  const displayTime = mountedTime ?? time;
   const { scrollY } = useScroll();
   const heroScale = useTransform(scrollY, [0, 420], [1, 0.98]);
   const heroOpacity = useTransform(scrollY, [0, 420], [1, 0.98]);
@@ -48,9 +59,7 @@ export function MissionHeroV2({
 
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10" />
 
-      <div
-        className="relative z-10 flex h-[220px] flex-col justify-between p-4 sm:h-[250px] sm:p-5 md:h-[280px] md:p-6"
-      >
+      <div className="relative z-10 flex h-[220px] flex-col justify-between p-4 sm:h-[250px] sm:p-5 md:h-[280px] md:p-6">
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-sm">
             <Zap className="size-3 text-white/70" />
@@ -58,7 +67,7 @@ export function MissionHeroV2({
           </div>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-sm">
             <span className="size-1.5 animate-pulse rounded-full bg-green-400" />
-            {time}
+            {displayTime}
           </div>
         </div>
 

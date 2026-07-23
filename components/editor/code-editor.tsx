@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useTransition, useCallback } from "react";
-import Editor, { useMonaco, type Monaco } from "@monaco-editor/react";
+import dynamic from "next/dynamic";
+import { useMonaco } from "@monaco-editor/react";
 import { Loader2, Sparkles, Wand2, Bug, Code2, Check, X, PanelRightClose, PanelRightOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -9,6 +10,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { askCodeAssistant, type AiAssistantAction, type AiAssistantResponse } from "@/app/(app)/problems/ai-actions";
 import { registerCompletionProviders, getTemplate, toMonacoLanguage } from "@/lib/code-templates";
+
+const Editor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center text-muted-foreground">
+      <Loader2 className="size-5 animate-spin" />
+    </div>
+  ),
+});
 
 export interface CodeEditorProps {
   /** Initial code value */
