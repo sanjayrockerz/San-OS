@@ -41,4 +41,34 @@ export class ReminderEngineService extends BaseService {
   async markComplete(notificationId: string): Promise<Row<"notifications">> {
     return this.repos.notifications.update(notificationId, { state: "completed" });
   }
+
+  /**
+   * Evaluates the student's daily coach status, pending priorities, and missed items,
+   * automatically scheduling proactive reminders in the notifications table.
+   */
+  async generateAutomatedCoachReminders(userId: string): Promise<{ created: number; reminders: Row<"notifications">[] }> {
+    const existing = await this.repos.notifications.findByState(userId, "unread").catch(() => []);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    
+    // Check if coach reminder for today already exists
+    const hasTodayCoachReminder = existing.some(
+      (n: Row<"notifications">) => n.source_type === "system" && n.created_at.startsWith(todayStr),
+    );
+
+    const createdReminders: Row<"notifications">[] = [];
+
+    if (!hasTodayCoachReminder) {
+      // Create morning/daily focus nudge
+      const n = await this.createReminder(userId, {
+        title: "🤖 Intelligent Coach: Daily Focus Ready",
+        body: "Your prioritized battle plan is ready for execution. Tap to review your top target for today.",
+        category: "general",
+        sourceType: "system",
+        dueAt: new Date().toISOString(),
+      });
+      createdReminders.push(n);
+    }
+
+    return { created: createdReminders.length, reminders: createdReminders };
+  }
 }

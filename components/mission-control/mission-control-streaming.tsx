@@ -8,6 +8,7 @@ import { MissionHeroV2 } from "./mission-hero-v2";
 import { KpiCarousel } from "./kpi-carousel";
 import { WIDGET_CONFIG } from "@/lib/mission-control/dashboard-widgets";
 import { TodayMission } from "./today-mission";
+import { VoiceMessagesVault } from "@/components/dashboard/voice-messages-vault";
 
 function getHour(): number {
   return new Date().getHours();
@@ -157,6 +158,8 @@ export function MissionControlStream({
       <Suspense fallback={<KpiCarouselSkeleton />}>
         <MissionSection userId={userId} services={services} useDevData={useDevData} />
       </Suspense>
+
+      <VoiceMessagesVault />
 
       <Suspense fallback={<KpiCarouselSkeleton />}>
         <KpiGridSection

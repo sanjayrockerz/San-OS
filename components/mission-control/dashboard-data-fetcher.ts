@@ -52,6 +52,13 @@ function formatRupees(value: number | null | undefined): string {
   }).format(value);
 }
 
+function withTimeout<T>(promise: Promise<T>, fallback: T, ms: number = 2500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 export async function getDashboardData(
   userId: string,
   services: Services,
@@ -70,18 +77,18 @@ export async function getDashboardData(
     knowledgeHealthSnapshot,
     plannerState,
   ] = await Promise.all([
-    services.studentCoach.dailyBrief(userId, "none").catch(() => null),
-    services.studentIntelligence.snapshot(userId).catch(() => null),
-    services.dashboardAggregation.snapshot(userId).catch(() => null),
-    services.finance.snapshot(userId).catch(() => null),
-    services.placementReadiness.readiness(userId).catch(() => null),
-    services.gpaProjection.projection(userId).catch(() => null),
-    services.executionEngine.getTodayMetrics(userId).catch(() => null),
-    services.project.listForUser(userId).catch(() => []),
-    services.academicCoach.actions(userId).catch(() => []),
-    services.businessCoach.actions(userId).catch(() => []),
-    services.knowledgeHealth.snapshot(userId).catch(() => null),
-    services.dailyPlanner.getPlannerState(userId).catch(() => null),
+    withTimeout(services.studentCoach.dailyBrief(userId, "none").catch(() => null), null),
+    withTimeout(services.studentIntelligence.snapshot(userId).catch(() => null), null),
+    withTimeout(services.dashboardAggregation.snapshot(userId).catch(() => null), null),
+    withTimeout(services.finance.snapshot(userId).catch(() => null), null),
+    withTimeout(services.placementReadiness.readiness(userId).catch(() => null), null),
+    withTimeout(services.gpaProjection.projection(userId).catch(() => null), null),
+    withTimeout(services.executionEngine.getTodayMetrics(userId).catch(() => null), null),
+    withTimeout(services.project.listForUser(userId).catch(() => []), []),
+    withTimeout(services.academicCoach.actions(userId).catch(() => []), []),
+    withTimeout(services.businessCoach.actions(userId).catch(() => []), []),
+    withTimeout(services.knowledgeHealth.snapshot(userId).catch(() => null), null),
+    withTimeout(services.dailyPlanner.getPlannerState(userId).catch(() => null), null),
   ]);
 
   const priorities = intelligence?.priorities ?? [];
@@ -259,10 +266,10 @@ export function getCriticalDashboardData(
   const key = `critical-${userId}`;
   if (!criticalPromiseCache.has(key)) {
     criticalPromiseCache.set(key, Promise.all([
-      services.studentCoach.dailyBrief(userId, "none").catch(() => null),
-      services.studentIntelligence.snapshot(userId).catch(() => null),
-      services.executionEngine.getTodayMetrics(userId).catch(() => null),
-      services.dailyPlanner.getPlannerState(userId).catch(() => null),
+      withTimeout(services.studentCoach.dailyBrief(userId, "none").catch(() => null), null, 2000),
+      withTimeout(services.studentIntelligence.snapshot(userId).catch(() => null), null, 2000),
+      withTimeout(services.executionEngine.getTodayMetrics(userId).catch(() => null), null, 2000),
+      withTimeout(services.dailyPlanner.getPlannerState(userId).catch(() => null), null, 2000),
     ]).then(([coachBrief, intelligence, executionMetrics, plannerState]) => {
       const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
       const activeBlock = plannerState?.todayBlocks.find((block) => {

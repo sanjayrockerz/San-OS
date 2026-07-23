@@ -6,6 +6,7 @@ import { Section } from "@/components/layout/page-transition";
 import { quickCapture, brainDump, processDailyInbox, type InboxActionResult } from "@/app/(app)/execution/actions";
 import { parseBrainDump, type CaptureType } from "@/lib/execution/brain-dump";
 import { inferCompletionSignal } from "@/lib/execution/completion-inference";
+import { MediaCaptureModal } from "@/components/dashboard/media-capture-modal";
 import { cn } from "@/lib/utils";
 
 const TYPE_META: Record<CaptureType, { icon: typeof Plus; label: string }> = {
@@ -255,6 +256,7 @@ function InboxMode() {
 
 export function QuickCaptureWidget() {
   const [mode, setMode] = useState<"inbox" | "quick" | "dump">("inbox");
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
 
   return (
     <Section>
@@ -264,42 +266,56 @@ export function QuickCaptureWidget() {
             <Zap className="size-4 text-primary" />
             <p className="text-title">Daily Inbox</p>
           </div>
-          <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setMode("inbox")}
-              className={cn(
-                "rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors",
-                mode === "inbox" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
-              )}
+              onClick={() => setIsMediaModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-indigo-500/10 px-2 py-1 text-[10px] font-medium text-indigo-400 hover:bg-indigo-500/20"
             >
-              Inbox
+              <Sparkles className="size-3" /> Notion PDF/Image
             </button>
-            <button
-              type="button"
-              onClick={() => setMode("quick")}
-              className={cn(
-                "rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors",
-                mode === "quick" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              Quick
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("dump")}
-              className={cn(
-                "flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors",
-                mode === "dump" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              <Brain className="size-2.5" /> Brain Dump
-            </button>
+            <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
+              <button
+                type="button"
+                onClick={() => setMode("inbox")}
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors",
+                  mode === "inbox" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                Inbox
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("quick")}
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors",
+                  mode === "quick" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                Quick
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("dump")}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors",
+                  mode === "dump" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                <Brain className="size-2.5" /> Brain Dump
+              </button>
+            </div>
           </div>
         </div>
 
         {mode === "inbox" ? <InboxMode /> : mode === "quick" ? <QuickMode /> : <BrainDumpMode />}
       </div>
+
+      <MediaCaptureModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+      />
     </Section>
   );
 }
