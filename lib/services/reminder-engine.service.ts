@@ -62,7 +62,7 @@ export class ReminderEngineService extends BaseService {
       const n = await this.createReminder(userId, {
         title: "🤖 Intelligent Coach: Daily Focus Ready",
         body: "Your prioritized battle plan is ready for execution. Tap to review your top target for today.",
-        category: "general",
+        category: "system",
         sourceType: "system",
         dueAt: new Date().toISOString(),
       });
