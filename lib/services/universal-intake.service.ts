@@ -210,6 +210,8 @@ export class UniversalIntakeService extends BaseService {
       task: [/\b(todo|task|finish|complete|need to|have to|must)\b/i],
       meeting: [/\b(meeting|call|sync|standup|discussed|demo|review)\b/i],
       note: [/\b(note|idea|thought|remember|concept)\b/i],
+      payment: [/\b(paid|payment|received|revenue|invoice)\b/i],
+      time_log: [/\b(worked|hours|hrs|mins|spent)\b/i],
       unknown: [],
     };
     for (const [type, signals] of Object.entries(typeSignals)) {
